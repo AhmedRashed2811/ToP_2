@@ -1,0 +1,425 @@
+{% extends 'ToP/base.html' %}
+{% block title %}Manage Inventory{% endblock %}
+
+{% block content %}
+
+<link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<style>
+    /* Table Styling */
+    .tabulator .tabulator-footer .tabulator-page { display: inline-block; margin: 0 2px; padding: 2px 5px; border: 1px solid #aaa; border-radius: 3px; background: hsl(238.15deg 100% 50% / 20%); }
+    table { margin-top: 0%; margin-left: 8%; text-align: center; }
+    table td:first-child { font-weight: bold; background: #f2f2f2; min-width: 80px; max-width: 175px; }
+    .tabulator { position: relative; border: 1px solid #999; background-color: #888; font-size: 14px; text-align: center; overflow: hidden; -webkit-transform: translateZ(0); -moz-transform: translateZ(0); -ms-transform: translateZ(0); -o-transform: translateZ(0); max-width: 100%; transform: translateZ(0); margin-top: 3%; }
+    .tabulator .tabulator-header .tabulator-col .tabulator-col-content .tabulator-col-title { box-sizing: border-box; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; text-align: center; font-size: large; }
+    .tabulator-row.tabulator-group { background: #ccc; border-bottom: 1px solid #999; border-right: 1px solid #aaa; border-top: 1px solid #999; box-sizing: border-box; font-weight: 700; min-width: 100%; padding: 5px 5px 5px 10px; text-align: start; }
+    .form-container { max-width: 800px; margin: 20px auto; padding: 20px; background: #f9f9f9; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+    .form-container label { font-weight: bold; color: #333; }
+    .search-container { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
+    .sort-buttons { display: flex; gap: 10px; align-items: center; background-color: linear-gradient(to bottom, #f0f0f0, #dcdcdc);; }
+    .search-container input, .search-container select { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; background-color: #fff; transition: border 0.3s ease; }
+    .search-container input { min-width: 200px; flex: 1; }
+    .search-container select { min-width: 180px; flex: 1; }
+    .submit-button { padding: 10px 20px; background-color: rgb(146, 146, 146); color: rgb(255, 255, 255); font-size: 16px; border: none; border-radius: 5px; cursor: pointer; transition: background 0.3s ease, transform 0.2s ease; }
+    .submit-button:hover { background-color: rgb(60, 61, 63); transform: scale(1.03); }
+    .buttons { text-align: center; z-index: 999; position: fixed; margin-left: 30%; }
+
+    /* 🚨 STICKY PAGINATION FIX: Keeps controls visible during horizontal scroll */
+    .tabulator .tabulator-footer {
+        text-align: left !important;
+        padding: 5px !important;
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .tabulator .tabulator-footer .tabulator-paginator {
+        position: sticky !important;
+        left: 10px !important; /* Distance from the left edge of the screen */
+        background-color: inherit; /* Matches footer color */
+        padding: 2px 10px;
+        border-radius: 4px;
+        display: inline-flex !important;
+        white-space: nowrap;
+        z-index: 10;
+    }
+
+    /* Optional: Ensure page size selector and buttons look clean on mobile */
+    @media (max-width: 768px) {
+        .tabulator .tabulator-footer .tabulator-page-size {
+            margin-right: 10px;
+        }
+    }
+
+    /* Restoration of your Dynamic Margin Logic */
+    {% for group in request.user.groups.all %}
+        {% if group.name == 'Manager'%}
+            #unitsTable { min-width: 1489px; margin-top: 6%; margin-left: 0%; }
+            @media (max-width: 1024px) { #unitsTable { margin-top: 10%; width: 100%; margin-left: 0%; overflow-x: auto; } .buttons { margin-left: 25%; } .column-controls { top: 120px; right: 10px; width: 220px; } .toggle-columns-btn { top: 120px; right: 10px; } .filter-controls { top: 120px; left: 10px; width: 250px; } .toggle-filters-btn { top: 120px; left: 10px; } }
+        {% else %}
+            #unitsTable { min-width: 1489px; margin-top: 6%; margin-left: -8%; }
+            @media (max-width: 1024px) { #unitsTable { margin-top: 10%; width: 100%; margin-left: -15%; overflow-x: auto; } .buttons { margin-left: 25%; } .column-controls { top: 120px; right: 10px; width: 220px; } .toggle-columns-btn { top: 120px; right: 10px; } .filter-controls { top: 120px; left: 10px; width: 250px; } .toggle-filters-btn { top: 120px; left: 10px; } }
+        {% endif %}
+    {% endfor %}
+
+    .column-controls { position: fixed; top: 100px; right: 20px; background: white; border: 1px solid #ddd; border-radius: 5px; padding: 15px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); z-index: 1000; overflow-y: auto; width: 250px; max-height: 70vh; }
+    .column-controls h3 { margin-top: 0; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
+    .column-list { max-height: 300px; overflow-y: auto; margin-bottom: 10px; }
+    .column-item { display: flex; align-items: center; margin-bottom: 8px; padding: 5px; border-radius: 3px; transition: background-color 0.2s; }
+    .column-item:hover { background-color: #f5f5f5; }
+    .column-item input { margin-right: 8px; cursor: pointer; }
+    .column-item label { cursor: pointer; flex: 1; margin: 0; }
+    .column-controls-buttons { display: flex; justify-content: space-between; border-top: 1px solid #eee; padding-top: 10px; }
+    .toggle-columns-btn { position: fixed; top: 100px; right: 20px; z-index: 1001; padding: 10px 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; transition: background-color 0.3s ease; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; }
+    .toggle-columns-btn:hover { background-color: #0056b3; }
+    .toggle-columns-btn.active { background-color: #0056b3; box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25); }
+    .search-columns { margin-bottom: 10px; }
+    .search-columns input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+    .no-columns-message { text-align: center; color: #666; font-style: italic; padding: 10px; }
+    .filter-controls { position: fixed; top: 100px; left: 20px; background: white; border: 1px solid #ddd; border-radius: 5px; padding: 15px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); z-index: 1000; width: 300px; max-height: 70vh; }
+    .filter-controls h3 { margin-top: 0; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
+    .filter-list { max-height: 300px; overflow-y: auto; margin-bottom: 10px; }
+    .filter-item { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+    .filter-item:last-child { border-bottom: none; }
+    .filter-item label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+    .filter-controls-buttons { display: flex; justify-content: space-between; border-top: 1px solid #eee; padding-top: 10px; }
+    .toggle-filters-btn { position: fixed; top: 100px; left: 20px; z-index: 1001; padding: 10px 12px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; transition: background-color 0.3s ease; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; }
+    .toggle-filters-btn:hover { background-color: #218838; }
+    .toggle-filters-btn.active { background-color: #218838; box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.25); }
+    .select2-container--default .select2-selection--multiple { border: 1px solid #ddd; border-radius: 4px; min-height: 38px; }
+    .select2-container--default.select2-container--focus .select2-selection--multiple { border-color: #80bdff; outline: 0; box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice { background-color: #007bff; border: 1px solid #007bff; color: white; }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove { color: white; }
+    @media (max-width: 450px) { #unitsWrapper { overflow-x: auto; margin-top: 15%; } #unitsTable { min-width: 900px; margin-left: 0%; } .tabulator { min-width: 900px; } .column-controls { top: 140px; right: 5px; width: 200px; } .toggle-columns-btn { top: 140px; right: 5px; } .filter-controls { top: 140px; left: 5px; width: 200px; } .toggle-filters-btn { top: 140px; left: 5px; } }
+</style>
+
+{% with user_groups=request.user.groups.all|join:"," %}
+
+<div class="buttons">
+    <button id="exportExcelBtn" class="submit-button" style="background-color: #26bc35ff;">
+        <i class="fas fa-file-excel"></i> Excel
+    </button>
+    {% if "Controller" not in user_groups and "Manager" not in user_groups %}
+    <a href="{% url 'upload_csv' %}" class="submit-button" style="background-color: #007bff;; color: white; padding: 10px 16px; border: none; border-radius: 4px; text-decoration: none; display: inline-block; margin-left: 10px;">
+        <i class="fas fa-upload"></i> Upload
+    </a>
+    {% endif %}
+    <button id="toggleColumnsBtn" class="toggle-columns-btn" title="Show/Hide Columns"><i class="fas fa-columns"></i></button>
+    <button id="toggleFiltersBtn" class="toggle-filters-btn" title="Show/Hide Filters"><i class="fas fa-filter"></i></button>
+</div>
+
+<div id="columnControls" class="column-controls" style="display: none;">
+    <h3>Column Visibility</h3>
+    <div class="search-columns"><input type="text" id="columnSearch" placeholder="Search columns..." autocomplete="off"></div>
+    <div class="column-list" id="columnList"></div>
+    <div class="column-controls-buttons">
+        <button id="selectAllColumns" class="submit-button" style="padding: 5px 10px; font-size: 12px;">Select All</button>
+        <button id="deselectAllColumns" class="submit-button" style="padding: 5px 10px; font-size: 12px;">Deselect All</button>
+    </div>
+</div>
+
+<div id="filterControls" class="filter-controls" style="display: none;">
+    <div class="filter-list" id="filterList"></div>
+    <div class="filter-controls-buttons">
+        <button id="clearFilters" class="submit-button" style="padding: 5px 10px; font-size: 12px; background-color: #dc3545;">Clear All Filters</button>
+    </div>
+</div>
+
+<div id="unitsWrapper"><div id="unitsTable"></div></div>
+
+<script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    let allUnits = [], filteredUnits = [], table, columnVisibility = {}, allColumns = [], activeFilters = {}, filterTimeout;
+
+    const isController = {% if "Controller" in user_groups %}true{% else %}false{% endif %};
+    const isManager = {% if "Manager" in user_groups %}true{% else %}false{% endif %};
+    const hideCompany = isController || isManager;
+    
+    const rowEditor = isController ? null : "input";
+    const numEditor = isController ? null : "number";
+    const areaEditor = isController ? null : "textarea";
+
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll("input").forEach(input => input.setAttribute("autocomplete", "off"));
+        initializeTable();
+        document.addEventListener('click', function(event) {
+            const cc = document.getElementById('columnControls'), fc = document.getElementById('filterControls');
+            const tb = document.getElementById('toggleColumnsBtn'), fb = document.getElementById('toggleFiltersBtn');
+            if (cc.style.display === 'block' && !cc.contains(event.target) && !tb.contains(event.target)) { cc.style.display = 'none'; tb.classList.remove('active'); }
+            if (fc.style.display === 'block' && !fc.contains(event.target) && !fb.contains(event.target)) { fc.style.display = 'none'; fb.classList.remove('active'); }
+        });
+    });
+
+    function initializeTable() {
+        fetch("{% url 'units_list' %}")
+            .then(response => response.json())
+            .then(data => {
+                allUnits = data;
+                filteredUnits = [...allUnits];
+                
+                const rawColumns = [
+                    { title: "Company", field: "company", headerFilter: "input" },
+                    { title: "Project", field: "project", headerFilter: "input", editor: rowEditor },
+                    { title: "City", field: "city", headerFilter: "input", editor: rowEditor },
+                    { title: "Building Number", field: "building_number", editor: rowEditor, headerFilter: "input" },
+                    { title: "Unit Type", field: "unit_type", editor: rowEditor, headerFilter: "input" },
+                    { title: "Unit Code", field: "unit_code", headerFilter: "input", editor: rowEditor },
+                    { title: "Sales Phasing", field: "sales_phasing", editor: rowEditor, headerFilter: "input" },
+                    { title: "Status", field: "status", editor: rowEditor, headerFilter: "input" },
+                    { title: "Interest Free Unit Price", field: "interest_free_unit_price", editor: numEditor, headerFilter: "number", formatter: "money" },
+                    { title: "Sellable Area", field: "sellable_area", editor: numEditor, headerFilter: "number" },
+                    { title: "Development Delivery Date", field: "development_delivery_date", editor: rowEditor, headerFilter: "input" },
+                    { title: "Sales Value", field: "sales_value", editor: numEditor, headerFilter: "number", formatter: "money" },
+                    { title: "Reservation Date", field: "reservation_date", editor: rowEditor, headerFilter: "input" },
+                    { title: "Total Premium %", field: "total_premium_percent", editor: numEditor, headerFilter: "number" },
+                    { title: "Construction Phasing", field: "construction_phasing", editor: rowEditor, headerFilter: "input" },
+                    { title: "Handover Phasing", field: "handover_phasing", editor: rowEditor, headerFilter: "input" },
+                    { title: "Phasing", field: "phasing", editor: areaEditor, headerFilter: "input" },
+                    { title: "Unit Model", field: "unit_model", editor: rowEditor, headerFilter: "input" },
+                    { title: "Plot Type", field: "plot_type", editor: rowEditor, headerFilter: "input" },
+                    { title: "Building Style", field: "building_style", editor: rowEditor, headerFilter: "input" },
+                    { title: "Building Type", field: "building_type", editor: rowEditor, headerFilter: "input" },
+                    { title: "Bedrooms", field: "num_bedrooms", editor: numEditor, headerFilter: "number" },
+                    { title: "Mirror", field: "mirror", editor: rowEditor, headerFilter: "input" },
+                    { title: "Unit Position", field: "unit_position", editor: rowEditor, headerFilter: "input" },
+                    { title: "Floor", field: "floor", editor: rowEditor, headerFilter: "input" },
+                    { title: "SAP Code", field: "sap_code", editor: rowEditor, headerFilter: "input" },
+                    { title: "Bathrooms", field: "num_bathrooms", editor: numEditor, headerFilter: "number" },
+                    { title: "Parking Slots", field: "num_parking_slots", editor: numEditor, headerFilter: "number" },
+                    { title: "Footprint", field: "footprint", editor: numEditor, headerFilter: "number" },
+                    { title: "Net Area", field: "net_area", editor: numEditor, headerFilter: "number" },
+                    { title: "Internal Area", field: "internal_area", editor: numEditor, headerFilter: "number" },
+                    { title: "Covered Terraces", field: "covered_terraces", editor: numEditor, headerFilter: "number" },
+                    { title: "Uncovered Terraces", field: "uncovered_terraces", editor: numEditor, headerFilter: "number" },
+                    { title: "Penthouse Area", field: "penthouse_area", editor: numEditor, headerFilter: "number" },
+                    { title: "Garage Area", field: "garage_area", editor: numEditor, headerFilter: "number" },
+                    { title: "Basement Area", field: "basement_area", editor: numEditor, headerFilter: "number" },
+                    { title: "Common Area", field: "common_area", editor: numEditor, headerFilter: "number" },
+                    { title: "Roof Pergola Area", field: "roof_pergola_area", editor: numEditor, headerFilter: "number" },
+                    { title: "Roof Terraces Area", field: "roof_terraces_area", editor: numEditor, headerFilter: "number" },
+                    { title: "BUA", field: "bua", editor: numEditor, headerFilter: "number" },
+                    { title: "Land Area", field: "land_area", editor: numEditor, headerFilter: "number" },
+                    { title: "Garden Area", field: "garden_area", editor: numEditor, headerFilter: "number" },
+                    { title: "Total Area", field: "total_area", editor: numEditor, headerFilter: "number" },
+                    { title: "Net Area PSM", field: "net_area_psm", editor: numEditor, headerFilter: "number" },
+                    { title: "Covered Terraces PSM", field: "covered_terraces_psm", editor: numEditor, headerFilter: "number" },
+                    { title: "Uncovered Terraces PSM", field: "uncovered_terraces_psm", editor: numEditor, headerFilter: "number" },
+                    { title: "Penthouse PSM", field: "penthouse_psm", editor: numEditor, headerFilter: "number" },
+                    { title: "Garage PSM", field: "garage_psm", editor: numEditor, headerFilter: "number" },
+                    { title: "Basement PSM", field: "basement_psm", editor: numEditor, headerFilter: "number" },
+                    { title: "Common Area PSM", field: "common_area_psm", editor: numEditor, headerFilter: "number" },
+                    { title: "Roof Pergola PSM", field: "roof_pergola_psm", editor: numEditor, headerFilter: "number" },
+                    { title: "Roof Terraces PSM", field: "roof_terraces_psm", editor: numEditor, headerFilter: "number" },
+                    { title: "Land PSM", field: "land_psm", editor: numEditor, headerFilter: "number" },
+                    { title: "Garden PSM", field: "garden_psm", editor: numEditor, headerFilter: "number" },
+                    { title: "Base PSM", field: "base_psm", editor: numEditor, headerFilter: "number" },
+                    { title: "Base Price", field: "base_price", editor: numEditor, headerFilter: "number", formatter: "money" },
+                    { title: "Cash Price", field: "cash_price", editor: numEditor, headerFilter: "number", formatter: "money" },
+                    { title: "Final Price", field: "final_price", editor: numEditor, headerFilter: "number", formatter: "money" },
+                    { title: "Discount", field: "discount", editor: numEditor, headerFilter: "number" },
+                    { title: "Maintenance %", field: "maintenance_percent", editor: numEditor, headerFilter: "number" },
+                    { title: "Maintenance Value", field: "maintenance_value", editor: numEditor, headerFilter: "number" },
+                    { title: "Gas", field: "gas", editor: numEditor, headerFilter: "number" },
+                    { title: "Parking Price", field: "parking_price", editor: numEditor, headerFilter: "number" },
+                    { title: "PSM", field: "psm", editor: numEditor, headerFilter: "number" },
+                    { title: "Total Premium Value", field: "total_premium_value", editor: numEditor, headerFilter: "number" },
+                    { title: "Special Premiums", field: "special_premiums", editor: areaEditor, headerFilter: "input" },
+                    { title: "Special Discounts", field: "special_discounts", editor: areaEditor, headerFilter: "input" },
+                    { title: "Main View", field: "main_view", editor: rowEditor, headerFilter: "input" },
+                    { title: "Secondary Views", field: "secondary_views", editor: rowEditor, headerFilter: "input" },
+                    { title: "Levels", field: "levels", editor: rowEditor, headerFilter: "input" },
+                    { title: "North Breeze", field: "north_breeze", editor: rowEditor, headerFilter: "input" },
+                    { title: "Corners", field: "corners", editor: rowEditor, headerFilter: "input" },
+                    { title: "Accessibility", field: "accessibility", editor: rowEditor, headerFilter: "input" },
+                    { title: "Finishing Specs", field: "finishing_specs", editor: rowEditor, headerFilter: "input" },
+                    { title: "Interest Free PSM", field: "interest_free_psm", editor: numEditor, headerFilter: "number" },
+                    { title: "Interest Free Years", field: "interest_free_years", editor: numEditor, headerFilter: "number" },
+                    { title: "Down Payment %", field: "down_payment_percent", editor: numEditor, headerFilter: "number" },
+                    { title: "Down Payment", field: "down_payment", editor: numEditor, headerFilter: "number" },
+                    { title: "Contract %", field: "contract_percent", editor: numEditor, headerFilter: "number" },
+                    { title: "Contract Payment", field: "contract_payment", editor: numEditor, headerFilter: "number" },
+                    { title: "Delivery %", field: "delivery_percent", editor: numEditor, headerFilter: "number" },
+                    { title: "Delivery Payment", field: "delivery_payment", editor: numEditor, headerFilter: "number" },
+                    { title: "Club", field: "club", editor: rowEditor, headerFilter: "input" },
+                    { title: "Blocking Reason", field: "blocking_reason", editor: rowEditor, headerFilter: "input" },
+                    { title: "Release Date", field: "release_date", editor: rowEditor, headerFilter: "input" },
+                    { title: "Blocking Date", field: "blocking_date", editor: rowEditor, headerFilter: "input" },
+                    { title: "Contract Payment Plan", field: "contract_payment_plan", editor: rowEditor, headerFilter: "input" },
+                    { title: "Contract Value", field: "contract_value", editor: numEditor, headerFilter: "number", formatter: "money" },
+                    { title: "Collected Amount", field: "collected_amount", editor: numEditor, headerFilter: "number", formatter: "money" },
+                    { title: "Collected %", field: "collected_percent", editor: numEditor, headerFilter: "number" },
+                    { title: "Contract Delivery Date", field: "contract_delivery_date", editor: rowEditor, headerFilter: "input" },
+                    { title: "Grace Period Months", field: "grace_period_months", editor: numEditor, headerFilter: "number" },
+                    { title: "Construction Delivery Date", field: "construction_delivery_date", editor: rowEditor, headerFilter: "input" },
+                    { title: "Client Handover Date", field: "client_handover_date", editor: rowEditor, headerFilter: "input" },
+                    { title: "Delivery Date", field: "delivery_date", editor: rowEditor, headerFilter: "input" },
+                    { title: "Creation Date", field: "creation_date", editor: rowEditor, headerFilter: "input" },
+                    { title: "Contract Date", field: "contract_date", editor: rowEditor, headerFilter: "input" },
+                    { title: "Contractor Type", field: "contractor_type", editor: rowEditor, headerFilter: "input" },
+                    { title: "Contractor", field: "contractor", editor: rowEditor, headerFilter: "input" },
+                    { title: "Customer", field: "customer", editor: rowEditor, headerFilter: "input" },
+                    { title: "Broker", field: "broker", editor: rowEditor, headerFilter: "input" },
+                    { title: "Bulks", field: "bulks", editor: rowEditor, headerFilter: "input" },
+                    { title: "Direct/Indirect Sales", field: "direct_indirect_sales", editor: rowEditor, headerFilter: "input" },
+                    { title: "Area Range", field: "area_range", editor: rowEditor, headerFilter: "input" },
+                    { title: "Release Year", field: "release_year", editor: numEditor, headerFilter: "number" },
+                    { title: "Sales Year", field: "sales_year", editor: numEditor, headerFilter: "number" },
+                    { title: "Adj Status 2", field: "adj_status", editor: rowEditor, headerFilter: "input" },
+                    { title: "Adj Contract Payment Plan", field: "contract_payment_plan", editor: rowEditor, headerFilter: "input" },
+                    { title: "AMS", field: "ams", editor: rowEditor, headerFilter: "input" },
+                ];
+
+                allColumns = hideCompany ? rawColumns.filter(c => c.field !== "company") : rawColumns;
+                allColumns.forEach((col, idx) => columnVisibility[col.field] = idx < 12);
+                
+                // 🚨 FIXED TYPO HERE
+                const visibleColumns = allColumns.filter(c => columnVisibility[c.field]);
+
+                table = new Tabulator("#unitsTable", {
+                    data: filteredUnits,
+                    layout: "fitDataFill", 
+                    downloadDataFormatter: (data) => {
+                        data.forEach(row => {
+                            Object.keys(row).forEach(key => {
+                                if (row[key] === null || row[key] === undefined) { row[key] = ""; }
+                            });
+                        });
+                        return data;
+                    },
+                    movableColumns: true,
+                    pagination: "local",
+                    paginationSize: 100,
+                    paginationSizeSelector: [50, 100, 200, 500],
+                    columns: visibleColumns,
+                    pageLoaded: function(){ table.redraw(true); },
+                    dataSorted: function(){ table.redraw(true); },
+                    dataFiltered: function(){ table.redraw(true); },
+                    renderComplete: function(){ table.redraw(true); }
+                });
+
+                populateColumnControls(allColumns);
+                populateFilterControls(allColumns, allUnits);
+
+                table.on("cellEdited", function(cell) {
+                    if (isController) { cell.restoreOldValue(); return; }
+                    const updatedData = cell.getRow().getData();
+                    fetch("{% url 'update_unit' %}", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+                        body: JSON.stringify({ unit_code: updatedData.unit_code, field: cell.getField(), value: cell.getValue() })
+                    })
+                    .then(r => r.json()).then(d => { if (!d.success) cell.restoreOldValue(); })
+                    .catch(() => cell.restoreOldValue());
+                });
+            });
+    }
+
+    function populateColumnControls(cols) {
+        const list = document.getElementById("columnList"); list.innerHTML = "";
+        cols.forEach(c => {
+            const item = document.createElement("div"); item.className = "column-item";
+            const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = columnVisibility[c.field] || false;
+            cb.addEventListener("change", () => { columnVisibility[c.field] = cb.checked; applyColumnVisibility(); });
+            const lbl = document.createElement("label"); lbl.textContent = c.title;
+            item.appendChild(cb); item.appendChild(lbl); list.appendChild(item);
+        });
+        setupColumnSearch();
+    }
+
+    function populateFilterControls(cols, data) {
+        const list = document.getElementById("filterList"); list.innerHTML = "";
+        cols.forEach(c => {
+            if (c.field === 'unit_code') return;
+            const item = document.createElement("div"); item.className = "filter-item";
+            const lbl = document.createElement("label"); lbl.textContent = c.title;
+            const select = document.createElement("select"); select.id = `filter-${c.field}`; select.className = "filter-select"; select.multiple = true;
+            const vals = [...new Set(data.map(i => i[c.field]))].filter(v => v !== null && v !== undefined && v !== '');
+            vals.sort().forEach(v => { const opt = new Option(v, v); select.add(opt); });
+            item.appendChild(lbl); item.appendChild(select); list.appendChild(item);
+            $(select).select2({ placeholder: `Select ${c.title}`, allowClear: true, width: '100%' });
+            $(select).on('change', () => { clearTimeout(filterTimeout); filterTimeout = setTimeout(() => applyFilters(), 300); });
+        });
+    }
+
+    function applyColumnVisibility() {
+        const vis = allColumns.filter(c => columnVisibility[c.field]);
+        if (vis.length === 0) {
+            columnVisibility[allColumns[0].field] = true;
+            table.setColumns([allColumns[0]]);
+        } else {
+            table.setColumns(vis);
+        }
+        table.redraw(true); 
+    }
+
+    function applyFilters() {
+        activeFilters = {};
+        document.querySelectorAll('.filter-select').forEach(s => {
+            const f = s.id.replace('filter-', ''), v = $(s).val();
+            if (v && v.length > 0) activeFilters[f] = v;
+        });
+        updateFilterDropdownOptions();
+        filteredUnits = Object.keys(activeFilters).length === 0 ? [...allUnits] : allUnits.filter(u => Object.keys(activeFilters).every(f => activeFilters[f].map(String).includes(String(u[f]))));
+        table.setData(filteredUnits);
+    }
+
+    function updateFilterDropdownOptions() {
+        document.querySelectorAll('.filter-select').forEach(s => {
+            const field = s.id.replace('filter-', ''), current = $(s).val() || [];
+            const cf = { ...activeFilters }; delete cf[field];
+            const rows = allUnits.filter(u => Object.keys(cf).every(k => cf[k].map(String).includes(String(u[k]))));
+            const av = new Set(rows.map(u => u[field]).filter(v => v !== null && v !== undefined && v !== ''));
+            const $s = $(s); $s.empty();
+            Array.from(av).sort().forEach(v => $s.append(new Option(v, v, current.includes(String(v)), current.includes(String(v)))));
+            $s.trigger('change.select2');
+        });
+    }
+
+    function setupColumnSearch() {
+        const inp = document.getElementById('columnSearch');
+        if (inp) inp.addEventListener('input', () => {
+            const term = inp.value.toLowerCase();
+            document.querySelectorAll('.column-item').forEach(i => i.style.display = i.querySelector('label').textContent.toLowerCase().includes(term) ? 'flex' : 'none');
+        });
+    }
+
+    function clearFilters() { document.querySelectorAll('.filter-select').forEach(s => $(s).val(null).trigger('change')); activeFilters = {}; }
+
+    document.getElementById("toggleColumnsBtn").addEventListener("click", e => { e.stopPropagation(); const c = document.getElementById("columnControls"); c.style.display = c.style.display === "block" ? "none" : "block"; document.getElementById("toggleColumnsBtn").classList.toggle('active'); });
+    document.getElementById("toggleFiltersBtn").addEventListener("click", e => { e.stopPropagation(); const c = document.getElementById("filterControls"); c.style.display = c.style.display === "block" ? "none" : "block"; document.getElementById("toggleFiltersBtn").classList.toggle('active'); });
+    document.getElementById("selectAllColumns").addEventListener("click", () => { Object.keys(columnVisibility).forEach(f => columnVisibility[f] = true); applyColumnVisibility(); });
+    document.getElementById("deselectAllColumns").addEventListener("click", () => { Object.keys(columnVisibility).forEach(f => columnVisibility[f] = false); applyColumnVisibility(); });
+    document.getElementById("clearFilters").addEventListener("click", clearFilters);
+
+    function getCookie(n) {
+        let v = null; if (document.cookie && document.cookie !== "") {
+            const cs = document.cookie.split(";");
+            for (let i = 0; i < cs.length; i++) { const c = cs[i].trim(); if (c.substring(0, n.length + 1) === (n + "=")) { v = decodeURIComponent(c.substring(n.length + 1)); break; } }
+        } return v;
+    }
+
+    document.getElementById("exportExcelBtn").addEventListener("click", () => {
+        if (!table) return;
+        const data = table.getData(), exportData = [];
+        let curComp = null, curProj = null;
+        data.forEach(r => {
+            if (r.company !== curComp) { curComp = r.company; curProj = null; }
+            if (r.project !== curProj) { curProj = r.project; const h = {}; allColumns.forEach(c => h[c.field] = c.title); h.__rowType = 'column_header'; exportData.push(h); }
+            exportData.push({ ...r, __rowType: 'data' });
+        });
+        table.download("xlsx", "units_data.xlsx", { sheetName: "Units Data" });
+    });
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+{% endwith %}
+{% endblock %}

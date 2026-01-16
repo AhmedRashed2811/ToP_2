@@ -1,0 +1,1325 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+{% load math_filters %}
+{% block title %}Manage Projects{% endblock %}
+{% block content %}
+
+<div id="loading-overlay" style="display: none;">
+    <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <h3 class="text-light mt-3">Processing Request...</h3>
+    <p class="text-white-50">Please wait while we upload the masterplan and save changes.</p>
+</div>
+
+<style>
+    /* Full screen blocking overlay */
+    #loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black */
+        z-index: 9999; /* Higher than modals */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(2px); /* Optional: blurs background for focus */
+    }
+</style>
+
+
+<style>
+    .container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+    .success {
+        background-color: #155724;
+        color: #d4edda;
+        border: 1px solid #c3e6cb;
+    }
+    select {
+        width: 100%;
+        padding: 5px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 1em;
+    }
+    .project-card {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 20px;
+        width: 100%;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        max-width: fit-content;
+        text-align: center;
+    }
+    .btn-update, .btn-delete {
+        text-decoration: none;
+        padding: 8px 12px;
+        border-radius: 5px;
+        color: white;
+        cursor: pointer;
+    }
+    .btn-update { background: #28a745; border: none; }
+    .btn-delete { background: #dc3545; border: none; }
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        text-align: center;
+
+    }
+
+    .projects-table{
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: -4%;
+        text-align: center;
+        margin-left:8%;
+    }
+    .table th, .table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+        max-width: 335px;
+    }
+    input {
+        width: 100%;
+        padding: 5px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+    .form-container, .big-container {
+        display: block;
+        width: 100%;
+        margin-bottom: 20px;
+    }
+
+    .filters-container{
+        margin-bottom: -68px;
+        margin-left: 35%;
+    }
+
+    .create-project-container{
+        margin-bottom: -68px;
+        margin-left: 42%;
+    }
+
+    .modal-body {
+        font-size: 18px;
+        color: #555;
+        /* max-width: 70%; */
+        margin-left: 19%;
+    }
+
+    @media (max-width: 800px) {
+        .projects-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: -4%;
+            text-align: center;
+            margin-left:-5%;
+        }
+
+        .filters-container{
+            margin-bottom: -68px;
+            margin-left: 20%;
+        }
+
+        .create-project-container{
+            margin-bottom: -68px;
+            margin-left: 37%;
+        }
+
+        .modal-body {
+            font-size: 18px;
+            color: #555;
+            /* max-width: 70%; */
+            margin-left: 1%;
+        }
+    }
+
+    .submit-button{
+        background-color: green; 
+        color: white; 
+        padding: 10px 16px; 
+        border: none; 
+        border-radius: 4px; 
+        text-decoration: none; 
+        display: inline-block; 
+        margin-left: 10px;
+    }
+
+    .create-project-container{
+        margin-bottom: 0%;
+    } 
+
+    @media (max-width: 460px) {
+
+        .filters-container{
+            margin-bottom: -68px;
+            margin-left: 11%;
+        }
+
+        .create-project-container{
+            margin-bottom: 0%;
+            margin-left: 31%;
+        }
+
+        .table th, .table td {
+
+            max-width: 200px;
+            font-size: 11px;
+        }
+
+    }
+
+
+    .masterplan-section {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+    }
+
+    .current-masterplan img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .masterplan-upload {
+        margin-top: 15px;
+    }
+
+    .masterplan-upload label {
+        font-weight: bold;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    #masterplan-preview-{
+        margin-top: 10px;
+    }
+
+    #preview-image-{
+        max-width: 100%;
+        height: auto;
+        border: 2px dashed #007bff;
+        border-radius: 4px;
+    }
+</style>
+
+<div id="delete-success-msg" class="messages" style="display: none;">
+    <p class="success">
+        Project Deleted Successfully!
+    </p>
+</div>
+
+
+<!-- ✅ Search & Filters -->
+<div class="create-project-container">
+    <!-- Upload Inventory Button -->
+    <a href="{% url 'create_project' %}" class="submit-button">
+        Create Project
+    </a>
+</div>
+
+
+<!-- ✅ Search & Filters -->
+<div class="filters-container">
+    <input type="text" id="searchInput" placeholder="Search by Project Name..." onkeyup="filterProjects()">
+    <select id="companyFilter" onchange="filterProjects()">
+        <option value="">All Companies</option>
+        {% for company in companies %}
+        <option value="{{ company.name }}">{{ company.name }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<!-- ✅ Table of Projects -->
+<div class="container">
+
+    <table class="projects-table">
+        <thead>
+            <tr>
+                <th>Project Name</th>
+                <th>Company</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="projectsTableBody">
+            {% for project in projects %}
+            <tr>
+                <td>{{ project.name }}</td>
+                <td>{{ project.company.name }}</td>
+                <td>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editModal-{{ project.id }}">Edit</button>
+                    
+                    {% if can_delete %}
+                        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ project.id }}">Delete</button>
+                    {% endif %}
+                        
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4">No projects available.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ✅ No Results Message -->
+<p id="noResultsMessage" style="display: none; text-align: center; color: red; font-weight: bold;">
+    No projects found. Please adjust your search or filter.
+</p>
+
+<!-- ✅ Edit Modal for Each Project -->
+{% for project in projects %}
+<div class="modal fade" id="editModal-{{ project.id }}" tabindex="-1" aria-labelledby="editModalLabel-{{ project.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="editModalLabel-{{ project.id }}">Edit Project: {{ project.name }}</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- ✅ Original Edit Form -->
+                <div class="project-card" data-id="{{ project.id }}">
+                    <h2>
+                        <input type="text" id="name-{{ project.id }}" value="{{ project.name }}" readonly style="background-color:rgb(231, 227, 227); border: 1px solid #ccc;">
+                    </h2>
+                    <p><strong>Company:</strong> 
+                        <input type="text" id="company-{{ project.id }}" value="{{ project.company.name }}" readonly style="background-color:rgb(231, 227, 227); border: 1px solid #ccc;"> 
+                    </p>
+                    <p><strong>Description:</strong> 
+                        <input type="text" id="description-{{ project.id }}" value="{{ project.description|default:'' }}">
+                    </p>
+                    <hr>
+                    <!-- ✅ Project Configuration -->
+                    <h3>Project Configuration</h3>
+                    {% if project.projectconfiguration %}
+                        <table class="table" style="margin-bottom: 50px;">
+                            <tr><th style="text-align: center;">Interest Rate</th><td><input type="number" id="interest-{{ project.id }}" value="{{ project.projectconfiguration.interest_rate|floatmultiply:100|floatformat:2}}"></td></tr>
+                            <tr><th style="text-align: center;">Base DP</th><td><input type="number" id="base-dp-{{ project.id }}" value="{{ project.projectconfiguration.base_dp|floatmultiply:100|floatformat:2}}"></td></tr>
+                            <tr><th style="text-align: center;">Tenor Years</th><td><input type="number" id="tenor-{{ project.id }}" value="{{ project.projectconfiguration.base_tenor_years }}"></td></tr>
+                            <tr><th style="text-align: center;">Max Tenor Years</th><td><input type="number" id="max-tenor-{{ project.id }}" value="{{ project.projectconfiguration.max_tenor_years }}"></td></tr>
+                            <tr>
+                                <th style="text-align: center;">Max Requests per Sales</th>
+                                <td>
+                                  <input type="number" id="max-requests-{{ project.id }}" 
+                                         value="{{ project.projectconfiguration.maximum_requests_per_sales|default:'' }}">
+                                </td>
+                              </tr>
+                              
+                            <tr><th style="text-align: center;">Hours Until Auto Unblock</th><td><input type="number" id="days-until-unblocking-{{ project.id }}" value="{{ project.projectconfiguration.days_until_unblocking }}"></td></tr>
+                            <tr><th style="text-align: center;">Months of Delivery After Reservation</th><td><input type="number" id="variable-delivery-date-{{ project.id }}" value="{{ project.projectconfiguration.variable_delivery_date }}"></td></tr>
+                            <tr>
+                                <th style="text-align: center;">Payment Frequency</th>
+                                <td>
+                                    <select id="payment-frequency-{{ project.id }}">
+                                        <option value="monthly" {% if project.projectconfiguration.base_payment_frequency == "monthly" %}selected{% endif %}>Monthly</option>
+                                        <option value="quarterly" {% if project.projectconfiguration.base_payment_frequency == "quarterly" %}selected{% endif %}>Quarterly</option>
+                                        <option value="semi-annual" {% if project.projectconfiguration.base_payment_frequency == "semi-annual" %}selected{% endif %}>Semi-Annual</option>
+                                        <option value="annual" {% if project.projectconfiguration.base_payment_frequency == "annual" %}selected{% endif %}>Annual</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th style="text-align: center;">Default Scheme</th>
+                                <td>
+                                    <select id="default-scheme-{{ project.id }}">
+                                        <option value="Flat" {% if project.projectconfiguration.default_scheme == "Flat" %}selected{% endif %}>Flat</option>
+                                        <option value="FlatBackLoaded" {% if project.projectconfiguration.default_scheme == "FlatBackLoaded" %}selected{% endif %}>Flat Back Loaded</option>
+                                        <option value="Bullet" {% if project.projectconfiguration.default_scheme == "Bullet" %}selected{% endif %}>Bullet</option>
+                                        <option value="BulletBackLoaded" {% if project.projectconfiguration.default_scheme == "BulletBackLoaded" %}selected{% endif %}>Bullet Back Loaded</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            
+                            <tr>
+                                <th style="text-align: center;">Use Static Base NPV</th>
+                                <td><input type="checkbox" id="use-static-{{ project.id }}" {% if project.projectconfiguration.use_static_base_npv %}checked{% endif %}></td>
+                            </tr>
+                        </table>
+                        <hr>
+                    {% else %}
+                        <p>No Configuration Found</p>
+                    {% endif %}
+                    <!-- ✅ Base NPV Table -->
+                    <h3>Base NPV</h3>
+                    <div style="margin-bottom: 50px;">
+                        <table class="table" id="npv-table-{{ project.id }}">
+                            <thead>
+                                <tr>
+                                    <th>YTD</th>
+                                    <th>NPV</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for npv in project.projectconfiguration.basenpv_set.all %}
+                                <tr>
+                                    <td><input type="number" class="npv-term-{{ project.id }}" data-id="{{ npv.id }}" value="{{ npv.term_period }}"></td>
+                                    <td><input type="number" class="npv-value-{{ project.id }}" data-id="{{ npv.id }}" value="{{ npv.npv_value|floatmultiply:100|floatformat:2}}"></td>
+                                    <td><button type="button" class="btn btn-danger" onclick="removeRow(this)">Remove</button></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3">No Base NPV data available</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-primary" onclick="addRow('npv-table-{{ project.id }}', 'npv-term-{{ project.id }}', 'npv-value-{{ project.id }}')">Add Row</button>
+                        <hr>
+                    </div>
+                    <!-- ✅ Gas Policy -->
+                    <h3>Gas Policy</h3>
+                    {% if project.projectconfiguration.gaspolicy %}
+                    <table class="table" style="margin-bottom: 50px;">
+                        <tr><th style="text-align: center;">Applied?</th><td><input type="checkbox" id="gas-applied-{{ project.id }}" {% if project.projectconfiguration.gaspolicy.is_applied %}checked{% endif %}></td></tr>
+                        <tr>
+                            <th style="text-align: center;">
+                            Number of Payments<br>
+                            <small><em><span style="font-size: 9px;">In case of before_delivery</span></em></small>
+                        </th>
+                        <td><input type="number" id="gas-num-pmts-{{ project.id }}" value="{{ project.projectconfiguration.gaspolicy.gas_num_pmts }}"></td></tr>
+                        <tr>
+                            <th style="text-align: center;">Scheduling</th>
+                            <td>
+                                <select id="gas-scheduling-{{ project.id }}">
+                                    <option value="at_delivery" {% if project.projectconfiguration.gaspolicy.scheduling == "at_delivery" %}selected{% endif %}>At Delivery</option>
+                                    <option value="before_delivery" {% if project.projectconfiguration.gaspolicy.scheduling == "before_delivery" %}selected{% endif %}>Before Delivery</option>
+                                </select>
+                            </td>
+                        </tr>
+                    </table>
+                    <hr>
+                    {% else %}
+                    <p>No Gas Policy Found</p>
+                    {% endif %}
+                    <!-- ✅ Gas Policy Fees -->
+                    <h3>Gas Policy Fees</h3>
+                    {% if project.projectconfiguration.gaspolicy %}
+                    <div style="margin-bottom: 50px;">
+                        <table class="table" id="gas-policy-fees-table-{{ project.id }}">
+                            <thead>
+                                <tr>
+                                    <th>YTD</th>
+                                    <th>Fees</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fee in project.projectconfiguration.gaspolicy.gaspolicyfees_set.all %}
+                                <tr>
+                                    <td><input type="number" step="0.01" class="gas-term-period-{{ project.id }}" data-id="{{ fee.id }}" value="{{ fee.term_period }}"></td>
+                                    <td><input type="number" step="0.00001" class="gas-fee-amount-{{ project.id }}" data-id="{{ fee.id }}" value="{{ fee.fee_amount }}"></td>
+                                    <td><button type="button" class="btn btn-danger" onclick="removeRow2(this)">Remove</button></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3">No Gas Policy Fees data available</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-primary" onclick="addRow2('gas-policy-fees-table-{{ project.id }}', 'gas-term-period-{{ project.id }}', 'gas-fee-amount-{{ project.id }}')">Add Row</button>
+                        <hr>
+                    </div>
+                    {% else %}
+                    <p>No Gas Policy Fees Found</p>
+                    {% endif %}
+
+                    <!-- ✅ Gas Policy Offsets -->
+                    <h3>Gas Policy Offsets</h3>
+                    {% if project.projectconfiguration.gaspolicy %}
+                    <div style="margin-bottom: 50px;">
+                        <table class="table" id="gas-offsets-table-{{ project.id }}">
+                            <thead>
+                                <tr>
+                                    <th>YTD</th>
+                                    <th>Offset</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for offset in project.projectconfiguration.gaspolicy.gaspolicyoffsets_set.all %}
+                                <tr>
+                                    <td><input type="number" step="0.01" class="gas-offset-term-{{ project.id }}" data-id="{{ offset.id }}" value="{{ offset.term_period }}"></td>
+                                    <td><input type="number" step="0.00001" class="gas-offset-value-{{ project.id }}" data-id="{{ offset.id }}" value="{{ offset.offset_value }}"></td>
+                                    <td><button type="button" class="btn btn-danger" onclick="removeRow3(this)">Remove</button></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3">No Gas Policy Offsets data available</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-primary" onclick="addRow3('gas-offsets-table-{{ project.id }}', 'gas-offset-term-{{ project.id }}', 'gas-offset-value-{{ project.id }}')">Add Row</button>
+                        <hr>
+                    </div>
+                    {% else %}
+                    <p>No Gas Policy Offsets Found</p>
+                    {% endif %}
+
+
+                    
+                    <!-- ✅ Cash Till Delivery (CTD) Table -->
+                    <h3>Cash Till Delivery (CTD)</h3>
+                    {% if project.projectconfiguration.constraints %}
+                    <div style="margin-bottom: 50px;">
+                        <table class="table" id="ctd-table-{{ project.id }}">
+                            <thead>
+                                <tr>
+                                    <th>YTD</th>
+                                    <th>CTD</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ctd in project.projectconfiguration.constraints.ctd_values.all %}
+                                <tr>
+                                    <td><input type="number" step="0.01" class="ctd-term-{{ project.id }}" data-id="{{ ctd.id }}" value="{{ ctd.term_period }}"></td>
+                                    <td><input type="number" step="0.00001" class="ctd-value-{{ project.id }}" data-id="{{ ctd.id }}" value="{{ ctd.npv_value|floatformat:5|floatmultiply:100}}"></td>
+                                    <td><button type="button" class="btn btn-danger" onclick="removeRow4(this)">Remove</button></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3">No CTD data available</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-primary" onclick="addRow4('ctd-table-{{ project.id }}', 'ctd-term-{{ project.id }}', 'ctd-value-{{ project.id }}')">Add Row</button>
+                        <hr>
+                    </div>
+                    {% else %}
+                    <p>No Constraints Found</p>
+                    {% endif %}
+                    <!-- ✅ Constraints -->
+                    <h3>Project Constraints</h3>
+                    {% if project.projectconfiguration.constraints %}
+                    <table class="table" style="margin-bottom: 50px;">
+                        <tr><th style="text-align: center;">DP Min</th><td><input type="number" id="dp-min-{{ project.id }}" value="{{ project.projectconfiguration.constraints.dp_min|floatmultiply:100|floatformat:2}}"></td></tr>
+                        <tr><th style="text-align: center;">DP+1st Pmt</th><td><input type="number" id="dp-plus-first-{{ project.id }}" value="{{ project.projectconfiguration.constraints.dp_plus_first_pmt|floatmultiply:100|floatformat:2}}"></td></tr>
+                        <tr><th style="text-align: center;">DP+1st+2nd Pmt</th><td><input type="number" id="dp-plus-first-plus-second-{{ project.id }}" value="{{ project.projectconfiguration.constraints.dp_plus_first_plus_second_pmt|floatmultiply:100|floatformat:2}}"></td></tr>
+                        <tr><th style="text-align: center;">DP+1st+2nd+3rd Pmt</th><td><input type="number" id="dp-plus-first-plus-second-plus-third-{{ project.id }}" value="{{ project.projectconfiguration.constraints.dp_plus_first_plus_second_plus_third_pmt|floatmultiply:100|floatformat:2}}"></td></tr>
+                        <tr><th style="text-align: center;">DP+1st+2nd+3rd+4th Pmt</th><td><input type="number" id="dp-plus-first-plus-second-plus-third-plus-forth-{{ project.id }}" value="{{ project.projectconfiguration.constraints.dp_plus_first_plus_second_plus_third_plus_forth_pmt|floatmultiply:100|floatformat:2}}"></td></tr>
+                        <tr><th style="text-align: center;">First Year Min</th><td><input type="number" id="first-year-min-{{ project.id }}" value="{{ project.projectconfiguration.constraints.first_year_min|floatmultiply:100|floatformat:2}}"></td></tr>
+                        <tr><th style="text-align: center;">Annual Min</th><td><input type="number" id="annual-min-{{ project.id }}" value="{{ project.projectconfiguration.constraints.annual_min|floatmultiply:100|floatformat:2}}"></td></tr>
+                        <tr><th style="text-align: center;">Max Discount</th><td><input type="number" id="max-discount-{{ project.id }}" value="{{ project.projectconfiguration.constraints.max_discount|floatmultiply:100|floatformat:2}}"></td></tr>
+                        <tr><th style="text-align: center;">Max Exception Disc</th><td><input type="number" id="max-exception-discount-{{ project.id }}" value="{{ project.projectconfiguration.constraints.max_exception_discount|floatmultiply:100|floatformat:2}}"></td></tr>
+                    </table>
+                    <hr>
+                    {% else %}
+                    <p>No Constraints Found</p>
+                    {% endif %}
+                    <!-- ✅ Maintenance Policy Section -->
+                    <h3>Maintenance Policy</h3>
+                    {% if project.projectconfiguration.maintenancepolicy %}
+                    <table class="table" style="margin-bottom: 50px;">
+                        <tr><th style="text-align: center;">Policy Applied?</th>
+                            <td><input type="checkbox" id="maintenance-applied-{{ project.id }}" 
+                                    {% if project.projectconfiguration.maintenancepolicy.is_applied %}checked{% endif %}>
+                            </td>
+                        </tr>
+
+                        
+
+                        <tr><th style="text-align: center;">
+                            Number of Payments<br>
+                            <small><em><span style="font-size: 9px;">In case of before_delivery</span></em></small>
+                        </th>
+                            <td><input type="number" id="maintenance-annual-rate-{{ project.id }}" 
+                                    value="{{ project.projectconfiguration.maintenancepolicy.maintenance_num_pmts }}">
+                            </td>
+                        </tr>
+
+
+                        <tr><th style="text-align: center;">Split 2 PMTs one at delivery</th>
+                            <td><input type="checkbox" id="maintenance-splitted-{{ project.id }}" 
+                                    {% if project.projectconfiguration.maintenancepolicy.split_two_one_on_delivery %}checked{% endif %}>
+                            </td>
+                        </tr>
+                    </table>
+                    <hr>
+                    {% else %}
+                    <p>No Maintenance Policy Found</p>
+                    {% endif %}
+                    <!-- ✅ Maintenance Policy Scheduling Table -->
+                    <h3>Maintenance Policy Scheduling</h3>
+                    {% if project.projectconfiguration.maintenancepolicy %}
+                    <div style="margin-bottom: 50px;">
+                        <table class="table" id="maintenance-schedule-table-{{ project.id }}">
+                            <thead>
+                                <tr>
+                                    <th>YTD</th>
+                                    <th>Scheduled</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for schedule in project.projectconfiguration.maintenancepolicy.maintenancepolicyscheduling_set.all %}
+                                <tr>
+                                    <td><input type="number" step="0.01" class="maintenance-schedule-term-{{ project.id }}" 
+                                            data-id="{{ schedule.id }}" value="{{ schedule.term_period }}"></td>
+                                    <td>
+                                        <select class="maintenance-schedule-amount-{{ project.id }}" data-id="{{ schedule.id }}">
+                                            <option value="at_delivery" {% if schedule.scheduling == "at_delivery" %}selected{% endif %}>At Delivery</option>
+                                            <option value="before_delivery" {% if schedule.scheduling == "before_delivery" %}selected{% endif %}>Before Delivery</option>
+                                        </select>
+                                    </td>
+                                    <td><button type="button" class="btn btn-danger" onclick="removeRow5(this)">Remove</button></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3">No Maintenance Schedule Found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-primary" onclick="addRow5('maintenance-schedule-table-{{ project.id }}', 'maintenance-schedule-term-{{ project.id }}', 'maintenance-schedule-amount-{{ project.id }}')">Add Row</button>
+                    </div>
+                    {% else %}
+                    <p>No Maintenance Policy Scheduling Found</p>
+                    {% endif %}
+
+
+                    <!-- ✅ Maintenance Policy Offsets -->
+                    <h3>Maintenance Policy Offsets</h3>
+                    {% if project.projectconfiguration.maintenancepolicy %}
+                    <div style="margin-bottom: 50px;">
+                        <table class="table" id="maintenance-offsets-table-{{ project.id }}">
+                            <thead>
+                                <tr>
+                                    <th>YTD</th>
+                                    <th>Offset</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for offset in project.projectconfiguration.maintenancepolicy.maintenancepolicyoffsets_set.all %}
+                                <tr>
+                                    <td><input type="number" step="0.01" class="maintenance-offset-term-{{ project.id }}" data-id="{{ offset.id }}" value="{{ offset.term_period }}"></td>
+                                    <td><input type="number" step="0.00001" class="maintenance-offset-value-{{ project.id }}" data-id="{{ offset.id }}" value="{{ offset.offset_value }}"></td>
+                                    <td><button type="button" class="btn btn-danger" onclick="removeRow6(this)">Remove</button></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3">No Maintenance Policy Offsets data available</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-primary" onclick="addRow6('maintenance-offsets-table-{{ project.id }}', 'maintenance-offset-term-{{ project.id }}', 'maintenance-offset-value-{{ project.id }}')">Add Row</button>
+                        <hr>
+                    </div>
+                    {% else %}
+                    <p>No Maintenance Policy Offsets Found</p>
+                    {% endif %}
+
+                    <!-- ✅ Masterplan Section -->
+                    <h3>Project Masterplan</h3>
+                    <div class="masterplan-section" style="margin-bottom: 20px;">
+                        {% if project.masterplan and project.masterplan.image %}
+                        <div class="current-masterplan" style="margin-bottom: 15px;">
+                            <p><strong>Current Masterplan:</strong></p>
+                            <img src="{{ project.masterplan.image.url }}" alt="Current Masterplan" style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px;">
+                            <div style="margin-top: 10px;">
+                                <button type="button" class="btn btn-warning btn-sm" onclick="removeMasterplan({{ project.id }})">Remove Masterplan</button>
+                            </div>
+                        </div>
+                        {% else %}
+                        <p>No masterplan uploaded</p>
+                        {% endif %}
+                        
+                        <div class="masterplan-upload" style="margin-top: 15px;">
+                            <label for="masterplan-image-{{ project.id }}"><strong>Upload New Masterplan:</strong></label>
+                            <input type="file" id="masterplan-image-{{ project.id }}" class="form-control" accept="image/*" 
+                                onchange="previewMasterplan(this, {{ project.id }})">
+                            <div id="masterplan-preview-{{ project.id }}" style="margin-top: 10px; display: none;">
+                                <p><strong>Preview:</strong></p>
+                                <img id="preview-image-{{ project.id }}" src="#" alt="Preview" style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+
+
+                    <!-- ✅ Update Button -->
+                    <div class="project-actions">
+                        <button class="btn-update" onclick="updateProject({{ project.id }})">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- ✅ Delete Confirmation Modal -->
+{% for project in projects %}
+<div class="modal fade" id="deleteModal-{{ project.id }}" tabindex="-1" aria-labelledby="deleteModalLabel-{{ project.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="deleteModalLabel-{{ project.id }}">Delete Confirmation</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h2>Are you sure you want to delete project: "<span id="deleteProjectName">{{ project.name }}</span>"?</h2>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="#" id="confirmDeleteBtn" class="btn btn-danger" onclick="setDeleteProject({{ project.id }}, '{{ project.name }}')">Delete</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- ✅ Bootstrap Toast Positioned at the Top-Center -->
+<div class="toast-container position-fixed top-0 start-50 translate-middle-x p-3">
+    <div id="updateToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                Project Updated Successfully!
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    function setDeleteProject(projectId, projectName) {
+        // Update the modal with the project name
+        document.getElementById("deleteProjectName").innerText = projectName;
+    
+        // Update the delete link with the correct project ID
+        const url = "{% url 'delete_project' 0 %}".replace("0", projectId);
+
+        document.getElementById("confirmDeleteBtn").href = url;
+
+        document.getElementById("delete-success-msg").style.display = "block"
+        
+        // Finally, redirect the user
+        window.location.href = url;
+    }
+
+
+
+    function filterProjects() {
+        const searchValue = document.getElementById("searchInput").value.toLowerCase();
+        const companyFilter = document.getElementById("companyFilter").value.toLowerCase();
+        const rows = document.querySelectorAll("#projectsTableBody tr");
+    
+        let anyProjectVisible = false;
+    
+        rows.forEach(row => {
+            const projectName = row.querySelector("td:nth-child(1)").innerText.toLowerCase();
+            const companyName = row.querySelector("td:nth-child(2)").innerText.toLowerCase();
+    
+            const matchesSearch = searchValue === "" || projectName.includes(searchValue);
+            const matchesCompany = companyFilter === "" || companyName.includes(companyFilter);
+    
+            if (matchesSearch && matchesCompany) {
+                row.style.display = "table-row";
+                anyProjectVisible = true;
+            } else {
+                row.style.display = "none";
+            }
+        });
+    
+        // Show a "No Results" message if no projects match the filters
+        const noResultsMessage = document.getElementById("noResultsMessage");
+        if (!anyProjectVisible) {
+            noResultsMessage.style.display = "block";
+        } else {
+            noResultsMessage.style.display = "none";
+        }
+    }
+
+
+    // Function to handle "Enter" key press for saving changes
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll(".project-card input, .project-card select").forEach(input => {
+            input.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    const projectCard = input.closest(".project-card");
+                    const projectId = projectCard?.dataset?.id;
+                    if (projectId) {
+                        updateProject(projectId);
+                    }
+                }
+            });
+        });
+    });
+
+    function addRow(tableId, termClass, valueClass) {
+        var table = document.getElementById(tableId).getElementsByTagName('tbody')[0];
+        var newRow = table.insertRow();
+        var termCell = newRow.insertCell(0);
+        var valueCell = newRow.insertCell(1);
+        var actionCell = newRow.insertCell(2);
+    
+        termCell.innerHTML = `<input type="number" step="0.01" class="${termClass}" data-id="" value="0.00">`;
+        valueCell.innerHTML = `<input type="number" step="0.01" class="${valueClass}" data-id="" value="0.00">`;
+        actionCell.innerHTML = `<button type="button" class="btn btn-danger" onclick="removeRow(this)">Remove</button>`;
+    
+        // Attach "Enter" key listener to newly added inputs
+        newRow.querySelectorAll("input").forEach(input => {
+            input.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    const projectCard = input.closest(".project-card");
+                    const projectId = projectCard?.dataset?.id;
+                    if (projectId) {
+                        updateProject(projectId);
+                    }
+                }
+            });
+        });
+    }
+
+    function addRow2(tableId, termClass, valueClass) {
+        var table = document.getElementById(tableId).getElementsByTagName('tbody')[0];
+        var newRow = table.insertRow();
+        var termCell = newRow.insertCell(0);
+        var valueCell = newRow.insertCell(1);
+        var actionCell = newRow.insertCell(2);
+        termCell.innerHTML = `<input type="number" class="${termClass}" data-id="" value="0">`;
+        valueCell.innerHTML = `<input type="number" class="${valueClass}" data-id="" value="0">`;
+        actionCell.innerHTML = `<button type="button" class="btn btn-danger" onclick="removeRow2(this)">Remove</button>`;
+
+        // Attach "Enter" key listener to newly added inputs
+        newRow.querySelectorAll("input").forEach(input => {
+            input.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    const projectCard = input.closest(".project-card");
+                    const projectId = projectCard?.dataset?.id;
+                    if (projectId) {
+                        updateProject(projectId);
+                    }
+                }
+            });
+        });
+    }
+
+    function addRow3(tableId, termClass, valueClass) {
+        var table = document.getElementById(tableId).getElementsByTagName('tbody')[0];
+        var newRow = table.insertRow();
+        var termCell = newRow.insertCell(0);
+        var valueCell = newRow.insertCell(1);
+        var actionCell = newRow.insertCell(2);
+        termCell.innerHTML = `<input type="number" class="${termClass}" data-id="" value="0">`;
+        valueCell.innerHTML = `<input type="number" class="${valueClass}" data-id="" value="0">`;
+        actionCell.innerHTML = `<button type="button" class="btn btn-danger" onclick="removeRow3(this)">Remove</button>`;
+
+        // Attach "Enter" key listener to newly added inputs
+        newRow.querySelectorAll("input").forEach(input => {
+            input.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    const projectCard = input.closest(".project-card");
+                    const projectId = projectCard?.dataset?.id;
+                    if (projectId) {
+                        updateProject(projectId);
+                    }
+                }
+            });
+        });
+    }
+
+    function addRow6(tableId, termClass, valueClass) {
+        var table = document.getElementById(tableId).getElementsByTagName('tbody')[0];
+        var newRow = table.insertRow();
+        var termCell = newRow.insertCell(0);
+        var valueCell = newRow.insertCell(1);
+        var actionCell = newRow.insertCell(2);
+        termCell.innerHTML = `<input type="number" class="${termClass}" data-id="" value="0">`;
+        valueCell.innerHTML = `<input type="number" class="${valueClass}" data-id="" value="0">`;
+        actionCell.innerHTML = `<button type="button" class="btn btn-danger" onclick="removeRow6(this)">Remove</button>`;
+
+        // Attach "Enter" key listener to newly added inputs
+        newRow.querySelectorAll("input").forEach(input => {
+            input.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    const projectCard = input.closest(".project-card");
+                    const projectId = projectCard?.dataset?.id;
+                    if (projectId) {
+                        updateProject(projectId);
+                    }
+                }
+            });
+        });
+    }
+
+    function addRow4(tableId, termClass, valueClass) {
+        var table = document.getElementById(tableId).getElementsByTagName('tbody')[0];
+        var newRow = table.insertRow();
+        var termCell = newRow.insertCell(0);
+        var valueCell = newRow.insertCell(1);
+        var actionCell = newRow.insertCell(2);
+        termCell.innerHTML = `<input type="number" class="${termClass}" data-id="" value="0">`;
+        valueCell.innerHTML = `<input type="number" class="${valueClass}" data-id="" value="0">`;
+        actionCell.innerHTML = `<button type="button" class="btn btn-danger" onclick="removeRow4(this)">Remove</button>`;
+    
+        // Attach "Enter" key listener to newly added inputs
+        newRow.querySelectorAll("input").forEach(input => {
+            input.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    const projectCard = input.closest(".project-card");
+                    const projectId = projectCard?.dataset?.id;
+                    if (projectId) {
+                        updateProject(projectId);
+                    }
+                }
+            });
+        });
+    }
+
+    function addRow5(tableId, termClass, valueClass) {
+        var table = document.getElementById(tableId).getElementsByTagName('tbody')[0];
+        var newRow = table.insertRow();
+        var termCell = newRow.insertCell(0);
+        var valueCell = newRow.insertCell(1);
+        var actionCell = newRow.insertCell(2);
+        termCell.innerHTML = `<input type="number" class="${termClass}" data-id="" value="0">`;
+        valueCell.innerHTML = `
+            <select class="${valueClass}" data-id="">
+                <option value="at_delivery">At Delivery</option>
+                <option value="before_delivery">Before Delivery</option>
+            </select>
+        `;
+        actionCell.innerHTML = `<button type="button" class="btn btn-danger" onclick="removeRow5(this)">Remove</button>`;
+
+        // Attach "Enter" key listener to newly added inputs
+        newRow.querySelectorAll("input").forEach(input => {
+            input.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    const projectCard = input.closest(".project-card");
+                    const projectId = projectCard?.dataset?.id;
+                    if (projectId) {
+                        updateProject(projectId);
+                    }
+                }
+            });
+        });
+    } 
+
+    // Multiple RemoveRow Functions
+    function removeRow(button) {
+        var row = button.closest("tr");
+        var inputElement = row.querySelector("input");
+        var recordId = inputElement ? inputElement.dataset.id : null;
+        const url = "{% url 'delete_npv' 0 %}".replace("0", recordId);
+        if (recordId) {
+            fetch(url, {
+                method: "DELETE",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    row.parentNode.removeChild(row);
+                    showToast("updateToast");
+                } else {
+                    alert("Error deleting record: " + data.error);
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        } else {
+            row.parentNode.removeChild(row);
+        }
+    }
+
+    function removeRow2(button) {
+        var row = button.closest("tr");
+        var inputElement = row.querySelector("input");
+        var recordId = inputElement ? inputElement.dataset.id : null;
+        const url = "{% url 'delete_gas_fee' 0 %}".replace("0", recordId);
+        if (recordId) {
+            fetch(url, {
+                method: "DELETE",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    row.parentNode.removeChild(row);
+                    showToast("updateToast");
+                } else {
+                    alert("Error deleting record: " + data.error);
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        } else {
+            row.parentNode.removeChild(row);
+        }
+    }
+
+    function removeRow3(button) {
+        var row = button.closest("tr");
+        var inputElement = row.querySelector("input");
+        var recordId = inputElement ? inputElement.dataset.id : null;
+        const url = "{% url 'delete_gas_offset' 0 %}".replace("0", recordId);
+        if (recordId) {
+            fetch(url, {
+                method: "DELETE",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" ,
+                            "X-CSRFToken": getCookie("csrftoken")},
+                            
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    row.parentNode.removeChild(row);
+                    showToast("updateToast");
+                } else {
+                    alert("Error deleting record: " + data.error);
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        } else {
+            row.parentNode.removeChild(row);
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+            const cookies = document.cookie.split(";");
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + "=")) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+
+    function removeRow6(button) {
+        var row = button.closest("tr");
+        var inputElement = row.querySelector("input");
+        var recordId = inputElement ? inputElement.dataset.id : null;
+        const url = "{% url 'delete_maintenance_offset' 0 %}".replace("0", recordId);
+        if (recordId) {
+            fetch(url, {
+                method: "DELETE",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    row.parentNode.removeChild(row);
+                    showToast("updateToast");
+                } else {
+                    alert("Error deleting record: " + data.error);
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        } else {
+            row.parentNode.removeChild(row);
+        }
+    }
+
+    function removeRow4(button) {
+        var row = button.closest("tr");
+        var inputElement = row.querySelector("input");
+        var recordId = inputElement ? inputElement.dataset.id : null;
+        const url = "{% url 'delete_ctd' 0 %}".replace("0", recordId);
+        if (recordId) {
+            fetch(url, {
+                method: "DELETE",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    row.parentNode.removeChild(row);
+                    showToast("updateToast");
+                } else {
+                    alert("Error deleting record: " + data.error);
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        } else {
+            row.parentNode.removeChild(row);
+        }
+    }
+
+    function removeRow5(button) {
+        var row = button.closest("tr");
+        var inputElement = row.querySelector("input");
+        var recordId = inputElement ? inputElement.dataset.id : null;
+        const url = "{% url 'delete_maintenance_schedule' 0 %}".replace("0", recordId);
+        if (recordId) {
+            fetch(url, {
+                method: "POST",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    row.parentNode.removeChild(row);
+                    showToast("updateToast");
+                } else {
+                    alert("Error deleting record: " + data.error);
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        } else {
+            row.parentNode.removeChild(row);
+        }
+    }
+
+    // Update Project Function
+    function updateProject(projectId) {
+        const csrfToken = "{{ csrf_token }}";
+        const url = "{% url 'update_project' 0 %}".replace("0", projectId);
+        
+
+        // ✅ SHOW SPINNER
+        const loadingOverlay = document.getElementById("loading-overlay");
+        loadingOverlay.style.display = "flex";
+
+
+        // Get masterplan file
+        const masterplanFile = document.getElementById(`masterplan-image-${projectId}`)?.files[0];
+        
+        // Create FormData instead of JSON for file upload
+        const formData = new FormData();
+        
+        // Add all existing data as JSON string
+        const updatedData = {
+            project: {
+                name: document.getElementById(`name-${projectId}`)?.value || "",
+                description: document.getElementById(`description-${projectId}`)?.value || "",
+            },
+            project_config: {
+                interest_rate: document.getElementById(`interest-${projectId}`)?.value || "",
+                base_dp: document.getElementById(`base-dp-${projectId}`)?.value || "",
+                base_tenor_years: document.getElementById(`tenor-${projectId}`)?.value || "",
+                max_tenor_years: document.getElementById(`max-tenor-${projectId}`)?.value || "",
+                days_until_unblocking: document.getElementById(`days-until-unblocking-${projectId}`)?.value || "",
+                variable_delivery_date: document.getElementById(`variable-delivery-date-${projectId}`)?.value || "",
+                payment_frequency: document.getElementById(`payment-frequency-${projectId}`)?.value || "",
+                default_scheme: document.getElementById(`default-scheme-${projectId}`)?.value || "",
+                use_static_base_npv: document.getElementById(`use-static-${projectId}`)?.checked || false,
+                maximum_requests_per_sales: document.getElementById(`max-requests-${projectId}`)?.value || ""
+            },
+            constraints: {
+                dp_min: document.getElementById(`dp-min-${projectId}`)?.value || "",
+                dp_plus_first_pmt: document.getElementById(`dp-plus-first-${projectId}`)?.value || "",
+                dp_plus_first_plus_second_pmt: document.getElementById(`dp-plus-first-plus-second-${projectId}`)?.value || "",
+                dp_plus_first_plus_second_plus_third_pmt: document.getElementById(`dp-plus-first-plus-second-plus-third-${projectId}`)?.value || "",
+                dp_plus_first_plus_second_plus_third_plus_forth_pmt: document.getElementById(`dp-plus-first-plus-second-plus-third-plus-forth-${projectId}`)?.value || "",
+                first_year_min: document.getElementById(`first-year-min-${projectId}`)?.value || "",
+                annual_min: document.getElementById(`annual-min-${projectId}`)?.value || "",
+                max_discount: document.getElementById(`max-discount-${projectId}`)?.value || "",
+                max_exception_discount: document.getElementById(`max-exception-discount-${projectId}`)?.value || "",
+            },
+            gas_policy: {
+                is_applied: document.getElementById(`gas-applied-${projectId}`)?.checked || false,
+                gas_num_pmts: document.getElementById(`gas-num-pmts-${projectId}`)?.value || "",
+                scheduling: document.getElementById(`gas-scheduling-${projectId}`)?.value || "",
+            },
+            maintenance_policy: {
+                is_applied: document.getElementById(`maintenance-applied-${projectId}`)?.checked || false,
+                split_two_one_on_delivery: document.getElementById(`maintenance-splitted-${projectId}`)?.checked || false,
+                annual_rate: document.getElementById(`maintenance-annual-rate-${projectId}`)?.value || "",
+                maintenance_num_pmts: document.getElementById(`maintenance-annual-rate-${projectId}`)?.value || "",
+            },
+            base_npv: [],
+            gas_policy_fees: [],
+            gas_policy_offsets: [],
+            maintenance_scheduling: [],
+            maintenance_policy_offsets: [],
+            ctd_values: [],
+        };
+
+        // Collect Base NPV values
+        document.querySelectorAll(`.npv-term-${projectId}`).forEach((input, index) => {
+            const termValue = input.value.trim();
+            const npvValue = document.querySelectorAll(`.npv-value-${projectId}`)[index]?.value.trim();
+            const id = input.dataset.id || null;
+            if (termValue !== "" && npvValue !== "") {
+                updatedData.base_npv.push({
+                    id: id,
+                    term_period: termValue,
+                    npv_value: npvValue
+                });
+            }
+        });
+
+        // Collect other table data (Gas Policy Fees, Offsets, etc.) - keep your existing code
+        document.querySelectorAll(`.gas-term-period-${projectId}`).forEach((input, index) => {
+            updatedData.gas_policy_fees.push({
+                id: input.dataset.id || null,
+                term_period: input.value || "",
+                fee_amount: document.querySelectorAll(`.gas-fee-amount-${projectId}`)[index]?.value || ""
+            });
+        });
+
+        document.querySelectorAll(`.gas-offset-term-${projectId}`).forEach((input, index) => {
+            updatedData.gas_policy_offsets.push({
+                id: input.dataset.id || null,
+                term_period: input.value || "",
+                offset_value: document.querySelectorAll(`.gas-offset-value-${projectId}`)[index]?.value || ""
+            });
+        });
+
+        document.querySelectorAll(`.maintenance-offset-term-${projectId}`).forEach((input, index) => {
+            updatedData.maintenance_policy_offsets.push({
+                id: input.dataset.id || null,
+                term_period: input.value || "",
+                offset_value: document.querySelectorAll(`.maintenance-offset-value-${projectId}`)[index]?.value || ""
+            });
+        });
+
+        document.querySelectorAll(`.ctd-term-${projectId}`).forEach((input, index) => {
+            updatedData.ctd_values.push({
+                id: input.dataset.id || null,
+                term_period: input.value || "",
+                npv_value: document.querySelectorAll(`.ctd-value-${projectId}`)[index]?.value || ""
+            });
+        });
+
+        document.querySelectorAll(`.maintenance-schedule-term-${projectId}`).forEach((input, index) => {
+            updatedData.maintenance_scheduling.push({
+                id: input.dataset.id || null,
+                term_period: input.value || "",
+                amount: document.querySelectorAll(`.maintenance-schedule-amount-${projectId}`)[index]?.value || ""
+            });
+        });
+
+        // Add JSON data to FormData
+        formData.append('data', JSON.stringify(updatedData));
+        
+        // Add masterplan file if selected
+        if (masterplanFile) {
+            formData.append('masterplan_image', masterplanFile);
+        }
+
+        fetch(url, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": csrfToken,
+                // Don't set Content-Type for FormData, let browser set it
+            },
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast("updateToast");
+                // Clear file input and hide preview on success
+                const fileInput = document.getElementById(`masterplan-image-${projectId}`);
+                if (fileInput) {
+                    fileInput.value = '';
+                    const previewContainer = document.getElementById(`masterplan-preview-${projectId}`);
+                    if (previewContainer) {
+                        previewContainer.style.display = 'none';
+                    }
+                }
+
+                // Optional: If you want to see the new image immediately without refresh, 
+                // you would need to return the new image URL in the JSON response and update the src here.
+                // For now, reload to see the new masterplan if it was uploaded
+                if (masterplanFile) {
+                    setTimeout(() => location.reload(), 1000); // Small delay to let toast show
+                }
+
+
+            } else {
+                alert("Error updating project: " + data.error);
+            }
+        })
+        .catch(error => console.error("Error:", error))
+        .finally(() => {
+            // ✅ HIDE SPINNER (Runs on both success and error)
+            loadingOverlay.style.display = "none";
+        });
+    }
+
+    // Function to Show Toast Messages
+    function showToast(toastId) {
+        var toastEl = document.getElementById(toastId);
+        var toast = new bootstrap.Toast(toastEl);
+        toast.show();
+    }
+
+    // Masterplan preview function
+    function previewMasterplan(input, projectId) {
+        const previewContainer = document.getElementById(`masterplan-preview-${projectId}`);
+        const previewImage = document.getElementById(`preview-image-${projectId}`);
+        
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                previewContainer.style.display = 'block';
+            }
+            
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            previewContainer.style.display = 'none';
+        }
+    }
+
+    // Remove masterplan function
+    function removeMasterplan(projectId) {
+        if (confirm('Are you sure you want to remove the current masterplan?')) {
+            const csrfToken = "{{ csrf_token }}";
+            const url = "{% url 'remove_masterplan' 0 %}".replace("0", projectId);
+            
+            fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the modal or update the UI
+                    location.reload(); // Simple reload for demonstration
+                    // Alternatively, you can update the UI without reloading:
+                    // document.querySelector(`#editModal-${projectId} .current-masterplan`).innerHTML = '<p>No masterplan uploaded</p>';
+                    // document.querySelector(`#editModal-${projectId} .current-masterplan`).style.display = 'none';
+                } else {
+                    alert("Error removing masterplan: " + data.error);
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        }
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+{% endblock %}

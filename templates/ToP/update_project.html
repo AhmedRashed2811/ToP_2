@@ -1,0 +1,74 @@
+{% extends 'ToP/base.html' %}
+
+{% block title %}Update Project{% endblock %}
+
+{% block content %}
+
+<style>
+    .container {
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+        background: #f9f9f9;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    label {
+        font-weight: bold;
+    }
+    .btn {
+        padding: 10px 15px;
+        text-decoration: none;
+        display: inline-block;
+        border-radius: 5px;
+        margin-right: 10px;
+    }
+    .btn-primary {
+        background: #007bff;
+        color: white;
+        border: none;
+    }
+    .btn-secondary {
+        background: gray;
+        color: white;
+        border: none;
+    }
+</style>
+
+
+    <div class="container">
+        <h2>Update Project: {{ project.name }}</h2>
+
+        <form method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_name">Project Name:</label>
+                {{ form.name }}
+            </div>
+
+            <div class="form-group">
+                <label for="id_description">Description:</label>
+                {{ form.description }}
+            </div>
+
+            <div class="form-group">
+                <label for="id_company">Company:</label>
+                {{ form.company }}
+            </div>
+
+            <button type="submit" class="btn btn-primary">Update Project</button>
+            <a href="{% url 'project_dashboard' %}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+{% endblock %}

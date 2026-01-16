@@ -1,0 +1,493 @@
+{% extends "ToP/base.html" %}
+
+{% block title %}Historical Sales Requests Analysis{% endblock %}
+
+{% block content %}
+
+<style>
+    /* User Requested Container Constraints */
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl {
+            max-width: 100%;
+        }
+    }
+
+    @media (min-width: 576px) {
+        .container, .container-sm {
+            max-width: 100%;
+        }
+    }
+
+    /* Professional Styling Improvements */
+    body {
+        background-color: #f8f9fa;
+    }
+
+    .page-header {
+        background: #fff;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
+    }
+
+    .filter-section {
+        background: #fff;
+        padding: 1.25rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
+    }
+
+    .card {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .table {
+        margin-top: 0;
+        vertical-align: middle;
+        text-align: center;
+        min-width: 100%;
+    }
+
+    .table thead th {
+        background-color: #f1f4f9;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+        color: #555;
+        border-top: none;
+        padding: 12px 16px;
+    }
+
+    .table tbody td {
+        padding: 14px 16px;
+        font-size: 0.9rem;
+    }
+
+    .badge-unit {
+        font-family: 'Times New Roman',Times, serif !important;
+        font-size: 0.85rem;
+        padding: 0.4em 0.8em;
+    }
+
+    .form-control-sm, .form-select-sm {
+        border-radius: 6px;
+        padding: 0.45rem 0.75rem;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        font-weight: 600;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    .btn-reset {
+        transition: all 0.2s;
+    }
+
+    .btn-reset:hover {
+        background-color: #6c757d;
+        color: #fff;
+    }
+
+    #meta-line {
+        display: inline-block;
+        padding: 4px 12px;
+        background: #e9ecef;
+        border-radius: 20px;
+        margin-top: 8px;
+    }
+</style>
+
+<div class="container-fluid py-4">
+
+    <div class="page-header d-flex flex-wrap align-items-center justify-content-between gap-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-0">
+                <i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Historical Sales Requests
+            </h3>
+            <span class="small text-muted" id="meta-line">
+                <i class="bi bi-check-circle-fill text-success me-1"></i> Approved requests only • Newest to oldest
+            </span>
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+            {% if scope_role == "admin_like" %}
+            <div class="text-end">
+                <span class="stat-label">Select Organization</span>
+                <select id="companySelect" class="form-select form-select-sm shadow-sm" style="min-width: 280px; border-color: #dee2e6;">
+                    <option value="">-- Select Company --</option>
+                    {% for c in companies %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            {% if scope_role == "manager" or scope_role == "sales" %}
+            <div class="text-end">
+                <div class="px-3 py-2 bg-primary text-white rounded-pill shadow-sm small fw-bold">
+                    <i class="bi bi-building me-1"></i> {{ preselected_company.name }}
+                </div>
+                <input type="hidden" id="companySelectFixed" value="{{ preselected_company.id }}">
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="filter-section shadow-sm">
+        <div class="row g-3">
+            <div class="col-12 col-md-3">
+                <span class="stat-label"><i class="bi bi-search me-1"></i> Keyword Search</span>
+                <input id="searchInput" class="form-control form-control-sm" placeholder="Salesman, client, or unit..." />
+            </div>
+
+            <div class="col-6 col-md-2">
+                <span class="stat-label"><i class="bi bi-calendar-event me-1"></i> Date From</span>
+                <input id="dateFrom" type="date" class="form-control form-control-sm" />
+            </div>
+
+            <div class="col-6 col-md-2">
+                <span class="stat-label"><i class="bi bi-calendar-event me-1"></i> Date To</span>
+                <input id="dateTo" type="date" class="form-control form-control-sm" />
+            </div>
+
+            <div class="col-6 col-md-2">
+                <span class="stat-label"><i class="bi bi-cash-stack me-1"></i> Min Sales Price</span>
+                <input id="minSales" type="number" class="form-control form-control-sm" placeholder="0.00" />
+            </div>
+
+            <div class="col-6 col-md-2">
+                <span class="stat-label"><i class="bi bi-cash-stack me-1"></i> Max Sales Price</span>
+                <input id="maxSales" type="number" class="form-control form-control-sm" placeholder="0.00" />
+            </div>
+
+            <div class="col-12 col-md-1 d-flex align-items-end">
+                <button id="resetBtn" class="btn btn-sm btn-outline-secondary w-100 btn-reset shadow-sm">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex align-items-center mb-3 px-2">
+        <div class="d-flex align-items-center gap-3">
+            <div id="loading" class="spinner-border spinner-border-sm text-primary d-none" role="status"></div>
+            <div class="badge bg-white border text-dark shadow-sm px-3 py-2" style="border-radius: 8px;">
+                <span class="text-muted fw-normal">Status:</span> <span id="statusText" class="fw-bold">Ready</span>
+            </div>
+        </div>
+        <div class="ms-auto">
+            <div class="small fw-bold text-muted bg-white border px-3 py-2 shadow-sm" style="border-radius: 8px;">
+                <i class="bi bi-funnel me-1 text-primary"></i> 
+                Showing <span id="shownCount" class="text-primary">0</span> 
+                <span class="mx-1">/</span> 
+                <span id="totalCount" class="text-dark">0</span> entries
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="dataTable">
+                <thead class="table-light border-bottom">
+                    <tr id="tableHeaderRow">
+                        <th style="min-width: 200px;">Salesman</th>
+                        <th style="min-width: 140px;">Client ID</th>
+                        <th style="min-width: 160px;">Unit Code</th>
+                        <th style="min-width: 140px;">Date</th>
+                        <th style="min-width: 160px;" class="text-end">Sales Price</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-5">
+                            <div class="mb-2"><i class="bi bi-database-fill-exclamation fs-2"></i></div>
+                            Select a company to load approved request data.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const endpoint = "{% url 'historical_sales_requests_analysis_data' %}";
+
+    const scopeRole = "{{ scope_role }}";
+    const isSalesRole = ("{{ scope_role }}" === "sales");
+    const companySelect = document.getElementById("companySelect");
+    const companyFixed = document.getElementById("companySelectFixed");
+
+    const loading = document.getElementById("loading");
+    const statusText = document.getElementById("statusText");
+    const metaLine = document.getElementById("meta-line");
+
+    const tableBody = document.getElementById("tableBody");
+    const tableHeaderRow = document.getElementById("tableHeaderRow");
+
+    const searchInput = document.getElementById("searchInput");
+    const dateFrom = document.getElementById("dateFrom");
+    const dateTo = document.getElementById("dateTo");
+    const minSales = document.getElementById("minSales");
+    const maxSales = document.getElementById("maxSales");
+    const resetBtn = document.getElementById("resetBtn");
+
+    const shownCount = document.getElementById("shownCount");
+    const totalCount = document.getElementById("totalCount");
+
+    let RAW = [];
+    let FILTERED = [];
+    let META = null;
+
+    function setLoading(isLoading) {
+        loading.classList.toggle("d-none", !isLoading);
+    }
+
+    function fmtNumber(x) {
+        if (x === null || x === undefined || x === "") return "-";
+        const n = Number(x);
+        if (Number.isNaN(n)) return "-";
+        return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    function parseDateInputToTs(val) {
+        if (!val) return null;
+        const d = new Date(val + "T00:00:00");
+        const ts = d.getTime();
+        return Number.isNaN(ts) ? null : ts;
+    }
+
+    function buildHeader(showBase) {
+        let html = '';
+        if (!isSalesRole) {
+            html += `<th style="min-width: 200px;">Salesman</th>`;
+        }
+        
+        html += `
+            <th style="min-width: 140px;">Client ID</th>
+            <th style="min-width: 160px;">Unit Code</th>
+            <th style="min-width: 140px;">Date</th>
+        `;
+
+        // NEW COLUMNS HERE
+        if (showBase) {
+            html += `
+                <th style="min-width: 120px;" class="text-end">Land Area</th>
+                <th style="min-width: 120px;" class="text-end">Gross Area</th>
+                <th style="min-width: 160px;" class="text-end">Base Price</th>
+            `;
+        }
+
+        html += `<th style="min-width: 160px;" class="text-end text-primary">Sales Price</th>`;
+        tableHeaderRow.innerHTML = html;
+    }
+
+    function renderTable(rows) {
+        const showBase = !!(META && META.show_base_price);
+        buildHeader(showBase);
+
+        // Update colSpan: 4 default + salesman + (3 for native/sheets: land, sellable, base)
+        const colSpan = 4 + (!isSalesRole ? 1 : 0) + (showBase ? 3 : 0);
+
+        if (!rows.length) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="${colSpan}" class="text-center text-muted py-5">
+                        <div class="mb-2"><i class="bi bi-search fs-2"></i></div>
+                        No approved requests match your filters.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tableBody.innerHTML = rows.map(r => {
+            const salesman = (r.salesman || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const clientId = (r.client_id || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const unitCode = (r.unit_code || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const date = r.date || "-";
+
+            // Conditional Columns for Native/Google Sheets
+            let nativeFieldsTds = '';
+            if (showBase) {
+                // Helper to hide m2 if no data
+                const landDisp = (r.land_area) ? `${fmtNumber(r.land_area)} <small class="text-muted">m²</small>` : "-";
+                const sellableDisp = (r.sellable_area) ? `${fmtNumber(r.sellable_area)} <small class="text-muted">m²</small>` : "-";
+                
+                nativeFieldsTds = `
+                    <td class="text-nowrap text-end ">${landDisp}</td>
+                    <td class="text-nowrap text-end ">${sellableDisp}</td>
+                    <td class="text-nowrap text-end text-muted">${fmtNumber(r.base_price)}</td>
+                `;
+            }
+
+            const salesTd = `<td class="text-nowrap text-end fw-bold text-primary">${fmtNumber(r.sales_price)}</td>`;
+
+            let salesmanTd = '';
+            if (!isSalesRole) {
+                salesmanTd = `
+                    <td>
+                        <div class="d-flex align-items-center justify-content-start">
+                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                                <i class="bi bi-person text-secondary"></i>
+                            </div>
+                            <span class="fw-bold text-dark">${salesman || "Unknown"}</span>
+                        </div>
+                    </td>
+                `;
+            }
+
+            return `
+                <tr>
+                    ${salesmanTd}
+                    <td class="text-nowrap text-muted small">${clientId || "-"}</td>
+                    <td class="text-nowrap">
+                        <span class="badge badge-unit bg-secondary-subtle text-secondary border border-secondary-subtle font-monospace">${unitCode || "-"}</span>
+                    </td>
+                    <td class="text-nowrap text-dark small">${date}</td>
+                    ${nativeFieldsTds}
+                    ${salesTd}
+                </tr>
+            `;
+        }).join("");
+    }
+
+    function applyFilters() {
+        const q = (searchInput.value || "").trim().toLowerCase();
+
+        const fromTs = parseDateInputToTs(dateFrom.value);
+        const toTsRaw = parseDateInputToTs(dateTo.value);
+        const toTs = (toTsRaw !== null) ? (toTsRaw + 24*60*60*1000 - 1) : null;
+
+        const minS = (minSales.value !== "" && minSales.value !== null) ? Number(minSales.value) : null;
+        const maxS = (maxSales.value !== "" && maxSales.value !== null) ? Number(maxSales.value) : null;
+
+        FILTERED = RAW.filter(r => {
+            if (q) {
+                const hay = `${r.salesman || ""} ${r.client_id || ""} ${r.unit_code || ""}`.toLowerCase();
+                if (!hay.includes(q)) return false;
+            }
+
+            if (fromTs !== null && r.date_ts < fromTs) return false;
+            if (toTs !== null && r.date_ts > toTs) return false;
+
+            const sp = (r.sales_price !== null && r.sales_price !== undefined) ? Number(r.sales_price) : null;
+            if (minS !== null && (sp === null || sp < minS)) return false;
+            if (maxS !== null && (sp === null || sp > maxS)) return false;
+
+            return true;
+        });
+
+        FILTERED.sort((a, b) => (b.date_ts || 0) - (a.date_ts || 0));
+
+        shownCount.textContent = String(FILTERED.length);
+        totalCount.textContent = String(RAW.length);
+
+        renderTable(FILTERED);
+        statusText.textContent = `Showing ${FILTERED.length} result(s).`;
+    }
+
+    function debounce(fn, ms = 250) {
+        let t = null;
+        return (...args) => {
+            clearTimeout(t);
+            t = setTimeout(() => fn(...args), ms);
+        };
+    }
+
+    const applyFiltersDebounced = debounce(applyFilters, 200);
+
+    async function loadData(companyId) {
+        RAW = [];
+        FILTERED = [];
+        META = null;
+
+        if (!companyId) {
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-5">Select a company to load data.</td></tr>`;
+            shownCount.textContent = "0";
+            totalCount.textContent = "0";
+            statusText.textContent = "Ready";
+            return;
+        }
+
+        setLoading(true);
+        statusText.textContent = "Fetching entries...";
+        tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-5"><div class="spinner-border text-primary" role="status"></div></td></tr>`;
+
+        try {
+            const url = new URL(endpoint, window.location.origin);
+            url.searchParams.set("company_id", companyId);
+
+            const res = await fetch(url.toString(), { method: "GET" });
+            const data = await res.json();
+
+            if (!data.success) throw new Error(data.error || "Failed to load data");
+
+            META = data.meta || null;
+            RAW = Array.isArray(data.rows) ? data.rows : [];
+
+            RAW.sort((a, b) => (b.date_ts || 0) - (a.date_ts || 0));
+
+            metaLine.innerHTML = `<i class="bi bi-check-circle-fill text-success me-1"></i> Approved requests only • ${META?.company_name || ""} • Newest to oldest`;
+
+            // Reset Filter UI without triggering logic
+            searchInput.value = "";
+            dateFrom.value = "";
+            dateTo.value = "";
+            minSales.value = "";
+            maxSales.value = "";
+
+            shownCount.textContent = String(RAW.length);
+            totalCount.textContent = String(RAW.length);
+
+            renderTable(RAW);
+            statusText.textContent = "Data Synced";
+
+            applyFilters();
+
+        } catch (e) {
+            const msg = e?.message || "Error loading data";
+            statusText.textContent = "Error Encountered";
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-5"><i class="bi bi-exclamation-triangle me-2"></i>${msg}</td></tr>`;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // Event Listeners
+    searchInput.addEventListener("input", applyFiltersDebounced);
+    dateFrom.addEventListener("change", applyFiltersDebounced);
+    dateTo.addEventListener("change", applyFiltersDebounced);
+    minSales.addEventListener("input", applyFiltersDebounced);
+    maxSales.addEventListener("input", applyFiltersDebounced);
+
+    resetBtn.addEventListener("click", function () {
+        searchInput.value = "";
+        dateFrom.value = "";
+        dateTo.value = "";
+        minSales.value = "";
+        maxSales.value = "";
+        applyFilters();
+    });
+
+    if (companySelect) {
+        companySelect.addEventListener("change", function () {
+            loadData(this.value);
+        });
+    }
+
+    if (companyFixed) {
+        loadData(companyFixed.value);
+    }
+})();
+</script>
+
+{% endblock %}

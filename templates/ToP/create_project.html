@@ -1,0 +1,763 @@
+{% extends 'ToP/base.html' %}
+
+{% block title %}Create Project{% endblock %}
+
+{% block content %}
+
+<!-- Styles -->
+<style>
+    /* General Page Layout */
+
+
+    .body{
+        font-family: 'Times New Roman', Times, serif;
+    }
+    .create-project-container {
+        max-width: 600px; /* Decreased width of the container */
+        margin: 0 auto;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    table {
+        margin-top: 0%;
+
+        text-align: center;
+    }
+    
+    
+
+    h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 20px;
+    }
+
+    /* Messages */
+    .messages p {
+        padding: 10px;
+        border-radius: 4px;
+        text-align: center;
+        margin-bottom: 10px;
+    }
+
+    .messages .success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .messages .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    /* Form Sections */
+    .form-section {
+        margin-bottom: 20px;
+        padding: 15px;
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        text-align: center; /* Center align all content inside the section */
+    }
+
+    .form-section h2 {
+        margin-top: 0;
+        color: #333;
+        font-size: 1.5em;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 10px;
+    }
+
+    /* Horizontal Layout for Labels and Inputs */
+    .form-fields-horizontal {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center; /* Center align the fields horizontally */
+        gap: 15px; /* Space between fields */
+    }
+
+    .form-field-group {
+        display: flex;
+        flex-direction: row; /* Align label and input horizontally */
+        align-items: center; /* Vertically center align */
+        width: 100%; /* Full width by default */
+        max-width: 400px; /* Adjust as needed */
+        margin: 0 auto; /* Center align the group within the section */
+    }
+
+    .form-field-group label {
+        font-weight: bold;
+        margin-right: 10px; /* Add spacing between label and input */
+        min-width: 120px; /* Ensure consistent label width */
+        text-align: right; /* Align labels to the right */
+    }
+
+    
+    .form-field-group input,
+    .form-field-group select{
+        flex-grow: 1; /* Allow input to take up remaining space */
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 1em;
+        transition: border-color 0.3s ease;
+        max-width: 190px;
+        margin-left: 24%;
+    }
+
+    .form-field-group textarea
+    {
+        flex-grow: 1; /* Allow input to take up remaining space */
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 1em;
+        transition: border-color 0.3s ease;
+        margin-right: -6%;
+        margin-left: 5%;
+    }    
+
+    .form-field-group input:focus,
+    .form-field-group select:focus,
+    .form-field-group textarea:focus {
+        border-color: #007bff;
+        outline: none;
+    }
+
+    /* Submit Button */
+    .form-actions {
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    .submit-button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        font-size: 1em;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    .submit-button:hover {
+        background-color: #0056b3;
+    }
+
+    .dynamic-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+    
+    .dynamic-table th,
+    .dynamic-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+    }
+    
+    .dynamic-table th {
+        background-color: #f4f4f4;
+        font-weight: bold;
+    }
+    
+    .dynamic-table input {
+        width: 90%;
+        padding: 5px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 1em;
+    }
+    
+    .dynamic-table input:focus {
+        border-color: #007bff;
+        outline: none;
+    }
+
+    @media (max-width: 460px) {
+        .form-field-group input,
+        .form-field-group select {
+            max-width: 49%;
+        }
+        .form-field-group textarea {
+            margin-right: -1%;
+        }
+
+        .payment-freq{
+            margin-left: 15%;
+            max-width: 180px;
+        }
+        .default-scheme{
+            margin-left: 15%;
+            max-width: 180px;
+        }
+
+        .form-field-group input,
+        .form-field-group select{
+          
+            margin-left: 0%;
+        }
+    }
+
+    .payment-freq{
+        margin-left: 15%;
+        max-width: 180px;
+    }
+
+    .default-scheme{
+        margin-left: 15%;
+        max-width: 180px;
+    }
+
+    element.style {
+        width: 212px;
+        margin-left: 32%;
+    }
+
+    
+
+</style>
+
+
+    <div class="create-project-container">
+        <h1>Create a New Project</h1>
+
+        <!-- Display Messages -->
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <p class="{{ message.tags }}">
+                        {{ message }}
+                    </p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+
+        <!-- Main Form -->
+        <form method="post" class="project-form">
+            {% csrf_token %}
+
+            <!-- Section: Project Details -->
+            <section class="form-section">
+                <h2>Project Details</h2>
+                <div class="form-fields-horizontal">
+                    {% for field in project_form %}
+                        <div class="form-field-group">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- Section: Project Configuration -->
+            <section class="form-section">
+                <h2>Project Configuration</h2>
+                <div class="form-fields-horizontal">
+                    {% for field in config_form %}
+                        <div class="form-field-group">
+                            {% if field.id_for_label == "id_base_payment_frequency" %}
+                                <label for="{{ field.id_for_label }}">Payment Freq.</label>
+                                <span class="payment-freq">{{ field }}</span>
+
+                            {% elif field.id_for_label == "id_default_scheme" %}
+                                <label for="{{ field.id_for_label }}">Default Scheme</label>
+                                <span class="default-scheme">{{ field }}</span>
+
+                            {% elif field.id_for_label == "id_use_static_base_npv" %}
+                                <label for="{{ field.id_for_label }}">Use Static Base NPV</label>
+                                {{ field }}
+
+                            {% elif field.id_for_label == "id_maximum_requests_per_sales" %}
+                                <label for="{{ field.id_for_label }}">Max Requests per Sales</label>
+                                {{ field }}
+
+                            {% else %}
+                                <label for="{{ field.id_for_label }}">{{ field.label }} &nbsp;</label>
+                                {{ field }}
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+
+            <!-- Section: Base NPV -->
+            <section class="form-section" id="base-npv-section">
+                <h2>Base NPV</h2>
+                <table id="base-npv-table" class="dynamic-table">
+                    <thead>
+                        <tr>
+                            <th>Years till Delivery</th>
+                            <th>NPV Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Initial Row -->
+                        <tr>
+                            <td>
+                                <input type="number" step="0.0001"    name="term_period" class="term-period" placeholder="Years till Delivery">
+                            </td>
+                            <td>
+                                <input type="number"  step="0.0001"  name="npv_value" class="npv-value" placeholder="NPV Value">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section: Project Constraints -->
+            <section class="form-section">
+                <h2>Project Constraints</h2>
+                <div class="form-fields-horizontal">
+                    {% for field in constraints_form %}
+                        <div class="form-field-group">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- Add this section after all your existing sections and before the submit button -->
+
+            <!-- Section: Masterplan Upload -->
+            <section class="form-section">
+                <h2>Project Masterplan</h2>
+                <div class="form-fields-horizontal">
+                    <div class="form-field-group">
+                        <label for="{{ masterplan_form.image.id_for_label }}">Masterplan Layout</label>
+                        {{ masterplan_form.image }}
+                    </div>
+                </div>
+                <small style="text-align: center; display: block; margin-top: 10px; color: #666;">
+                    Optional: Upload a masterplan image to enable unit positioning
+                </small>
+            </section>
+
+            
+                
+                
+            <!-- Section: CTD -->
+            <section class="form-section">
+                <h2>CTD Values</h2>
+                <table id="ctd-table" class="dynamic-table">
+                    <thead>
+                        <tr>
+                            <th>Years till Delivery</th>
+                            <th>CTD Value</th>
+                        
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <!-- Initial Row -->
+                    <tr>
+                        <td>
+                            <input type="number" step="0.0001"  name="ctd_term_period" class="ctd-term-period" placeholder="Years till Delivery">
+                        </td>
+                        <td>
+                            <input type="number" step="0.0001"   name="ctd_npv_value" class="ctd-npv-value" placeholder="CTD Value">
+                        </td>
+                    
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section: Gas Policy -->
+            <section class="form-section">
+                <h2>Gas Policy</h2>
+                <div class="form-fields-horizontal">
+                    {% for field in gas_policy_form %}
+                        <div class="form-field-group">
+                            {% if field.id_for_label == "id_is_applied_gas" %}
+                                <label for="{{ field.id_for_label }}">Apply Gas Policy</label>
+                            {% elif  field.id_for_label == "id_gas_num_pmts"%}
+                                <label for="{{ field.id_for_label }}" style="text-align: center;"> Number of Payments <br><em><span style = "font-size: 11px;">In case of before_delivery</span></em>  &nbsp;</label>
+                            {% else %}
+                                 <label for="{{ field.id_for_label }}">{{ field.label }} &nbsp;</label>
+                            {% endif %}
+
+                            {{ field }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+
+
+            <!-- Section: Gas Policy Fees -->
+            <section class="form-section" id="gas-policy-fees-section" style="display: none;">
+                <h2>Gas Policy Fees</h2>
+                <table id="gas-policy-fees-table" class="dynamic-table">
+                    <thead>
+                        <tr>
+                            <th>Years till Delivery</th>
+                            <th>Fee Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Initial Row -->
+                        <tr>
+                            <td>
+                                <input type="number" step="0.0001"  name="gas_term_period" class="gas-term-period" placeholder="Years till Delivery">
+                            </td>
+                            <td>
+                                <input type="number" step="0.0001"   name="gas_fee_amount" class="gas-fee-amount" placeholder="Gas Fees">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+
+            <!-- Section: Gas Policy Fees -->
+            <section class="form-section" id="gas-offsets-section" style="display: none;">
+                <h2>Gas Fees Offsets</h2>
+                <table id="gas-offsets-table" class="dynamic-table">
+                    <thead>
+                        <tr>
+                            <th>Years till Delivery</th>
+                            <th>Offets</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Initial Row -->
+                        <tr>
+                            <td>
+                                <input type="number"  step="0.0001"  name="gas_offset_period" class="gas-term-period" placeholder="Years till Delivery">
+                            </td>
+                            <td>
+                                <input type="number" step="0.0001"   name="gas_policy_offsets" class="gas-offset" placeholder="Offset">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section: Maintenance Policy -->
+            <section class="form-section">
+                <h2>Maintenance Policy</h2>
+                <div class="form-fields-horizontal">
+                    {% for field in maintenance_policy_form %}
+                        <div class="form-field-group">
+                            {% if field.id_for_label == "id_is_applied_maintenance" %}
+                                <label for="{{ field.id_for_label }}">Apply Maintenance Policy</label>
+                            {% elif  field.id_for_label == "id_maintenance_num_pmts"%}
+                                <label for="{{ field.id_for_label }}" style="text-align: center;"> Number of Payments <br> <em><span style = "font-size: 11px;">In case of before_delivery</span></em>  &nbsp;</label>
+                            {% elif  field.id_for_label == "id_split_two_one_on_delivery"%}
+                                <label for="{{ field.id_for_label }}" style="text-align: center;"> Split 2 Payments (Before & At Del)</label>
+                            
+                            {% endif %}
+                            {{ field }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+
+            
+
+            <!-- Section: Maintenance Policy Scheduling -->
+            <section class="form-section" id="maintenance-scheduling-section" style="display: none;">
+                <h2>Maintenance Policy Scheduling</h2>
+                <table id="maintenance-scheduling-table" class="dynamic-table">
+                    <thead>
+                        <tr>
+                            <th>Years till Delivery</th>
+                            <th>Scheduling</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Initial Row -->
+                        <tr>
+                            <td>
+                                <input type="number" step="0.0001"  name="maintenance_term_period" class="maintenance-term-period" placeholder="Years till Delivery">
+                            </td>
+
+                                <td>
+                                    <select name="scheduling_schedule" class="maintenance-schedule">
+                                        <option value="at_delivery">At Delivery</option>
+                                        <option value="before_delivery">Before Delivery</option>
+                                    </select>
+                                </td>
+
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+
+            <!-- Section: Maintenance Policy Fees -->
+            <section class="form-section" id="maintenance-offsets-section" style="display: none;">
+                <h2>Maintenance Fees Offsets</h2>
+                <table id="maintenance-offsets-table" class="dynamic-table">
+                    <thead>
+                        <tr>
+                            <th>Years till Delivery</th>
+                            <th>Offets</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Initial Row -->
+                        <tr>
+                            <td>
+                                <input type="number"  step="0.0001"  name="maintenance_offset_period" class="maintenance-term-period" placeholder="Years till Delivery">
+                            </td>
+                            <td>
+                                <input type="number" step="0.0001"   name="maintenance_offsets" class="maintenance-offset" placeholder="Offset">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Submit Button -->
+            <div class="form-actions">
+                <button type="submit" class="submit-button">Create Project</button>
+            </div>
+        </form>
+    </div>
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            function isDuplicateTerm(tableBody, termClass, newValue, currentInput) {
+                return Array.from(tableBody.querySelectorAll(`.${termClass}`))
+                    .filter(input => input !== currentInput) // Exclude currently typing input
+                    .some(input => input.value === newValue);
+            }
+        
+            function addNewRow(tableBody, termClass, valueClass, termName, valueName, isMaintenance) {
+                const newRow = document.createElement("tr");
+                if (isMaintenance == "False"){
+                    newRow.innerHTML = `
+                    <td>
+                        <input type="number" step="0.0001"   name="${termName}" class="${termClass}" placeholder="Enter Years till Delivery">
+                    </td>
+                    <td>
+                        <input type="number" step="0.0001"    name="${valueName}" class="${valueClass}" placeholder="Enter Value">
+                    </td>
+                `;
+                }
+                else if (isMaintenance === "True") {
+                    newRow.innerHTML = `
+                    <td>
+                        <input type="number" step="0.0001"   name="${termName}" class="${termClass}" placeholder="Enter Years till Delivery">
+                    </td>
+                    <td>
+                        <select name="scheduling_schedule" class="${valueClass}">
+                            <option value="at_delivery">At Delivery</option>
+                            <option value="before_delivery">Before Delivery</option>
+                        </select>
+                    </td>
+                    `;
+                }
+                
+                tableBody.appendChild(newRow);
+            }
+        
+            function handleTableInput(tableBody, termClass, valueClass, termName, valueName, isMintenance) {
+                tableBody.addEventListener("input", function (event) {
+                    const target = event.target;
+                    if (!target.classList.contains(termClass) && !target.classList.contains(valueClass)) return;
+        
+                    const rows = tableBody.querySelectorAll("tr");
+                    const lastRow = rows[rows.length - 1];
+                    const termInput = lastRow.querySelector(`.${termClass}`);
+                    const valueInput = lastRow.querySelector(`.${valueClass}`);
+        
+                    // ✅ Duplicate check for term period
+                    if (target.classList.contains(termClass)) {
+                        const newValue = target.value.trim();
+                        if (newValue !== "" && isDuplicateTerm(tableBody, termClass, newValue, target)) {
+                            alert("This Years till Delivery already exists. Please enter a unique value.");
+                            target.value = ""; // Reset duplicate entry
+                            return;
+                        }
+                    }
+        
+                    // ✅ Ensure new rows keep being added dynamically
+                    if (termInput.value.trim() !== "" && valueInput.value.trim() !== "") {
+                        addNewRow(tableBody, termClass, valueClass, termName, valueName, isMintenance);
+                    }
+                });
+            }
+        
+            // ✅ Apply dynamic row addition for Base NPV Table
+            handleTableInput(
+                document.querySelector("#base-npv-table tbody"),
+                "term-period",
+                "npv-value",
+                "term_period",
+                "npv_value",
+                "False"
+            );
+        
+            // ✅ Apply dynamic row addition for CTD Table
+            handleTableInput(
+                document.querySelector("#ctd-table tbody"),
+                "ctd-term-period",
+                "ctd-npv-value",
+                "ctd_term_period",
+                "ctd_npv_value",
+                "False"
+            );
+        
+            // ✅ Apply dynamic row addition for Gas Policy Fees Table
+            handleTableInput(
+                document.querySelector("#gas-policy-fees-table tbody"),
+                "gas-term-period",
+                "gas-fee-amount",
+                "gas_term_period",
+                "gas_fee_amount",
+                "False"
+            );
+
+            // ✅ Apply dynamic row addition for Gas Policy Fees Table
+            handleTableInput(
+                document.querySelector("#gas-offsets-table tbody"),
+                "gas-term-period",
+                "gas-offset",
+                "gas_offset_period",
+                "gas_policy_offsets",
+                "False"
+            );
+
+            // ✅ Apply dynamic row addition for Gas Policy Fees Table
+            handleTableInput(
+                document.querySelector("#maintenance-offsets-table tbody"),
+                "maintenance-term-period",
+                "maintenance-offset",
+                "maintenance_offset_period",
+                "maintenance_policy_offsets",
+                "False"
+            );
+
+            // ✅ Apply dynamic row addition for Gas Policy Fees Table
+            handleTableInput(
+                document.querySelector("#maintenance-scheduling-table tbody"),
+                "maintenance-term-period",
+                "maintenance-schedule",
+                "maintenance_term_period",
+                "maintenance_scheduling",
+                "True"
+            );
+
+
+
+             // Function to toggle visibility of sections
+             function toggleSectionVisibility(checkboxId, sectionId) {
+                const checkbox = document.getElementById(checkboxId);
+                const section = document.getElementById(sectionId);
+        
+                if (checkbox && section) {
+                    checkbox.addEventListener("change", function () {
+                        section.style.display = checkbox.checked ? "block" : "none";
+                    });
+                }
+            }
+        
+            // Toggle Maintenance Policy Scheduling section
+            toggleSectionVisibility("id_is_applied_maintenance", "maintenance-scheduling-section");
+        
+            // Apply dynamic row addition for Maintenance Policy Scheduling Table
+            handleTableInput(
+                document.querySelector("#maintenance-scheduling-table tbody"),
+                "maintenance-term-period",
+                "maintenance-schedule",
+                "maintenance_term_period",
+                "scheduling_schedule",
+                "True"
+            );
+        });
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const useStaticBaseNPVCheckbox = document.getElementById("id_use_static_base_npv");
+            const baseNPVSection = document.getElementById("base-npv-section");
+        
+            function toggleBaseNPVSection() {
+                if (useStaticBaseNPVCheckbox.checked) {
+                    baseNPVSection.style.display = "block";
+                } else {
+                    baseNPVSection.style.display = "none";
+                }
+            }
+        
+            if (useStaticBaseNPVCheckbox && baseNPVSection) {
+                useStaticBaseNPVCheckbox.addEventListener("change", toggleBaseNPVSection);
+                toggleBaseNPVSection(); // Initialize visibility
+            }
+        });
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+            // Gas Policy Fees Toggle
+            const applyGasPolicyCheckbox = document.getElementById("id_is_applied_gas");
+            const gasPolicyFeesSection = document.getElementById("gas-policy-fees-section");
+            const gasOffsetsSection = document.getElementById("gas-offsets-section");
+            const maintenanceOffsetsSection = document.getElementById("maintenance-offsets-section");
+        
+            function toggleGasPolicyFeesSection() {
+                if (applyGasPolicyCheckbox.checked) {
+                    gasPolicyFeesSection.style.display = "block";
+                    gasOffsetsSection.style.display = "block";
+                } else {
+                    gasPolicyFeesSection.style.display = "none";
+                    gasOffsetsSection.style.display = "none";
+                }
+            }
+        
+            if (applyGasPolicyCheckbox && gasPolicyFeesSection) {
+                applyGasPolicyCheckbox.addEventListener("change", toggleGasPolicyFeesSection);
+                toggleGasPolicyFeesSection(); // Initialize visibility
+            }
+        
+            // Maintenance Policy Scheduling Toggle
+            const applyMaintenancePolicyCheckbox = document.getElementById("id_is_applied_maintenance");
+            const maintenanceSchedulingSection = document.getElementById("maintenance-scheduling-section");
+        
+            function toggleMaintenanceSchedulingSection() {
+                if (applyMaintenancePolicyCheckbox.checked) {
+                    maintenanceSchedulingSection.style.display = "block";
+                    maintenanceOffsetsSection.style.display = "block";
+                } else {
+                    maintenanceSchedulingSection.style.display = "none";
+                    maintenanceOffsetsSection.style.display = "none";
+
+                }
+            }
+        
+            if (applyMaintenancePolicyCheckbox && maintenanceSchedulingSection) {
+                applyMaintenancePolicyCheckbox.addEventListener("change", toggleMaintenanceSchedulingSection);
+                toggleMaintenanceSchedulingSection(); // Initialize visibility
+            }
+        });
+
+    </script>
+
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+{% endblock %}
+

@@ -1,0 +1,297 @@
+{% extends 'ToP/base.html' %}
+{% load custom_filters %}
+
+{% block title %}Project Web Configurations{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+  <div class="card shadow border-0">
+    <div class="card-header bg-primary text-white">
+      <h4 class="mb-0">🔧 Configure Project Web Settings</h4>
+    </div>
+
+    <div class="card-body">
+      <form id="project-config-form">
+        {% csrf_token %}
+
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <label for="company" class="form-label">Select Company</label>
+            <select id="company" name="company" class="form-select" onchange="filterProjects()" required>
+              <option value="">-- Choose Company --</option>
+              {% for company in companies %}
+                <option value="{{ company.id }}">{{ company.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label for="project" class="form-label">Select Project</label>
+            <select id="project" name="project" class="form-select" required>
+              <option value="">-- Choose Project --</option>
+              {% for project in projects %}
+                <option value="{{ project.id }}" data-company="{{ project.company_id }}">{{ project.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <hr class="my-4">
+
+        <div class="row row-cols-1 row-cols-md-2 g-3">
+          {% for field in fields %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="{{ field }}" id="{{ field }}">
+              <label class="form-check-label" for="{{ field }}" data-raw="{{ field }}">{{ field }}</label>
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="row mt-4" id="payment-schemes-wrapper" style="display: none;">
+          <div class="col-12">
+            <label class="form-label fw-bold">📊 Payment Schemes to Show</label>
+            <div class="border rounded p-3 bg-light">
+              <div class="row">
+                {% for scheme in payment_scheme_choices %}
+                <div class="col-md-3 mb-2">
+                  <div class="form-check">
+                    <input class="form-check-input payment-scheme-checkbox" type="checkbox" 
+                           name="payment_schemes" value="{{ scheme.0 }}" id="scheme_{{ forloop.counter }}">
+                    <label class="form-check-label" for="scheme_{{ forloop.counter }}">
+                      {{ scheme.1 }}
+                    </label>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row mt-4">
+          <div class="col-12">
+            <label class="form-label fw-bold">🗓️ Allowed Years For Sales (Optional)</label>
+            <div class="border rounded p-3 bg-light">
+              <div class="row">
+                {% for y in "123456789101112"|make_list %}
+                {% endfor %}
+              </div>
+
+              <div class="row">
+                {% for y in years_range %}
+                  <div class="col-md-3 mb-2">
+                    <div class="form-check">
+                      <input class="form-check-input allowed-year-checkbox"
+                            type="checkbox"
+                            name="allowed_years_for_sales"
+                            value="{{ y }}"
+                            id="year_{{ y }}">
+                      <label class="form-check-label" for="year_{{ y }}">
+                        {{ y }} Year{% if y|add:"0" != 1 %}s{% endif %}
+                      </label>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+
+              <small class="text-muted d-block mt-2">
+                Leave empty to allow all (or handle empty list however you want in sales logic).
+              </small>
+            </div>
+          </div>
+        </div>
+
+
+        <hr class="my-4">
+
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="default_timer_in_minutes" class="form-label">Default Timer (Minutes)</label>
+            <input type="number" class="form-control" id="default_timer_in_minutes" name="default_timer_in_minutes">
+          </div>
+
+          <div class="col-md-4" id="dp-period-wrapper" style="display: none;">
+            <label for="period_between_DPs" class="form-label">Period Between DPs</label>
+            <input type="number" class="form-control" id="period_between_DPs" name="period_between_DPs">
+          </div>
+
+          <div class="col-md-4">
+            <label for="period_between_DP_and_intsallment" class="form-label">Period Between DP and Installment</label>
+            <input type="number" class="form-control" id="period_between_DP_and_intsallment" name="period_between_DP_and_intsallment">
+          </div>
+        </div>
+
+        <div class="row g-3 mt-2" id="additional-discount-wrapper" style="display:none;">
+          <div class="col-md-4">
+            <label for="additional_discount" class="form-label">Additional Discount (%)</label>
+            <input type="number" class="form-control"
+                   id="additional_discount" name="additional_discount"
+                   step="0.01" min="0" max="100" placeholder="e.g. 2.5">
+          </div>
+          <div class="col-md-4">
+            <label for="dp_for_additional_discount" class="form-label">DP # For Additional Discount</label>
+            <input type="number" class="form-control"
+                   id="dp_for_additional_discount" name="dp_for_additional_discount"
+                   min="1" placeholder="e.g. 1">
+          </div>
+        </div>
+
+        <div class="d-grid mt-4">
+          <button type="submit" class="btn btn-success btn-lg">💾 Save Configuration</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function filterProjects() {
+  const companyId = document.getElementById("company").value;
+  const projectSelect = document.getElementById("project");
+  Array.from(projectSelect.options).forEach(opt => {
+    opt.style.display = (!opt.value || opt.dataset.company === companyId) ? "block" : "none";
+  });
+  projectSelect.value = "";
+}
+
+function showToast(message, isError = false) {
+  const toast = document.createElement("div");
+  toast.className = `toast align-items-center text-bg-${isError ? 'danger' : 'success'} border-0 position-fixed bottom-0 end-0 m-4`;
+  toast.style.zIndex = 10000;
+  toast.role = "alert";
+  toast.innerHTML = `
+    <div class="d-flex">
+      <div class="toast-body">${message}</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  `;
+  document.body.appendChild(toast);
+  const bsToast = new bootstrap.Toast(toast);
+  bsToast.show();
+  setTimeout(() => toast.remove(), 4000);
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  // Format checkbox labels nicely
+  document.querySelectorAll('.form-check-label').forEach(label => {
+    const raw = label.getAttribute("data-raw");
+    if (raw) {
+      const formatted = raw.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      label.textContent = formatted;
+    }
+  });
+
+  document.querySelectorAll('.allowed-year-checkbox:checked').forEach(checkbox => {
+    formData.append('allowed_years_for_sales', checkbox.value);
+  });
+
+
+  // Toggle wrappers
+  const dpCheckbox = document.getElementById("has_multiple_dp");
+  const dpWrapper = document.getElementById("dp-period-wrapper");
+  const addDiscCheckbox = document.getElementById("show_additional_discount");
+  const addDiscWrapper = document.getElementById("additional-discount-wrapper");
+  const paymentSchemeCheckbox = document.getElementById("show_payment_scheme");
+  const paymentSchemesWrapper = document.getElementById("payment-schemes-wrapper");
+
+  dpCheckbox?.addEventListener("change", function () {
+    dpWrapper.style.display = this.checked ? "block" : "none";
+  });
+
+  addDiscCheckbox?.addEventListener("change", function () {
+    addDiscWrapper.style.display = this.checked ? "flex" : "none";
+  });
+
+  paymentSchemeCheckbox?.addEventListener("change", function () {
+    paymentSchemesWrapper.style.display = this.checked ? "block" : "none";
+  });
+
+  filterProjects();
+});
+
+document.getElementById("project").addEventListener("change", function () {
+  const projectId = this.value;
+  if (!projectId) return;
+
+  const urlTemplate = "{% url 'get_project_web_config' 0 %}";
+  const url = urlTemplate.replace("0", projectId);
+
+  fetch(url)
+    .then(response => response.json())
+    .then(data => {
+      const dynamicFields = [
+        "show_maintenance", "show_gas", "show_discount", "show_payment_frequency",
+        "show_payment_scheme", "show_currecny", "show_lead_name","show_lead_phone_number", 
+        "has_multiple_dp", "default_timer_in_minutes", "period_between_DPs", 
+        "period_between_DP_and_intsallment", "show_standerd_price",
+        "show_additional_discount", "additional_discount", "dp_for_additional_discount",
+        "real_discount", "show_not_availables_units_for_sales" ,
+        "discount_after_discount","one_dp_for_sales"
+      ];
+
+      dynamicFields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          if (el.type === "checkbox") el.checked = false;
+          else el.value = '';
+        }
+      });
+      
+      document.querySelectorAll('.payment-scheme-checkbox').forEach(cb => { cb.checked = false; });
+      document.querySelectorAll('.allowed-year-checkbox').forEach(cb => { cb.checked = false; });
+      document.getElementById("dp-period-wrapper").style.display = "none";
+      document.getElementById("additional-discount-wrapper").style.display = "none";
+      document.getElementById("payment-schemes-wrapper").style.display = "none";
+
+      if (data.success && data.config) {
+        const config = data.config;
+
+        if (config.allowed_years_for_sales && Array.isArray(config.allowed_years_for_sales)) {
+          config.allowed_years_for_sales.forEach(year => {
+            const checkbox = document.querySelector(`.allowed-year-checkbox[value="${year}"]`);
+            if (checkbox) checkbox.checked = true;
+          });
+        }
+
+        for (let key in config) {
+          const el = document.getElementById(key);
+          if (!el) continue;
+          if (el.type === "checkbox") el.checked = !!config[key];
+          else if (config[key] !== null && config[key] !== undefined) el.value = config[key];
+        }
+
+        if (config.payment_schemes_to_show && Array.isArray(config.payment_schemes_to_show)) {
+          config.payment_schemes_to_show.forEach(scheme => {
+            const checkbox = document.querySelector(`.payment-scheme-checkbox[value="${scheme}"]`);
+            if (checkbox) checkbox.checked = true;
+          });
+        }
+
+        if (config.has_multiple_dp) document.getElementById("dp-period-wrapper").style.display = "block";
+        if (config.show_additional_discount) document.getElementById("additional-discount-wrapper").style.display = "flex";
+        if (config.show_payment_scheme) document.getElementById("payment-schemes-wrapper").style.display = "block";
+      }
+    });
+});
+
+document.getElementById("project-config-form").addEventListener("submit", function (e) {
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
+  
+  document.querySelectorAll('.payment-scheme-checkbox:checked').forEach(checkbox => {
+    formData.append('payment_schemes', checkbox.value);
+  });
+
+  fetch("{% url 'save_project_web_config' %}", {
+    method: "POST",
+    body: formData,
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) showToast(data.message);
+    else showToast("❌ " + (data.error || "Error saving configuration"), true);
+  });
+});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

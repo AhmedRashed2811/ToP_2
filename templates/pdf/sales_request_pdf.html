@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body{
+    font-family:Helvetica,Arial,sans-serif;
+    font-size:10px;
+    line-height:1.4;
+    color:#000;
+    margin:0;
+    padding:12px;
+}
+.header{
+    text-align:center;
+    border-bottom:2px solid #000;
+    padding-bottom:15px;
+}
+.company-name{
+    font-size:16px;
+    font-weight:bold;
+}
+.document-title{
+    font-size:14px;
+    font-weight:bold;
+    color:#333;
+}
+.section-title{
+    font-size:11px;
+    font-weight:bold;
+    background:#f0f0f0;
+    border-left:4px solid #000;
+}
+.info-columns{
+    display:flex;
+    justify-content:space-between;
+}
+.info-column{
+    width:48%;
+}
+.info-label{
+    font-weight:bold;
+    font-size:9px;
+    color:#333;
+}
+.info-value{
+    font-size:9px;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:10px;
+    font-size:8px;
+}
+th{
+    background:#000;
+    color:#fff;
+    font-weight:bold;
+    padding:6px;
+    text-align:center;
+    border:1px solid #333;
+}
+td{
+    padding:5px 4px;
+    border:1px solid #ccc;
+    text-align:center;
+}
+tr.even{
+    background:#f9f9f9;
+}
+.total-row{
+    background:#ffffcc!important;
+    font-weight:bold;
+}
+.amount{
+    text-align:right;
+    font-family:"Courier New",monospace;
+}
+.footer{
+    margin-top:30px;
+    padding-top:15px;
+    border-top:1px solid #ccc;
+    font-size:8px;
+    color:#666;
+    text-align:center;
+}
+.generated-info{
+    font-size:9px;
+    color:#666;
+}
+</style>
+</head>
+
+<body>
+<div class="header">
+    <div class="company-name">{{ company_name }}</div>
+    <div class="document-title">SALES REQUEST & PAYMENT PLAN</div>
+    <div class="generated-info">Generated on: {% now "Y-m-d H:i:s" %}</div>
+</div>
+
+<div class="section-title">CLIENT & PROJECT INFORMATION</div>
+<div class="info-columns">
+    <div class="info-column">
+        <div><span class="info-label">Project:</span> <span class="info-value">{{ project_name }}</span></div>
+        <div><span class="info-label">Unit Code:</span> <span class="info-value">{{ unit_code }}</span></div>
+        <div><span class="info-label">Client ID:</span> <span class="info-value">{{ client_id }}</span></div>
+    </div>
+    <div class="info-column">
+        <div><span class="info-label">Client Phone:</span> <span class="info-value">{{ client_phone }}</span></div>
+        <div><span class="info-label">Sales Representative:</span> <span class="info-value">{{ salesman_name }}</span></div>
+        <div><span class="info-label">Request Date:</span> <span class="info-value">{{ request_date }}</span></div>
+    </div>
+</div>
+
+<div class="section-title">UNIT SPECIFICATIONS</div>
+<div class="info-columns">
+    <div class="info-column">
+        <div><span class="info-label">Bedrooms:</span> <span class="info-value">{{ unit_details.bedrooms }}</span></div>
+        <div><span class="info-label">Area:</span> <span class="info-value">{{ unit_details.area }} m²</span></div>
+    </div>
+    <div class="info-column">
+        <div><span class="info-label">Finishing Type:</span> <span class="info-value">{{ unit_details.finishing }}</span></div>
+        <div><span class="info-label">Delivery Date:</span> <span class="info-value">{{ unit_details.delivery_date }}</span></div>
+    </div>
+</div>
+
+<div class="section-title">FINANCIAL SUMMARY</div>
+<div class="info-columns">
+    <div class="info-column">
+        <div><span class="info-label">Final Price:</span> <span class="info-value">{{ final_price }} {{ currency }}</span></div>
+    </div>
+    <div class="info-column">
+        <div><span class="info-label">Currency:</span> <span class="info-value">{{ currency }}</span></div>
+    </div>
+</div>
+
+<div class="section-title">PAYMENT SCHEDULE</div>
+<table>
+<thead>
+<tr>
+    <th style="width:8%">#</th>
+    <th style="width:15%">Due Date</th>
+    <th style="width:12%">Payment %</th>
+    <th style="width:20%">Amount ({{ currency }})</th>
+    {% if has_maintenance %}<th style="width:15%">Maintenance Fee</th>{% endif %}
+    {% if has_gas %}<th style="width:15%">Gas Fee</th>{% endif %}
+    <th style="width:15%">Cumulative %</th>
+</tr>
+</thead>
+<tbody>
+{% for row in rows %}
+<tr class="{% cycle 'odd' 'even' %}">
+    <td>{{ row.index }}</td>
+    <td>{{ row.date }}</td>
+    <td>{{ row.payment }}</td>
+    <td class="amount">{{ row.amount }}</td>
+    {% if has_maintenance %}<td class="amount">{{ row.maintenance }}</td>{% endif %}
+    {% if has_gas %}<td class="amount">{{ row.gas }}</td>{% endif %}
+    <td class="amount">{{ row.cumulative }}</td>
+</tr>
+{% endfor %}
+<tr class="total-row">
+    <td colspan="3" style="text-align:right;">TOTAL</td>
+    <td class="amount">{{ final_price }} {{ currency }}</td>
+    {% if has_maintenance %}<td class="amount">{{ total_maintenance }}</td>{% endif %}
+    {% if has_gas %}<td class="amount">{{ total_gas }}</td>{% endif %}
+    <td class="amount">100.00%</td>
+</tr>
+</tbody>
+</table>
+
+<div class="footer">
+    Generated by Prometheus ToP System • Confidential Document<br>
+</div>
+</body>
+</html>

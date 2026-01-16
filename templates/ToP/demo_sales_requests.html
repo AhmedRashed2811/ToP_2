@@ -1,0 +1,584 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+
+{% block title %}Sales Requests (DEMO MODE){% endblock %}
+
+{% block content %}
+<style>
+
+    /* --- General Desktop Styles --- */
+    .extend-btn{ height: 35px; }
+    
+    .container { margin-top: 80px; padding: 20px; }
+    
+    /* Demo Banner */
+    .demo-banner {
+        background-color: #ffc107;
+        color: #333;
+        text-align: center;
+        padding: 10px;
+        font-weight: bold;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border: 1px solid #e0a800;
+    }
+
+    /* Default Table Style (Desktop) */
+    table {
+        width: 100%; 
+        margin: 20px 0;
+        border-collapse: collapse;
+    }
+
+    table td:first-child {
+        font-weight: bold;
+        background: #f2f2f2;
+        min-width: 80px;
+        max-width: 100%;
+    }
+
+    @media (min-width: 576px) {
+        .container, .container-sm { max-width: 100%; }
+    }
+
+    th, td {
+        padding: 12px;
+        text-align: center;
+        border: 1px solid #ccc;
+    }
+
+    th {
+        background-color: #f2f2f2;
+        font-size: 16px;
+        cursor: pointer;
+    }
+
+    tr:hover { background-color: #f9f9f9; }
+
+    h2 { text-align: center; margin-top: 20px; }
+
+    /* Buttons */
+    .approve-btn { background-color: #007bff; margin-left: 5px; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;}
+    .approve-btn:hover { background-color: #0056b3; }
+
+    .delete-btn { background-color: #dc3545; margin-left: 5px; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;}
+    .delete-btn:hover { background-color: #b02a37; }
+
+    .success-btn{ background-color:#28a745; margin-left: 5px; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;}
+    .success-btn:hover { background-color:#1e7b33; }
+
+    .submit-button { font-size: 13px; }
+
+    .copy-unit { cursor: pointer; color: #007bff; text-decoration: underline; }
+    .copy-unit:hover { color: #0056b3; }
+
+    /* Toast */
+    .custom-toast {
+        position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+        background-color: #28a745; color: white; padding: 10px 20px;
+        border-radius: 8px; font-size: 14px; opacity: 0;
+        transition: all 0.3s ease; z-index: 9999; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .custom-toast.show { opacity: 1; bottom: 50px; }
+
+    /* Search */
+    .search-container {
+        display: flex; justify-content: center; margin-top: 20px; margin-bottom: 10px; gap: 10px;
+    }
+    .search-container input {
+        padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 16px;
+    }
+
+    /* --- MOBILE CARD VIEW CSS --- */
+    @media (max-width: 1000px) {
+        table, thead, tbody, th, td, tr { display: block; }
+        thead tr { position: absolute; top: -9999px; left: -9999px; }
+        tr {
+            background-color: #fff; border: 1px solid #ddd;
+            border-radius: 10px; margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); padding: 10px;
+        }
+        td {
+            border: none; border-bottom: 1px solid #eee; position: relative;
+            padding-left: 50%; padding-top: 10px; padding-bottom: 10px;
+            text-align: right; min-height: 25px; display: flex;
+            justify-content: space-between; align-items: center;
+        }
+        td:last-child {
+            border-bottom: 0; justify-content: flex-end; padding-left: 0;
+            display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px;
+        }
+        td::before {
+            position: absolute; top: 50%; left: 10px; transform: translateY(-50%);
+            width: 45%; padding-right: 10px; white-space: nowrap;
+            content: attr(data-label); font-weight: bold; text-align: left; color: #555;
+        }
+        .search-container input { width: 30%; font-size: 12px; }
+        .table-scroll-container { width: 100%; overflow-x: hidden; }
+    }
+
+    /* Simple CSS Spinner */
+    .spinner {
+        margin: 0 auto; width: 30px; height: 30px; border: 4px solid #f3f3f3;
+        border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @keyframes highlightNew { 0% { background-color: #ffeb3b; } 100% { background-color: transparent; } }
+    
+    /* Demo Button */
+    .demo-trigger-btn {
+        background: #6f42c1; color: white; padding: 10px 20px; border: none; 
+        border-radius: 5px; cursor: pointer; display: block; margin: 0 auto 20px auto;
+    }
+    .demo-trigger-btn:hover { background: #5a32a3; }
+</style>
+
+<div class="demo-banner">
+    ⚠️ PRESENTATION MODE: No actual database changes will occur.
+</div>
+
+<h2>Sales Requests Dashboard</h2>
+
+<button class="demo-trigger-btn" onclick="simulateNewRequest()">+ Simulate Incoming Real-Time Request</button>
+
+<div class="search-container">
+    <input type="text" id="searchProjectName" placeholder="Project" />
+    <input type="text" id="searchSalesMan" placeholder="Sales Man" />
+    <input type="text" id="searchUnitCode" placeholder="Unit Code" />
+</div>
+
+<div id="extendModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+    <div style="background:#f9f9f9; padding:30px; border-radius:12px; width:320px; max-width:90%; box-shadow:0 8px 24px rgba(0,0,0,0.2); font-family:sans-serif; text-align:center; position:relative; border:1px solid #ddd;">
+      <button onclick="closeExtendModal()" style="position:absolute; top:10px; right:10px; background:none; border:none; font-size:18px; font-weight:bold; cursor:pointer;">&times;</button>
+      <h4 style="margin-top:0; color:#333; font-size:20px; margin-bottom:20px;">Select Extension</h4>
+      <label for="extendHours" style="display:block; margin-bottom:5px; font-weight:bold; color:#555;">Hours:</label>
+      <select id="extendHours" style="width:100%; padding:8px 12px; margin-bottom:15px; border-radius:6px; border:1px solid #ccc; font-size:14px; background:white;"></select>
+      <label for="extendMinutes" style="display:block; margin-bottom:5px; font-weight:bold; color:#555;">Minutes:</label>
+      <select id="extendMinutes" style="width:100%; padding:8px 12px; margin-bottom:20px; border-radius:6px; border:1px solid #ccc; font-size:14px; background:white;"></select>
+      <div style="display:flex; justify-content:space-between; gap:10px;">
+        <button onclick="closeExtendModal()" style="flex:1; padding:10px; background:#f44336; color:white; border:none; border-radius:6px; font-size:14px; cursor:pointer;">Cancel</button>
+        <button onclick="confirmExtension()" style="flex:1; padding:10px; background:#4CAF50; color:white; border:none; border-radius:6px; font-size:14px; cursor:pointer;">Apply</button>
+      </div>
+      <input type="hidden" id="targetRequestId">
+    </div>
+</div>
+
+<div id="confirmModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+    <div style="background:#fff; padding:25px; border-radius:10px; width:350px; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,0.2);">
+        <h5 id="confirmMessage" style="margin-top:0; font-size:18px; color:#333;">Are you sure?</h5>
+        <div id="confirmBtnsContainer" style="margin-top:20px; display:flex; justify-content:space-between; gap:10px;">
+            <button id="confirmNoBtn" style="flex:1; padding:10px; background:#f44336; color:white; border:none; border-radius:6px; cursor:pointer;">No</button>
+            <button id="confirmYesBtn" style="flex:1; padding:10px; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer;">Yes</button>
+        </div>
+        <div id="confirmLoading" style="display:none; margin-top:20px;">
+            <div class="spinner"></div>
+            <p style="margin-top:10px; color:#666; font-size:14px;">Processing (Demo)...</p>
+        </div>
+    </div>
+</div>
+
+<div class="table-scroll-container">
+    <table id="requestsTable">
+        <thead>
+            <tr>
+                <th>Project Name</th>
+                <th>Sales Man</th>
+                <th>Lead ID</th>
+                <th>Lead Name</th>
+                <th>Phone Number</th>
+                <th>Unit Code</th>
+                <th>Discount</th>
+                <th id="dateHeader">Date ⬍</th>
+                <th>Timer</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        
+        <tbody id="requestsBody">
+            <tr>
+                <td data-label="Project Name" class="sales-man">Skyline Heights</td>
+                <td data-label="Sales Man" class="sales-man">Ahmed Rashed</td>
+                <td data-label="Lead ID" class="copy-unit" onclick="copyToClipboard('1001')">1001</td>
+                <td data-label="Lead Name" class="sales-man">John Doe</td>
+                <td data-label="Phone" class="copy-unit" onclick="copyToClipboard('01000000001')">01000000001</td>
+                <td data-label="Unit Code"><span class="copy-unit" onclick="copyToClipboard('A-101')">A-101</span></td>
+                <td data-label="Discount" class="discount"></td>
+                <td data-label="Date" data-date="2024-05-10">May 10, 10:00</td>
+                <td data-label="Timer" class="countdown-cell">
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; width: 100%;">
+                        <span class="countdown" data-hours-offset="23" data-request-id="1">Loading...</span>
+                        <button class="extend-btn" style="background-color: chocolate; color: white; border:none; border-radius:4px; padding: 4px 10px;">Extend</button>
+                    </div>
+                </td>
+                <td data-label="Action">
+                    <div style="display: flex; flex-direction: row; gap: 6px; align-items: center; justify-content: flex-end; width: 100%;">
+                        <button class="submit-button approve-btn" style="background-color:#555;" onclick="downloadDemoPDF()">PDF</button>
+                        <button class="submit-button success-btn" onclick="giveDiscount(1, this)">Discount</button>
+                        <button class="submit-button delete-btn" onclick='deleteRequest(1, this, "true")'>Unblock</button>                    
+                        <button class="submit-button approve-btn" onclick="approveRequest(1, this)">Approve</button>
+                    </div>
+                </td>
+            </tr>
+
+            <tr>
+                <td data-label="Project Name" class="sales-man">Red Sea Resort</td>
+                <td data-label="Sales Man" class="sales-man">Sarah Connor</td>
+                <td data-label="Lead ID" class="copy-unit" onclick="copyToClipboard('1002')">1002</td>
+                <td data-label="Lead Name" class="sales-man">Kyle Reese</td>
+                <td data-label="Phone" class="copy-unit" onclick="copyToClipboard('01000000002')">01000000002</td>
+                <td data-label="Unit Code"><span class="copy-unit" onclick="copyToClipboard('B-205')">B-205</span></td>
+                <td data-label="Discount" class="discount">5%</td>
+                <td data-label="Date" data-date="2024-05-10">May 10, 11:30</td>
+                <td data-label="Timer" class="countdown-cell">
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; width: 100%;">
+                        <span class="countdown" data-hours-offset="4" data-request-id="2">Loading...</span>
+                        <button class="extend-btn" style="background-color: chocolate; color: white; border:none; border-radius:4px; padding: 4px 10px;">Extend</button>
+                    </div>
+                </td>
+                <td data-label="Action">
+                    <div style="display: flex; flex-direction: row; gap: 6px; align-items: center; justify-content: flex-end; width: 100%;">
+                        <button class="submit-button approve-btn" style="background-color:#555;" onclick="downloadDemoPDF()">PDF</button>
+                        <button class="submit-button success-btn" onclick="giveDiscount(2, this)">Discount</button>
+                        <button class="submit-button delete-btn" onclick='deleteRequest(2, this, "true")'>Unblock</button>                    
+                        <button class="submit-button approve-btn" onclick="approveRequest(2, this)">Approve</button>
+                    </div>
+                </td>
+            </tr>
+
+             <tr>
+                <td data-label="Project Name" class="sales-man">Cairo Gate</td>
+                <td data-label="Sales Man" class="sales-man">Mostafa Ali</td>
+                <td data-label="Lead ID" class="copy-unit" onclick="copyToClipboard('1003')">1003</td>
+                <td data-label="Lead Name" class="sales-man">Layla Hassan</td>
+                <td data-label="Phone" class="copy-unit" onclick="copyToClipboard('01000000003')">01000000003</td>
+                <td data-label="Unit Code"><span class="copy-unit" onclick="copyToClipboard('C-33')">C-33</span></td>
+                <td data-label="Discount" class="discount"></td>
+                <td data-label="Date" data-date="2024-05-09">May 09, 09:15</td>
+                <td data-label="Timer" class="countdown-cell">
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; width: 100%;">
+                        <span class="countdown" data-minutes-offset="5" data-request-id="3">Loading...</span>
+                        <button class="extend-btn" style="background-color: chocolate; color: white; border:none; border-radius:4px; padding: 4px 10px;">Extend</button>
+                    </div>
+                </td>
+                <td data-label="Action">
+                    <div style="display: flex; flex-direction: row; gap: 6px; align-items: center; justify-content: flex-end; width: 100%;">
+                        <button class="submit-button approve-btn" style="background-color:#555;" onclick="downloadDemoPDF()">PDF</button>
+                        <button class="submit-button success-btn" onclick="giveDiscount(3, this)">Discount</button>
+                        <button class="submit-button delete-btn" onclick='deleteRequest(3, this, "true")'>Unblock</button>                    
+                        <button class="submit-button approve-btn" onclick="approveRequest(3, this)">Approve</button>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div id="discountModal" class="modal" style="display:none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+    <div style="background: white; padding: 20px; border-radius: 10px; max-width: 300px; width: 90%; text-align: center; position: relative;">
+        <span onclick="closeDiscountModal()" style="position: absolute; top: 10px; right: 15px; cursor: pointer; font-size: 18px;">&times;</span>
+        <h4>Enter Discount %</h4>
+        <input type="number" id="discountInput" placeholder="..." min="0" max="100" style="width: 50%; padding: 5px; margin: 12px 0;">%
+        <br>
+        <button class="submit-button success-btn" onclick="submitDiscount()">Apply</button>
+    </div>
+</div>
+
+<script>
+    // --- DEMO INITIALIZATION ---
+    document.addEventListener("DOMContentLoaded", function () {
+        // 1. Initialize Dummy Dates so Timers work relative to NOW
+        const now = new Date();
+        document.querySelectorAll(".countdown").forEach(el => {
+            const hrs = parseInt(el.getAttribute("data-hours-offset") || 0);
+            const mins = parseInt(el.getAttribute("data-minutes-offset") || 0);
+            
+            const futureDate = new Date(now.getTime() + (hrs * 60 * 60 * 1000) + (mins * 60 * 1000));
+            el.setAttribute("data-target", futureDate.toISOString());
+        });
+
+        updateCountdowns();
+        populateTimeDropdowns();
+
+        // Initialize table discount formatting
+        document.querySelectorAll("td.discount").forEach(cell => {
+            let value = cell.textContent.trim();
+            if(value && !value.includes('%')) cell.textContent = value + "%";
+        });
+    });
+
+    // --- Mock Interaction Variables ---
+    let currentRequestId = null;
+    let mockIdCounter = 100;
+
+    // --- Actions (Simulated) ---
+
+    // 1. Discount
+    function giveDiscount(requestId, button) {
+        currentRequestId = requestId;
+        document.getElementById("discountModal").style.display = "flex";
+    }
+    function closeDiscountModal() {
+        document.getElementById("discountModal").style.display = "none";
+        document.getElementById("discountInput").value = "";
+    }
+    function submitDiscount() {
+        const discountValue = document.getElementById("discountInput").value;
+        if (!discountValue || discountValue <= 0 || discountValue > 100) {
+            showToast("Please enter valid discount (1-100)", "error"); return;
+        }
+        closeDiscountModal();
+        showConfirm(`Apply a ${discountValue}% discount? (Demo)`, (confirmed) => {
+            if (!confirmed) return;
+            simulateServerAction(() => {
+                showToast("Discount Applied (Demo)");
+                // Update UI visually
+                const row = document.querySelector(`.countdown[data-request-id="${currentRequestId}"]`).closest("tr");
+                if(row) row.querySelector(".discount").innerText = discountValue + "%";
+            });
+        });
+    }
+
+    // 2. Approve
+    function approveRequest(requestId, button) {
+        showConfirm("Approve this sales request?", (confirmed) => {
+            if (!confirmed) return;
+            
+            // UI Update
+            document.getElementById("confirmBtnsContainer").style.display = "none";
+            document.getElementById("confirmLoading").style.display = "block";
+
+            simulateServerAction(() => {
+                const row = button.closest("tr");
+                row.style.background = "#d4edda";
+                setTimeout(() => row.remove(), 500);
+                showToast("Request Approved (Demo)");
+                document.getElementById("confirmModal").style.display = "none";
+            });
+        });
+    }
+
+    // 3. Delete / Unblock
+    function deleteRequest(requestId, button, confirmation) {
+        if (confirmation === "true") {
+            showConfirm("Unblock unit and delete request?", (confirmed) => {
+                if (confirmed) {
+                    document.getElementById("confirmBtnsContainer").style.display = "none";
+                    document.getElementById("confirmLoading").style.display = "block";
+                    simulateServerAction(() => {
+                        const row = button.closest("tr");
+                        row.style.background = "#f8d7da";
+                        setTimeout(() => row.remove(), 500);
+                        showToast("Unit Unblocked (Demo)");
+                        document.getElementById("confirmModal").style.display = "none";
+                    });
+                }
+            });
+        } else {
+            // Automatic expiry deletion
+            const row = button.closest("tr");
+            if(row) row.remove();
+        }
+    }
+
+    // 4. Extend Timer
+    function confirmExtension() {
+        const h = parseInt(document.getElementById("extendHours").value)||0;
+        const m = parseInt(document.getElementById("extendMinutes").value)||0;
+        if((h+m) === 0) { showToast("Select time", "error"); return; }
+        
+        const btn = document.querySelector('#extendModal button[onclick="confirmExtension()"]');
+        const originalText = btn.innerText;
+        btn.innerText = "Checking...";
+
+        setTimeout(() => {
+            showToast("Timer Extended (Demo)");
+            closeExtendModal();
+            btn.innerText = originalText;
+            
+            // Visually update the specific timer
+            const rid = document.getElementById("targetRequestId").value;
+            const cell = document.querySelector(`.countdown[data-request-id="${rid}"]`);
+            if(cell) {
+                // Add hours to current target for demo
+                const oldDate = new Date(cell.getAttribute("data-target"));
+                const newDate = new Date(oldDate.getTime() + (h*3600000) + (m*60000));
+                cell.setAttribute("data-target", newDate.toISOString());
+            }
+        }, 800);
+    }
+
+    // --- Helper: Simulate Server Delay ---
+    function simulateServerAction(callback) {
+        setTimeout(callback, 1000); // 1 second fake delay
+    }
+
+    // --- Helper: Simulate New Incoming Request (Pusher Simulation) ---
+    function simulateNewRequest() {
+        mockIdCounter++;
+        const now = new Date();
+        const expiry = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
+
+        const dummyData = {
+            project_name: "New Demo Project",
+            sales_man: "Demo Agent",
+            client_id: "999" + mockIdCounter,
+            client_name: "New Lead " + mockIdCounter,
+            client_phone_number: "011xxxxxxx",
+            unit_code: "D-" + mockIdCounter,
+            discount: "",
+            date: now.toISOString(),
+            date_display: "Just Now",
+            expiration_date: expiry.toISOString(),
+            id: mockIdCounter
+        };
+        
+        addNewRowToTable(dummyData);
+        showToast("New Request Received!", "success");
+    }
+
+    // --- TABLE & UI LOGIC (Copied & Adapted) ---
+    function addNewRowToTable(safeData) {
+        const tbody = document.getElementById("requestsBody");
+        const tr = document.createElement("tr");
+
+        let html = `
+            <td data-label="Project Name" class="sales-man">${safeData.project_name}</td>
+            <td data-label="Sales Man" class="sales-man">${safeData.sales_man}</td>
+            <td data-label="Lead ID" class="copy-unit" onclick="copyToClipboard('${safeData.client_id}')">${safeData.client_id}</td>
+            <td data-label="Lead Name" class="sales-man">${safeData.client_name}</td>
+            <td data-label="Phone" class="copy-unit" onclick="copyToClipboard('${safeData.client_phone_number}')">${safeData.client_phone_number}</td>
+            <td data-label="Unit Code"><span class="copy-unit" onclick="copyToClipboard('${safeData.unit_code}')">${safeData.unit_code}</span></td>
+            <td data-label="Discount" class="discount">${safeData.discount}</td>
+            <td data-label="Date" data-date="${safeData.date}">${safeData.date_display}</td> 
+            <td data-label="Timer" class="countdown-cell">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; width: 100%;">
+                    <span class="countdown" data-target="${safeData.expiration_date}" data-request-id="${safeData.id}" style="background-color: #fff3cd; transition: background 1s;">Calculating...</span>
+                    <button class="extend-btn" style="background-color: chocolate; color: white; border:none; border-radius:4px; padding: 4px 10px;">Extend</button>
+                </div>
+            </td>
+            <td data-label="Action">
+                <div style="display: flex; flex-direction: row; gap: 6px; align-items: center; justify-content: flex-end; width: 100%;">
+                    <button class="submit-button approve-btn" style="background-color:#555;" onclick="downloadDemoPDF()">PDF</button>
+                    <button class="submit-button success-btn" onclick="giveDiscount(${safeData.id}, this)">Discount</button>
+                    <button class="submit-button delete-btn" onclick='deleteRequest(${safeData.id}, this, "true")'>Unblock</button>
+                    <button class="submit-button approve-btn" onclick="approveRequest(${safeData.id}, this)">Approve</button>
+                </div>
+            </td>
+        `;
+
+        tr.innerHTML = html;
+        tr.style.animation = "highlightNew 2s ease"; 
+        tbody.prepend(tr);
+        updateCountdowns();
+    }
+
+    function updateCountdowns(){
+        const now = new Date();
+        document.querySelectorAll(".countdown").forEach(cell => {
+            if (cell.getAttribute("data-processing-expiry") === "true") return;
+            const targetDate = cell.getAttribute("data-target");
+            const requestId = cell.getAttribute("data-request-id");
+            if(!targetDate) return;
+
+            const expiryTime = new Date(targetDate);
+            const remaining = expiryTime - now;
+
+            if (remaining <= 0) {
+                cell.setAttribute("data-processing-expiry", "true");
+                cell.textContent = "Unblocking...";
+                cell.style.color = "red";
+                // Auto delete logic (demo)
+                const row = cell.closest("tr");
+                if (row) {
+                    row.style.transition = "all 0.8s ease";
+                    row.style.opacity = "0";
+                    setTimeout(() => row.remove(), 800);
+                }
+                return;
+            }
+            
+            cell.style.color = "#333"; 
+            const hours = Math.floor((remaining / (1000 * 60 * 60)) % 24);
+            const minutes = Math.floor((remaining / (1000 * 60)) % 60);
+            const seconds = Math.floor((remaining / 1000) % 60);
+            cell.textContent = `${hours.toString().padStart(2, '0')}h ${minutes.toString().padStart(2, '0')}m ${seconds.toString().padStart(2, '0')}s`;
+        });
+    }
+
+    // --- Helpers ---
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => { showToast(`Copied: ${text}`); });
+    }
+
+    function showToast(message, type = "success") {
+        const toast = document.createElement('div');
+        toast.className = 'custom-toast';
+        toast.innerText = message;
+        toast.style.backgroundColor = type === "error" ? "#dc3545" : "#28a745";
+        document.body.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 100);
+        setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 2000);
+    }
+
+    function downloadDemoPDF() {
+        showToast("PDF Download (Demo Mockup)");
+    }
+
+    // Modal Helpers
+    let confirmCallback = null;
+    function showConfirm(message, callback) {
+        document.getElementById("confirmMessage").textContent = message;
+        document.getElementById("confirmBtnsContainer").style.display = "flex";
+        document.getElementById("confirmLoading").style.display = "none";
+        document.getElementById("confirmModal").style.display = "flex";
+        confirmCallback = callback;
+    }
+    document.getElementById("confirmYesBtn").addEventListener("click", () => { if (confirmCallback) confirmCallback(true); });
+    document.getElementById("confirmNoBtn").addEventListener("click", () => { 
+        if (confirmCallback) confirmCallback(false);
+        document.getElementById("confirmModal").style.display = "none";
+    });
+
+    function populateTimeDropdowns() {
+        const h = document.getElementById("extendHours");
+        const m = document.getElementById("extendMinutes");
+        h.innerHTML = ""; m.innerHTML = "";
+        for (let i = 0; i <= 5; i++) { 
+            let opt = document.createElement("option"); opt.value = i; opt.textContent = i + " hr"; h.appendChild(opt); 
+        }
+        for (let i = 0; i < 60; i += 15) { 
+            let opt = document.createElement("option"); opt.value = i; opt.textContent = i.toString().padStart(2,"0") + " min"; m.appendChild(opt); 
+        }
+    }
+    function closeExtendModal() { document.getElementById("extendModal").style.display = "none"; }
+    
+    // Event Listener for extend button
+    document.addEventListener("click", function(e){
+        if(e.target && e.target.classList.contains("extend-btn")){
+            const cell = e.target.closest("td").querySelector(".countdown");
+            const rid = cell.getAttribute("data-request-id");
+            document.getElementById("targetRequestId").value = rid;
+            document.getElementById("extendModal").style.display = "flex";
+        }
+    });
+
+    // Search Filter
+    document.getElementById("searchSalesMan").addEventListener("input", filterTable);
+    document.getElementById("searchUnitCode").addEventListener("input", filterTable);
+    document.getElementById("searchProjectName").addEventListener("input", filterTable);
+
+    function filterTable() {
+        const sales = document.getElementById("searchSalesMan").value.toLowerCase();
+        const unit = document.getElementById("searchUnitCode").value.toLowerCase();
+        const project = document.getElementById("searchProjectName").value.toLowerCase();
+        
+        document.querySelectorAll("#requestsBody tr").forEach(row => {
+            const allText = row.textContent.toLowerCase(); 
+            const match = allText.includes(sales) && allText.includes(unit) && allText.includes(project);
+            row.style.display = match ? "" : "none";
+        });
+    }
+
+    setInterval(updateCountdowns, 1000);
+</script>
+{% endblock %}

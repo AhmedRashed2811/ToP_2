@@ -1,0 +1,38 @@
+{% extends 'ToP/admin_dashboard/base_dashboard.html' %} {% block title %}Delete
+{{ model_verbose_name|title }}{% endblock %} {% block content %}
+<div class="page-header">
+  <h1 class="page-title">Delete {{ model_verbose_name|title }}</h1>
+  <a
+    href="{% url 'dynamic_model_list' model_name=model_name %}"
+    class="btn btn-secondary"
+  >
+    &larr; Back to List
+  </a>
+</div>
+
+<div
+  class="card"
+  style="max-width: 600px; margin: 0 auto; text-align: center; padding: 3rem"
+>
+  <div style="font-size: 4rem; color: var(--danger-color); margin-bottom: 1rem">
+    ⚠️
+  </div>
+  <h2 style="margin-bottom: 1rem">Are you sure?</h2>
+  <p style="color: var(--text-secondary); margin-bottom: 2rem">
+    Are you sure you want to delete the {{ model_verbose_name }}
+    <strong>"{{ object }}"</strong>? This action cannot be undone.
+  </p>
+
+  <form method="post">
+    {% csrf_token %}
+    <div style="display: flex; justify-content: center; gap: 1rem">
+      <button type="submit" class="btn btn-danger">Yes, Delete It</button>
+      <a
+        href="{% url 'dynamic_model_list' model_name=model_name %}"
+        class="btn btn-secondary"
+        >Cancel</a
+      >
+    </div>
+  </form>
+</div>
+{% endblock %}

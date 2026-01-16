@@ -1,0 +1,63 @@
+{% for day in page_obj %}
+<tr>
+    <td class="fw-bold text-dark">{{ day.user_name }}</td>
+    
+    <td><span class="badge bg-secondary rounded-pill fw-normal">{{ day.user_role }}</span></td>
+    
+    <td class="fw-bold text-muted">{{ day.date|date:"d/m/Y" }}</td>
+    
+    <td>
+        <a href="#" 
+           class="view-location-btn fw-bold text-primary text-decoration-none"
+           data-lat="{{ day.latitude }}" 
+           data-lng="{{ day.longitude }}">
+           <i class="bi bi-geo-alt-fill me-1"></i>Location
+        </a>
+    </td>
+
+    <td>
+        {% if day.check_in %}
+            <span class="badge bg-success bg-opacity-10 text-success border border-success px-3">
+                {{ day.check_in|date:"H:i" }}
+            </span>
+        {% else %}
+            <span class="text-muted">-</span>
+        {% endif %}
+    </td>
+
+    <td>
+        {% if day.check_out %}
+            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger px-3">
+                {{ day.check_out|date:"H:i" }}
+            </span>
+        {% else %}
+            <span class="text-muted">-</span>
+        {% endif %}
+    </td>
+
+    <td>
+        <div class="d-flex justify-content-center align-items-center gap-3">
+            <a href="#" 
+               class="view-images-btn fw-bold text-dark text-decoration-none"
+               data-in="{{ day.check_in_photo|default:'' }}"
+               data-out="{{ day.check_out_photo|default:'' }}">
+               <i class="bi bi-images me-1"></i>Images
+            </a>
+
+            <button class="delete-record-btn btn btn-sm btn-outline-danger border-0" 
+                    data-in-id="{{ day.check_in_id }}" 
+                    data-out-id="{{ day.check_out_id }}"
+                    title="Delete Record">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="7" class="text-center py-5 text-muted bg-light">
+        <i class="bi bi-inbox display-6 mb-3 d-block opacity-50"></i>
+        No attendance records found for this criteria.
+    </td>
+</tr>
+{% endfor %}

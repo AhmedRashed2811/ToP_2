@@ -1,0 +1,105 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Unit Payment Report</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10pt;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 6px;
+            text-align: center;
+        }
+        th {
+            background-color: #003366;
+            color: white;
+        }
+        h2 {
+            font-size: 14pt;
+            margin-top: 20px;
+            color: #003366;
+        }
+        .page-break {
+            page-break-after: always;
+        }
+    </style>
+</head>
+<body >
+
+{% for unit in units %}
+    <div class="logo">
+        <!-- Optional logo -->
+        <!-- <img src="/path/to/logo.png" alt="Company Logo"> -->
+    </div>
+
+    <h2>Unit Code: {{ unit.unit_code }}</h2>
+    <div style="text-align: center;">
+
+        <table style="margin: 0 auto; width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th style="width: 12%; text-align: center;"></th>
+                    <th style="width: 15%; text-align: center;">Date</th>
+                    <th style="width: 15%; text-align: center;">Amount</th>
+                    <th style="width: 13%; text-align: center;">Installment</th>
+                    <th style="width: 15%; text-align: center;">Maintenance</th>
+                    <th style="width: 10%; text-align: center;">Gas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in unit.payments %}
+                    <tr>
+                        <td style="width: 12%; text-align: center;">{{ row.type }}</td>
+                        <td style="width: 15%; text-align: center;">{{ row.date }}</td>
+                        <td style="width: 13%; text-align: center;">{{ row.installment }}</td>
+                        <td style="width: 15%; text-align: center;">{{ row.amount }}</td>
+                        <td style="width: 15%; text-align: center;">{{ row.maintenance }}</td>
+                        <td style="width: 10%; text-align: center;">{{ row.gas }}</td>
+                    </tr>
+                {% endfor %}
+                
+            </tbody>
+        </table>
+    
+    </div>
+    <div class="page-break"></div>
+
+{% endfor %}
+
+
+<h2 style="margin-top: 60px; margin-left: 50px; font-size: 40px;">🔹 Payment Summary by Date</h2>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 12%; text-align: center;">PMT</th>
+            <th style="width: 15%; text-align: center;">Date</th>
+            <th style="width: 13%; text-align: center;">% of Total</th>
+            <th style="width: 15%; text-align: center;">Total Amount</th>
+            <th style="width: 15%; text-align: center;">Maintenance</th>
+            <th style="width: 10%; text-align: center;">Gas</th> 
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in summary %}
+            <tr>
+                <td style="width: 12%; text-align: center;">{{ row.label }}</td>
+                <td style="width: 15%; text-align: center;">{{ row.date }}</td>
+                <td style="width: 13%; text-align: center;">{% if row.percent %}{{ row.percent }}%{% endif %}</td>
+                <td style="width: 15%; text-align: center;">{% if row.amount %}{{ row.amount|floatformat:0|intcomma }}{% endif %}</td>
+                <td style="width: 15%; text-align: center;">{% if row.maintenance %}{{ row.maintenance|floatformat:0|intcomma }}{% endif %}</td>
+                <td style="width: 10%; text-align: center;">{% if row.gas %}{{ row.gas|floatformat:0|intcomma }}{% endif %}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+        
+
+</body>
+</html>

@@ -1,0 +1,706 @@
+{% extends 'ToP/base.html' %}
+{% block title %}Manage Users{% endblock %}
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<style>
+    /* --- General Layout --- */
+    .container {
+        padding: 20px;
+        text-align: center;
+        max-width: 100%; 
+    }
+
+    h1 { margin-bottom: 20px; }
+
+    /* --- Buttons --- */
+    .submit-button {
+        background-color: green; 
+        color: white; 
+        padding: 10px 16px; 
+        border: none; 
+        border-radius: 4px; 
+        text-decoration: none; 
+        display: inline-block;
+        white-space: nowrap;
+    }
+
+    #scrollTopBtn {
+        display: none; /* Hidden on desktop */
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        z-index: 98; /* Below toast (9999) but above content */
+        font-size: 20px;
+        border: none;
+        outline: none;
+        background-color: #007bff; /* Primary Blue */
+        color: white;
+        cursor: pointer;
+        padding: 10px 15px;
+        border-radius: 50%;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        transition: opacity 0.3s, transform 0.3s;
+        opacity: 0.9;
+    }
+
+    #scrollTopBtn:hover {
+        background-color: #0056b3;
+        transform: scale(1.1);
+    }
+
+    @media (max-width: 900px) {
+        .sticky-header { flex-direction: column; align-items: center; position: static; }
+        .payments-wrapper { flex-direction: column; }
+        .payment-box { min-width: 100%; padding: 10px; }
+        table { min-width: 100%; display: block; overflow-x: auto; }
+        th, td { font-size: 12px; padding: 4px; }
+        select { width: 90%; }
+        
+        #scrollTopBtn.show {
+            display: block;
+        }
+
+        .toggle-row {
+            flex-direction: column;
+            gap: 15px;
+        }
+    }
+
+    .btn { margin: 2px; }
+
+    /* --- Search & Filter Bar --- */
+    .search-container {
+        margin-bottom: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .filter-group {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap; /* Stacks items on mobile */
+        justify-content: center;
+        width: 100%;
+        align-items: center;
+    }
+
+    /* Style all inputs and selects in the filter group */
+    .filter-group input[type="text"], 
+    .filter-group select {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        min-width: 150px; /* Minimum width for dropdowns */
+    }
+
+    /* Make text search slightly wider */
+    #searchInput {
+        width: 300px;
+        max-width: 100%;
+    }
+
+    /* --- NEW BULK ACTION BUTTONS STYLING --- */
+    .bulk-actions-form {
+        display: none; /* Hidden by default */
+        gap: 10px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .btn-bulk {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.3s, transform 0.1s;
+        white-space: nowrap;
+    }
+
+    .btn-bulk:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+
+    .btn-activate-all {
+        background-color: #198754; /* Professional Green */
+        box-shadow: 0 2px 4px rgba(25, 135, 84, 0.3);
+    }
+
+    .btn-deactivate-all {
+        background-color: #dc3545; /* Professional Red */
+        box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+    }
+
+    /* Mobile adjustments for filters */
+    @media (max-width: 768px) {
+        .filter-group {
+            flex-direction: column; /* Force stack on mobile */
+            align-items: stretch; /* Full width */
+        }
+        
+        .filter-group input[type="text"], 
+        .filter-group select,
+        .submit-button,
+        .btn-bulk {
+            width: 100%; /* Full width on mobile */
+            margin: 0;
+        }
+        
+        #searchInput { width: 100%; }
+        
+        .bulk-actions-form {
+            flex-direction: column;
+        }
+    }
+
+    /* --- TABLE STYLES --- */
+    .table-container {
+        width: 100%;
+        overflow-x: auto; 
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+    }
+
+    .user-table {
+        width: auto;
+        min-width: 100%;
+        border-collapse: collapse;
+        margin: auto;
+    }
+
+    .user-table th, .user-table td {
+        border: 1px solid #ddd;
+        padding: 10px 15px; 
+        text-align: center;
+        vertical-align: middle;
+        white-space: nowrap; 
+    }
+
+    .user-table th {
+        background-color: #f4f4f4;
+        font-weight: bold;
+    }
+
+    .user-table input:not([type="checkbox"]) {
+        width: 100%; 
+        min-width: 150px; 
+        padding: 5px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        text-align: center;
+    }
+
+    .read-only-text { font-size: 14px; color: #333; font-weight: 500; }
+    .na-text { color: #999; font-style: italic; }
+
+    /* --- MOBILE CARD VIEW --- */
+    @media (max-width: 900px) {
+        .user-table, .user-table thead, .user-table tbody, .user-table th, .user-table td, .user-table tr {
+            display: block;
+        }
+        .user-table thead tr { position: absolute; top: -9999px; left: -9999px; }
+        
+        .user-table tr.user-row {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 15px;
+        }
+
+        .user-table td {
+            border: none;
+            border-bottom: 1px solid #eee;
+            position: relative;
+            padding-left: 45%; 
+            padding-top: 10px;
+            padding-bottom: 10px;
+            text-align: right;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            min-height: 40px;
+            white-space: normal;
+        }
+
+        .user-table td::before {
+            position: absolute;
+            top: 50%; left: 10px; transform: translateY(-50%);
+            width: 40%;
+            content: attr(data-label);
+            font-weight: bold;
+            text-align: left;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .user-table input:not([type="checkbox"]) {
+            width: 55% !important; text-align: left; margin: 0;
+        }
+        .user-table input[type="checkbox"] { width: 20px; height: 20px; margin-right: 0; }
+        .mobile-hidden { display: none !important; }
+
+        .user-table td:last-child {
+            border-bottom: 0; justify-content: center; padding-left: 0; margin-top: 10px; flex-wrap: wrap;
+        }
+        .user-table td:last-child::before { content: ""; }
+    }
+
+    .table-container::-webkit-scrollbar { width: 10px; height: 10px; }
+    .table-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+    .table-container::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+    .table-container::-webkit-scrollbar-thumb:hover { background: #555; }
+
+    table td:first-child {
+        font-weight: bold; background: #f2f2f2; min-width: 80px; max-width: 100%;
+    }
+
+    /* --- UPDATED GREEN TOAST STYLE --- */
+    #ajax-toast {
+        visibility: hidden;
+        min-width: 250px;
+        background-color: #198754; /* Professional Green (Bootstrap Success) */
+        color: #fff;
+        text-align: center;
+        border-radius: 8px;
+        padding: 16px;
+        position: fixed;
+        z-index: 10000;
+        right: 30px;
+        top: 30px;
+        font-size: 17px;
+        box-shadow: 0 4px 15px rgba(25, 135, 84, 0.4); /* Subtle green glow */
+        border: 1px solid rgba(255, 255, 255, 0.2); /* Soft inner border */
+        font-weight: 500;
+    }
+
+    #ajax-toast.show {
+        visibility: visible;
+        -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        animation: fadein 0.5s, fadeout 0.5s 2.5s;
+    }
+
+    /* Animations remain the same */
+    @-webkit-keyframes fadein { from {top: 0; opacity: 0;} to {top: 30px; opacity: 1;} }
+    @keyframes fadein { from {top: 0; opacity: 0;} to {top: 30px; opacity: 1;} }
+    @-webkit-keyframes fadeout { from {top: 30px; opacity: 1;} to {top: 0; opacity: 0;} }
+    @keyframes fadeout { from {top: 30px; opacity: 1;} to {top: 0; opacity: 0;} }
+</style>
+
+<div id="ajax-toast">User data updated successfully!</div>
+
+{% if messages %}
+  <div class="messages mt-3" style="max-width: 600px; margin: 0 auto 20px auto;">
+    {% for message in messages %}
+      <div class="msg alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" onclick="dismissAlert(this)" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<script>
+    function dismissAlert(button) {
+      const alertBox = button.closest('.alert');
+      if (alertBox) {
+        alertBox.style.opacity = '0';
+        setTimeout(() => { alertBox.remove(); }, 300);
+      }
+    }
+</script>
+
+<div class="search-container">
+    <h1>Manage Users</h1>
+    
+    <div class="filter-group">
+        <input type="text" id="searchInput" placeholder="Search User Name..." onkeyup="filterTable()">
+        
+        <select id="searchCompany" onchange="filterTable()">
+            <option value="">All Companies</option>
+            {% for company in companies %}
+                <option value="{{ company.name }}">{{ company.name }}</option>
+            {% endfor %}
+        </select>
+
+        <select id="searchRole" onchange="filterTable()">
+            <option value="">All Roles</option>
+            <option value="Admin">Admin</option>
+            <option value="Developer">Developer</option>
+            <option value="BusinessTeam">Business Team</option>
+            <option value="CompanyUser">Company User</option>
+            <option value="CompanyController">Company Controller</option>
+            <option value="CompanyFinanceManager">Company Finance Manager</option>
+            <option value="Manager">Manager</option>
+        </select>
+
+        <a href="{% url 'create_user' %}" class="submit-button">Create User</a>
+    </div>
+
+    <form method="POST" id="bulkActionForm" class="bulk-actions-form">
+        {% csrf_token %}
+        <input type="hidden" name="target_company" id="bulkTargetCompany">
+        
+        <button type="submit" name="action" value="activate_all_sales" class="btn-bulk btn-activate-all" onclick="return confirm('Are you sure you want to ACTIVATE all users for this company?');">
+            &#10003; Activate All Sales
+        </button>
+        
+        <button type="submit" name="action" value="deactivate_all_sales" class="btn-bulk btn-deactivate-all" onclick="return confirm('Are you sure you want to DEACTIVATE all users for this company?');">
+            &#10005; Deactivate All Sales
+        </button>
+    </form>
+</div>
+
+<div class="table-container">
+    <table class="user-table">
+        <thead>
+            <tr>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Password</th>
+                <th>Role</th>
+                <th>Active</th>
+                <th>Can Edit</th> 
+                <th>Can Change Years</th> 
+                <th>Company</th>
+                <th>Job Title</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="userTableBody">
+            {% for user in users %}
+            <tr class="user-row" data-user-id="{{ user.id }}">
+                
+                <td data-label="Full Name">
+                    <input type="text" name="full_name" value="{{ user.full_name }}" class="ajax-input" data-user-id="{{ user.id }}" required>
+                </td>
+                
+                <td data-label="Email">
+                    <input type="email" name="email" value="{{ user.email }}" class="ajax-input" data-user-id="{{ user.id }}" required>
+                </td>
+
+                <td data-label="Password">
+                    <input type="text" name="password" placeholder="New Password" class="ajax-input" data-user-id="{{ user.id }}">
+                </td>
+                
+                <td data-label="Role">
+                    <span class="read-only-text role-cell">{{ user.role }}</span>
+                </td>
+    
+                <td data-label="Active">
+                    {% if not user.is_superuser %}
+                        <input type="checkbox" name="is_active" id="is-active-{{ user.id }}" class="ajax-checkbox" data-user-id="{{ user.id }}" {% if user.is_active %}checked{% endif %}>
+                    {% else %}
+                        <input type="checkbox" name="is_active" id="is-active-{{ user.id }}" {% if user.is_active %}checked{% endif %} disabled style="opacity: 0.5;">
+                    {% endif %}
+                </td>
+
+                <td data-label="Can Edit" class="{% if user.role != 'CompanyUser' %}mobile-hidden{% endif %}">
+                    {% if user.role == 'CompanyUser' and user.companyuser %}
+                        <input type="checkbox" name="can_edit" id="can-edit-{{ user.id }}" class="ajax-checkbox" data-user-id="{{ user.id }}" {% if user.companyuser.can_edit %}checked{% endif %}>
+                    {% else %}
+                    {% endif %}
+                </td>
+
+                <td data-label="Can Change Years" class="{% if user.role != 'CompanyUser' %}mobile-hidden{% endif %}">
+                    {% if user.role == 'CompanyUser' and user.companyuser %}
+                        <input type="checkbox" name="can_change_years" id="can-change-years-{{ user.id }}" class="ajax-checkbox" data-user-id="{{ user.id }}" {% if user.companyuser.can_change_years %}checked{% endif %}>
+                    {% else %}
+                    {% endif %}
+                </td>
+                
+                <td data-label="Company" class="{% if user.role == 'Admin' or user.role == 'Developer' or user.role == 'BusinessTeam' %}mobile-hidden{% endif %}">
+                    {% if user.companyuser %}
+                        <span class="read-only-text company-cell">{{ user.companyuser.company.name }}</span>
+                        <input type="hidden" id="company-val-{{ user.id }}" value="{{ user.companyuser.company.id }}">
+                    {% elif user.companycontroller %}
+                        <span class="read-only-text company-cell">{{ user.companycontroller.company.name }}</span>
+                        <input type="hidden" id="company-val-{{ user.id }}" value="{{ user.companycontroller.company.id }}">
+                    {% elif user.companymanager %}
+                        <span class="read-only-text company-cell">{{ user.companymanager.company.name }}</span>
+                        <input type="hidden" id="company-val-{{ user.id }}" value="{{ user.companymanager.company.id }}">
+                    {% elif user.companyfinancemanager %}
+                        <span class="read-only-text company-cell">{{ user.companyfinancemanager.company.name }}</span>
+                        <input type="hidden" id="company-val-{{ user.id }}" value="{{ user.companyfinancemanager.company.id }}">
+                    {% else %}
+                        <input type="hidden" id="company-val-{{ user.id }}" value="">
+                    {% endif %}
+                </td>
+                
+                <td data-label="Job Title" class="{% if user.role != 'BusinessTeam' %}mobile-hidden{% endif %}">
+                    {% if user.role == "BusinessTeam" %}
+                        <span class="read-only-text">{{ user.businessanalysisteam.job_title }}</span>
+                        <input type="hidden" id="job-title-val-{{ user.id }}" value="{{ user.businessanalysisteam.job_title }}">
+                    {% else %}
+                        <input type="hidden" id="job-title-val-{{ user.id }}" value="">
+                    {% endif %}
+                </td>
+
+                <td data-label="Actions">
+                    <form id="saveForm-{{ user.id }}" method="post" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                        <input type="hidden" name="action" value="save">
+                        
+                        <input type="hidden" name="full_name" id="full_name-{{ user.id }}" value="{{ user.full_name }}">
+                        <input type="hidden" name="email" id="email-{{ user.id }}" value="{{ user.email }}">
+                        <input type="hidden" name="password" id="password-{{ user.id }}">
+                        <input type="hidden" name="is_active" id="hidden-is-active-{{ user.id }}"  value="{% if user.is_active %}true{% else %}false{% endif %}">
+                        <input type="hidden" name="can_edit" id="hidden-can-edit-{{ user.id }}" value="{% if user.companyuser.can_edit %}true{% else %}false{% endif %}">
+                        <input type="hidden" name="can_change_years" id="hidden-can-change-years-{{ user.id }}" value="{% if user.companyuser.can_change_years %}true{% else %}false{% endif %}">
+
+                        <input type="hidden" name="role" value="{{ user.role }}">
+                        <input type="hidden" name="company_id" value="{% if user.companyuser %}{{ user.companyuser.company.id }}{% elif user.companycontroller %}{{ user.companycontroller.company.id }}{% elif user.companymanager %}{{ user.companymanager.company.id }}{% elif user.companyfinancemanager %}{{ user.companyfinancemanager.company.id }}{% endif %}">
+                        <input type="hidden" name="job_title" value="{% if user.role == 'BusinessTeam' %}{{ user.businessanalysisteam.job_title }}{% endif %}">
+
+                        <button type="submit" class="btn btn-primary" title="Save"><i class="fas fa-save"></i></button>
+                    </form>
+
+                    {% if not user.is_superuser %}
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ user.id }}" title="Delete"><i class="fas fa-trash"></i></button>
+                    {% else %}
+                    {% endif %}
+
+                    <form method="post" action="{% url 'login_as_user' %}" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                        <button type="submit" class="btn btn-warning" {% if user.is_superuser %}disabled{% endif %} title="Login as"><i class="fas fa-sign-in-alt"></i></button>                    </form>
+                </td>
+            </tr>
+    
+            <div class="modal fade" id="deleteModal-{{ user.id }}" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Confirm Deletion</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            Are you sure you want to delete the user "{{ user.full_name }}"?
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <form method="post" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <input type="hidden" name="action" value="delete">
+                                <button type="submit" class="btn btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<button id="scrollTopBtn" title="UP"> &#8679; </button>
+
+<script>
+    // --- NEW: AJAX Dynamic Save Logic ---
+    function showToast(message) {
+        const toast = document.getElementById("ajax-toast");
+        toast.textContent = message;
+        toast.className = "show";
+        setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+    }
+
+    async function triggerAjaxSave(userId) {
+        // Find the specific row
+        const row = document.querySelector(`.user-row[data-user-id="${userId}"]`);
+        if (!row) return;
+
+        // Collect all data from the row inputs (just like the hidden form does)
+        const fullName = row.querySelector("input[name='full_name']").value;
+        const email = row.querySelector("input[name='email']").value;
+        const password = row.querySelector("input[name='password']").value;
+        const isActive = row.querySelector("input[name='is_active']") ? row.querySelector("input[name='is_active']").checked : false;
+        
+        // can_edit might not exist for all roles
+        const canEditInput = row.querySelector("input[name='can_edit']");
+        const canEdit = canEditInput ? canEditInput.checked : false;
+
+        const canChangeYearsInput = row.querySelector("input[name='can_change_years']");
+        const canChangeYears = canChangeYearsInput ? canChangeYearsInput.checked : false;
+
+        // Reference values from the hidden fields of the original form
+        const role = row.querySelector("input[name='role']").value;
+        const companyId = row.querySelector("input[name='company_id']").value;
+        const jobTitle = row.querySelector("input[name='job_title']").value;
+
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        formData.append('action', 'save');
+        formData.append('user_id', userId);
+        formData.append('full_name', fullName);
+        formData.append('email', email);
+        formData.append('password', password);
+        formData.append('is_active', isActive ? 'true' : 'false');
+        formData.append('can_edit', canEdit ? 'true' : 'false');
+        formData.append('can_change_years', canChangeYears ? 'true' : 'false');
+        formData.append('role', role);
+        formData.append('company_id', companyId);
+        formData.append('job_title', jobTitle);
+
+        try {
+            const response = await fetch(window.location.href, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (response.ok) {
+                showToast(`User "${fullName}" updated successfully!`);
+            } else {
+                showToast("Error updating user.");
+            }
+        } catch (error) {
+            console.error("AJAX Error:", error);
+            showToast("Connection error. Could not save.");
+        }
+    }
+
+    // --- Original Filter Logic ---
+    function filterTable() {
+        const nameFilter = document.getElementById("searchInput").value.toLowerCase();
+        const companyFilter = document.getElementById("searchCompany").value.toLowerCase();
+        const companyValueRaw = document.getElementById("searchCompany").value;
+        const roleFilter = document.getElementById("searchRole").value.toLowerCase(); 
+
+        const bulkActionForm = document.getElementById("bulkActionForm");
+        const bulkTargetCompanyInput = document.getElementById("bulkTargetCompany");
+
+        if (companyValueRaw !== "") {
+            bulkActionForm.style.display = "flex";
+            bulkTargetCompanyInput.value = companyValueRaw;
+        } else {
+            bulkActionForm.style.display = "none";
+            bulkTargetCompanyInput.value = "";
+        }
+
+        const rows = document.querySelectorAll("#userTableBody tr.user-row");
+
+        rows.forEach(row => {
+            const fullNameInput = row.querySelector("input[name='full_name']");
+            const fullName = fullNameInput ? fullNameInput.value.toLowerCase() : "";
+            const roleSpan = row.querySelector(".role-cell");
+            const roleText = roleSpan ? roleSpan.textContent.replace(/\s+/g, '').toLowerCase() : "";
+            const searchRoleClean = roleFilter.replace(/\s+/g, '');
+            const companySpan = row.querySelector(".company-cell");
+            const companyText = companySpan ? companySpan.textContent.toLowerCase() : "";
+
+            const matchesName = fullName.includes(nameFilter);
+            const matchesCompany = (companyFilter === "") || (companyText === companyFilter);
+            const matchesRole = (roleFilter === "") || (roleText === searchRoleClean);
+
+            if (matchesName && matchesCompany && matchesRole) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        });
+    }
+
+    // --- Input Sync & AJAX Triggers ---
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll(".user-row").forEach(row => {
+            const userId = row.dataset.userId;
+
+            // Select all interactive inputs in the row
+            const ajaxInputs = row.querySelectorAll(".ajax-input");
+            const ajaxCheckboxes = row.querySelectorAll(".ajax-checkbox");
+
+            // For text/email/password: Trigger on BLUR (leaving field)
+            ajaxInputs.forEach(input => {
+                input.addEventListener("blur", () => {
+                    triggerAjaxSave(userId);
+                });
+            });
+
+            // For checkboxes: Trigger on CHANGE
+            ajaxCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener("change", () => {
+                    triggerAjaxSave(userId);
+                });
+            });
+
+            // Keep the original hidden form sync logic (for the manual Save button)
+            const inputs = {
+                full_name: row.querySelector("input[name='full_name']"),
+                email: row.querySelector("input[name='email']"),
+                password: row.querySelector("input[name='password']"),
+                is_active: row.querySelector("input[name='is_active']"),
+                can_edit: row.querySelector("input[name='can_edit']"),
+                can_change_years: row.querySelector("input[name='can_change_years']"),
+            };
+
+            const hiddens = {
+                full_name: document.getElementById(`full_name-${userId}`),
+                email: document.getElementById(`email-${userId}`),
+                password: document.getElementById(`password-${userId}`),
+                is_active: document.getElementById(`hidden-is-active-${userId}`),
+                can_edit: document.getElementById(`hidden-can-edit-${userId}`),
+                can_change_years: document.getElementById(`hidden-can-change-years-${userId}`),
+            };
+
+            if(inputs.full_name) inputs.full_name.addEventListener("input", () => hiddens.full_name.value = inputs.full_name.value);
+            if(inputs.email) inputs.email.addEventListener("input", () => hiddens.email.value = inputs.email.value);
+            if(inputs.password) inputs.password.addEventListener("input", () => hiddens.password.value = inputs.password.value);
+            
+            if(inputs.is_active) {
+                inputs.is_active.addEventListener("change", () => {
+                    hiddens.is_active.value = inputs.is_active.checked ? "true" : "false";
+                });
+            }
+            if(inputs.can_edit) {
+                inputs.can_edit.addEventListener("change", () => {
+                    hiddens.can_edit.value = inputs.can_edit.checked ? "true" : "false";
+                });
+            }
+
+            if(inputs.can_change_years) {
+                inputs.can_change_years.addEventListener("change", () => {
+                    hiddens.can_change_years.value = inputs.can_change_years.checked ? "true" : "false";
+                });
+            }
+        });
+    });
+
+    const scrollTopBtn = document.getElementById("scrollTopBtn");
+
+    window.addEventListener('scroll', () => {
+        if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+            scrollTopBtn.classList.add("show");
+        } else {
+            scrollTopBtn.classList.remove("show");
+        }
+    });
+
+    scrollTopBtn.addEventListener('click', () => {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+{% endblock %}

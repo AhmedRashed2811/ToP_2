@@ -1,0 +1,3963 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+{% block title %}Pricing Model{% endblock %}
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  @media (min-width: 1000px) {
+    .container, .container-lg, .container-md, .container-sm, .container-xl {
+        max-width: 100%;
+    }
+  }
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  .hidden {
+    display: none;
+  }
+  .controls {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 1rem;
+    background-color: #eaeaea;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  select {
+    padding: 0.5rem;
+    font-size: 16px;
+  }
+  .buttons {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    display: none;
+    gap: 10px;
+    z-index: 1000;
+  }
+  .buttons button {
+    padding: 0.5rem 1rem;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+  }
+  .buttons button:hover {
+    background-color: #0056b3;
+  }
+  .buttons button.active {
+    background-color: #003f7f;
+  }
+  .content {
+    padding: 2rem;
+    margin-top: 20px;
+  }
+  .section {
+    display: none;
+  }
+  .active-section {
+    display: block;
+  }
+  @media (max-width: 768px) {
+    .controls {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    select {
+       width: 100%;
+    }
+  }
+  @media (min-width: 576px) {
+    .add-subgroup-form { display: flex; }
+
+    .container, .container-sm {
+        max-width: 100%;
+    }
+  }
+  @media (max-width: 575px) {
+        .premium-group-card {
+            margin: 0;
+            width: 343px;
+            margin-left: -61px;
+        }
+  }
+  .table-container {
+    overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 1rem;
+    position: relative;
+  }
+  #inventoryTable, #criteriaTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin-top: 0px;
+    table-layout: auto;
+  }
+  #inventoryTable th,
+  #inventoryTable td,
+  #criteriaTable th,
+  #criteriaTable td {
+    padding: 10px;
+    text-align: center;
+    vertical-align: top;
+    border: 1px solid #ccc;
+    word-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    min-width: 80px;
+  }
+  #inventoryTable th,
+  #criteriaTable th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+    text-align: center;
+    position: relative;
+  }
+  .yellow-header {
+    background-color: #ffff99 !important;
+    font-size: 11px;
+    position: relative;
+  }
+  .white-brown-header {
+    background-color: #f5f5dc !important;
+    font-size: 11px;
+  }
+  .white-brown-cell {
+    /*background-color: #f5f5dc !important;*/
+    font-size: 11px;
+  }
+  #inventoryTable tr:hover,
+  #criteriaTable tr:hover {
+    background-color: #f9f9f9;
+  }
+  #inventoryTable th:first-child,
+  #inventoryTable td:first-child {
+    position: sticky;
+    left: 0;
+    background-color: white;
+    z-index: 2;
+    text-align: center;
+    border-right: 2px solid #bbb;
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+  }
+  .premium-groups-container {
+      margin-top: 20px;
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  }
+  .premium-group-card {
+      background-color: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .premium-group-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background-color: #f5f5f5;
+      border-bottom: 1px solid #e0e0e0;
+      border-radius: 6px 6px 0 0;
+  }
+  .premium-group-title {
+      font-weight: bold;
+      font-size: 16px;
+      margin: 0;
+      color: #333;
+  }
+  .premium-group-actions {
+      display: flex;
+      gap: 8px;
+  }
+  .btn-small {
+      padding: 5px 10px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background-color: #f0f0f0;
+      cursor: pointer;
+  }
+  .btn-small:hover {
+      background-color: #e0e0e0;
+  }
+  .btn-small.danger {
+      background-color: #dc3545;
+      color: white;
+      border-color: #dc3545;
+  }
+  .btn-small.danger:hover {
+      background-color: #bd2130;
+  }
+  .premium-group-content {
+      padding: 15px;
+  }
+  .subgroup-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 15px 0;
+  }
+  .subgroup-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+  }
+  .subgroup-item:last-child {
+      border-bottom: none;
+  }
+  .subgroup-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+  }
+  .subgroup-name {
+      font-weight: 500;
+  }
+  .subgroup-value {
+      background-color: #e9ecef;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+  }
+  .add-subgroup-form {
+      gap: 10px;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px dashed #e0e0e0;
+  }
+  .add-subgroup-form input {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 12px;
+  }
+  .add-subgroup-form button {
+     padding: 8px 12px;
+     background-color: #28a745;
+     color: white;
+     border: none;
+     border-radius: 4px;
+     cursor: pointer;
+     font-size: 14px;
+  }
+  .add-subgroup-form button:hover {
+     background-color: #218838;
+  }
+  .add-group-form {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e0e0e0;
+  }
+  .add-group-form input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+  }
+  .add-group-form button {
+     padding: 10px 15px;
+     background-color: #007bff;
+     color: white;
+     border: none;
+     border-radius: 4px;
+     cursor: pointer;
+     font-size: 14px;
+  }
+  .add-group-form button:hover {
+     background-color: #0056b3;
+  }
+  .no-groups-message {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+      font-style: italic;
+  }
+  .filter-icon {
+    margin-left: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .filter-dropdown {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    padding: 10px;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    min-width: 200px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .filter-dropdown input[type="text"] {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 5px;
+    box-sizing: border-box;
+  }
+  .filter-dropdown label {
+    display: block;
+    margin-bottom: 5px;
+    cursor: pointer;
+  }
+  .filter-dropdown button {
+    margin: 5px 2px;
+    padding: 5px 10px;
+    background: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+  .filter-dropdown button:hover {
+    background: #0056b3;
+  }
+  .loading-message {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+  }
+  .error-message {
+      text-align: center;
+      padding: 20px;
+      color: #dc3545;
+      font-weight: bold;
+  }
+
+  /* Header color classes for Criteria table */
+  th.baby-blue {
+    background: #cfe9ff !important; /* baby blue */
+    color: #00324d;
+  }
+  th.grey-invert {
+    background: #6c757d !important; /* light grey background */
+    color: #ffffff !important;
+  }
+  th.yellow-bg {
+    background: #fff3b0 !important; /* soft yellow */
+    color: #333;
+  }
+  
+  /* Input with suffix (e.g., %) */
+  .criteria-input-wrap {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+  }
+  .criteria-input-wrap input.criteria-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding-right: 26px; /* leave room for suffix */
+  }
+  .criteria-input-wrap .suffix {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 12px;
+    color: #555;
+  }
+
+  /* Inside the existing <style> block */
+
+  /* --- NEW CSS for Report Section --- */
+  .report-column-selector-container {
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      max-height: 300px; /* Optional: limit height and make it scrollable */
+      overflow-y: auto;
+  }
+
+  .report-column-selector-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      display: block;
+  }
+
+  .report-column-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+  }
+
+  .report-column-option {
+      display: flex;
+      align-items: center;
+      white-space: nowrap; /* Prevent text wrapping */
+  }
+
+  .report-column-option input[type="checkbox"] {
+      margin-right: 5px;
+  }
+
+  #reportTable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin-top: 0px;
+      table-layout: auto;
+      max-width: 1240px;
+  }
+  #reportTable th,
+  #reportTable td {
+      padding: 10px;
+      text-align: center;
+      vertical-align: top;
+      border: 1px solid #ccc;
+      word-wrap: break-word;
+      word-break: break-word;
+      hyphens: auto;
+      min-width: 80px; /* Adjust as needed */
+  }
+  #reportTable th {
+      background-color: #e9ecef; /* Light grey header */
+      font-weight: bold;
+      text-align: center;
+      position: relative;
+  }
+  #reportTable tr:hover {
+      background-color: #f9f9f9;
+  }
+  /* Sticky first column for Report table, similar to Inventory */
+  #reportTable th:first-child,
+  #reportTable td:first-child {
+      position: sticky;
+      left: 0;
+      background-color: white;
+      z-index: 2;
+      text-align: center;
+      border-right: 2px solid #bbb;
+      width: 150px; /* Adjust width as needed */
+      min-width: 150px;
+      max-width: 150px;
+  }
+
+  .light-orange-header {
+      background-color: #ffebcc !important; /* Light orange */
+      font-size: 11px;
+      position: relative;
+  }
+
+  .dark-orange-header {
+      background-color: #ff9900 !important; /* Dark orange */
+      font-size: 11px;
+      position: relative;
+      color: white !important; /* White text for better contrast */
+      font-weight: bold;
+  }
+
+  .dark-orange-cell {
+      text-align: center;
+      font-weight: bold;
+  }
+
+  #recalculateAllBtn:hover {
+      background-color: #218838;
+  }
+
+  #recalculateAllBtn:disabled {
+      background-color: #6c757d;
+      cursor: not-allowed;
+  }
+    /* --- END NEW CSS --- */
+  
+</style>
+
+<div class="controls">
+  {% if not selected_company_id %}
+    <select id="companySelect" required>
+        <option value="" disabled selected>-- Select Company --</option>
+        {% for company in companies %}
+            <option value="{{ company.id }}">
+                {{ company.name }}
+            </option>
+        {% endfor %}
+    </select>
+  {% else %}
+    <span style="font-weight: bold;">Company:
+      {% for company in companies %}
+        {% if company.id == selected_company_id %}
+          {{ company.name }}
+        {% endif %}
+      {% endfor %}
+    </span>
+  {% endif %}
+
+  <select id="projectSelect" style="display: none;">
+    <option value="" disabled selected>-- Select Project --</option>
+  </select>
+</div>
+
+<div id="actionButtons" class="buttons">
+  <button data-section="criteria" onclick="showSection('criteria')">Criteria</button>
+  <button data-section="inventory" onclick="showSection('inventory')">Inventory</button>
+  <button data-section="premiumGroups" onclick="showSection('premiumGroups')">Premium Groups</button>
+  <button data-section="report" onclick="showSection('report')">Report</button>
+
+</div>
+
+<div class="content">
+  <div id="criteriaSection" class="section">
+    <h2>Criteria Summary</h2>
+    <div class="table-container">
+        <table id="criteriaTable">
+            <!-- Table will be populated dynamically -->
+        </table>
+    </div>
+  </div>
+
+  <div id="inventorySection" class="section">
+    <h2>Inventory Details</h2>
+    <div style="margin-bottom: 20px;">
+        <button id="recalculateAllBtn" onclick="recalculateAllUnits()" 
+                style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+            🔄 Recalculate All Base Prices
+        </button>
+        <span id="recalculateStatus" style="margin-left: 10px; font-style: italic;"></span>
+    </div>
+    <div class="table-container">
+        <table id="inventoryTable">
+        </table>
+    </div>
+  </div>
+
+  <div id="premiumGroupsSection" class="section">
+    <h2>Premium Groups</h2>
+    <div class="premium-groups-container">
+        <div id="premiumGroupsList">
+            <div class="no-groups-message">Select a project to view or manage premium groups.</div>
+        </div>
+        <div class="add-group-form" id="addGroupForm" style="display: none;">
+            <input type="text" id="newGroupName" placeholder="New Group Name" required>
+            <button onclick="addPremiumGroup()">Add Group</button>
+        </div>
+        <button id="showAddGroupFormBtn" onclick="toggleAddGroupForm()" style="margin-top: 20px; padding: 10px 15px; background-color: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Add New Group
+        </button>
+    </div>
+  </div>
+
+  <div id="reportSection" class="section">
+    <h2>Report</h2>
+    <div id="reportColumnSelector" class="report-column-selector-container">
+      <p class="loading-message">Select a project to load column options.</p>
+      <!-- Column selector UI (e.g., checkboxes, multi-select) will be populated here -->
+    </div>
+    <div class="table-container">
+      <table id="reportTable">
+        <caption>Select columns and a project to view the report.</caption>
+        <!-- Table body will be populated dynamically -->
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  let selectedCompanyId = {% if selected_company_id %}"{{ selected_company_id|escapejs }}"{% else %}null{% endif %};
+  let selectedProjectId = null;
+  let projectUnits = [];
+  let dynamicGroupNames = [];
+  let projectSubgroupsData = {};
+  let unitFilterDropdown = null;
+  let filteredUnitCodes = new Set();
+  // --- NEW VARIABLES for Report Section ---
+  let reportSelectedColumns = new Set(); // Stores keys of selected columns
+  // Define available columns for the report. Key is the Unit field name, Label is user-friendly.
+  const reportAvailableColumns = [
+      { key: 'unit_code', label: 'Unit Code' },
+      { key: 'unit_model', label: 'Unit Model' },
+      { key: 'status', label: 'Status' },
+      { key: 'unit_type', label: 'Unit Type' },
+      { key: 'city', label: 'City' },
+      { key: 'base_price', label: 'Base Price' },
+      { key: 'internal_area', label: 'Internal Area' },
+      { key: 'building_number', label: 'Building Number' },
+      { key: 'floor', label: 'Floor' },
+      // Add more fields as needed from the Unit model
+      // Make sure the keys match the field names returned by get_project_units_simple
+  ];
+  // --- END NEW VARIABLES ---
+
+  // NEW: Recalculate all units' base prices, PSM, and premium totals
+  async function recalculateAllUnits() {
+    if (!selectedProjectId || !projectUnits || projectUnits.length === 0) {
+        alert('No project units loaded. Please select a project first.');
+        return;
+    }
+
+    const statusElement = document.getElementById('recalculateStatus');
+    const button = document.getElementById('recalculateAllBtn');
+    
+    // Disable button and show loading
+    button.disabled = true;
+    button.textContent = '🔄 Calculating...';
+    statusElement.textContent = 'Recalculating all units...';
+    statusElement.style.color = '#007bff';
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Process units in batches to avoid overwhelming the server
+    const batchSize = 10;
+    
+    for (let i = 0; i < projectUnits.length; i += batchSize) {
+        const batch = projectUnits.slice(i, i + batchSize);
+        
+        // Process batch in parallel
+        const batchPromises = batch.map(async (unit) => {
+            try {
+                const fullUnitCode = unit.unit_code;
+                const displayCode = formatDisplayUnitCode(fullUnitCode);
+                
+                // Calculate new values
+                const unitBasePrice = calculateUnitBasePrice(unit);
+                const basePSM = calculateBasePSM(unit);
+                
+                // Find the row in the table to calculate premium totals
+                let row = null;
+                const table = document.querySelector('#inventoryTable');
+                if (table) {
+                    const rows = table.querySelectorAll('tbody tr');
+                    for (const tableRow of rows) {
+                        const unitCodeCell = tableRow.cells[0];
+                        if (unitCodeCell.textContent === displayCode) {
+                            row = tableRow;
+                            break;
+                        }
+                    }
+                }
+                
+                // Calculate and save premium totals if row is found
+                let premiumPercent = 0;
+                let premiumValue = 0;
+                if (row) {
+                    // Calculate premium totals
+                    premiumPercent = calculateTotalPremiumPercent(row, displayCode);
+                    premiumValue = (premiumPercent / 100) * unitBasePrice;
+                    
+                    // Update the display
+                    updatePremiumTotalsDisplay(row, premiumPercent, premiumValue);
+                } else {
+                    // If row not found, calculate premium totals directly from unit data
+                    premiumPercent = calculatePremiumPercentFromUnitData(unit);
+                    premiumValue = (premiumPercent / 100) * unitBasePrice;
+                }
+                
+                // Save all values to database
+                const basePriceSuccess = await saveUnitBasePrice(fullUnitCode, unitBasePrice);
+                const psmSuccess = await saveBasePSM(fullUnitCode, basePSM);
+                const premiumSuccess = await savePremiumTotals(fullUnitCode, premiumPercent, premiumValue);
+                
+                if (basePriceSuccess && psmSuccess && premiumSuccess) {
+                    successCount++;
+                    
+                    // Update the unit object in memory
+                    unit.base_price = unitBasePrice;
+                    unit.base_psm = basePSM;
+                    unit.total_premium_percent = premiumPercent;
+                    unit.total_premium_value = premiumValue;
+                    
+                    // Update the display if the table is visible
+                    updateUnitDisplay(fullUnitCode, unitBasePrice, basePSM);
+                    
+                    return true;
+                } else {
+                    errorCount++;
+                    console.error(`Failed to save unit ${fullUnitCode}`);
+                    return false;
+                }
+            } catch (error) {
+                errorCount++;
+                console.error(`Error processing unit ${unit.unit_code}:`, error);
+                return false;
+            }
+        });
+
+        // Wait for current batch to complete
+        await Promise.all(batchPromises);
+        
+        // Update progress
+        const processed = Math.min(i + batchSize, projectUnits.length);
+        statusElement.textContent = `Processed ${processed}/${projectUnits.length} units...`;
+        
+        // Small delay between batches to be nice to the server
+        if (i + batchSize < projectUnits.length) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+    }
+
+    // Update final status
+    button.disabled = false;
+    button.textContent = '🔄 Recalculate All Base Prices';
+    
+    if (errorCount === 0) {
+        statusElement.textContent = `✅ Successfully recalculated all ${successCount} units!`;
+        statusElement.style.color = '#28a745';
+    } else {
+        statusElement.textContent = `⚠️ Completed with ${successCount} successes and ${errorCount} errors`;
+        statusElement.style.color = '#dc3545';
+    }
+
+    // Clear status after 5 seconds
+    setTimeout(() => {
+        statusElement.textContent = '';
+    }, 5000);
+  }
+
+  // Helper function to calculate total premium percentage from row data
+  function calculateTotalPremiumPercent(row, displayCode) {
+    let totalPremiumPercent = 0;
+
+    dynamicGroupNames.forEach(groupName => {
+        const processedUnitCodePart = displayCode.replace(/\s+/g, '_');
+        const processedGroupNamePart = groupName.replace(/\s+/g, '_');
+        const selectId = `subgroup-select-${processedUnitCodePart}-${processedGroupNamePart}`;
+        const selectElement = document.getElementById(selectId);
+
+        if (selectElement) {
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            if (selectedOption && selectedOption.value !== '') {
+                const subgroupsForThisGroup = projectSubgroupsData[groupName] || [];
+                let matchedSubgroup = null;
+
+                if (selectedOption.value) {
+                    matchedSubgroup = subgroupsForThisGroup.find(
+                        sg => String(sg.id) === String(selectedOption.value)
+                    );
+                }
+
+                if (!matchedSubgroup && selectedOption.textContent) {
+                    const selectedOptionText = selectedOption.textContent.trim();
+                    matchedSubgroup = subgroupsForThisGroup.find(
+                        sg => sg.name === selectedOptionText
+                    );
+                }
+
+                if (matchedSubgroup) {
+                    const subgroupValueRaw = matchedSubgroup.value;
+                    if (subgroupValueRaw !== undefined && subgroupValueRaw !== null) {
+                        const parsedValue = parseFloat(subgroupValueRaw);
+                        if (!isNaN(parsedValue)) {
+                            totalPremiumPercent += parsedValue;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    return totalPremiumPercent;
+  }
+
+  // Helper function to calculate premium percentage from unit data (fallback)
+  function calculatePremiumPercentFromUnitData(unit) {
+    // This is a fallback method that calculates premium percentage from the unit's stored premium group fields
+    let totalPremiumPercent = 0;
+
+    const groupNameToFieldNameMap = {
+        'main view': 'main_view',
+        'secondary views': 'secondary_views',
+        'levels': 'levels',
+        'north breeze': 'north_breeze',
+        'corners': 'corners',
+        'accessibility': 'accessibility',
+        'special premiums': 'special_premiums',
+        'special discounts': 'special_discounts',
+        'phasing': 'phasing'
+    };
+
+    dynamicGroupNames.forEach(groupName => {
+        const normalizedGroupName = groupName.toLowerCase().trim();
+        const correspondingFieldName = groupNameToFieldNameMap[normalizedGroupName];
+        
+        if (correspondingFieldName && unit[correspondingFieldName]) {
+            const selectedSubgroupName = unit[correspondingFieldName].trim();
+            const subgroupsForThisGroup = projectSubgroupsData[groupName] || [];
+            
+            const matchedSubgroup = subgroupsForThisGroup.find(
+                sg => sg.name.trim() === selectedSubgroupName
+            );
+            
+            if (matchedSubgroup) {
+                const subgroupValueRaw = matchedSubgroup.value;
+                if (subgroupValueRaw !== undefined && subgroupValueRaw !== null) {
+                    const parsedValue = parseFloat(subgroupValueRaw);
+                    if (!isNaN(parsedValue)) {
+                        totalPremiumPercent += parsedValue;
+                    }
+                }
+            }
+        }
+    });
+
+    return totalPremiumPercent;
+  }
+
+  // Helper function to update premium totals display
+  function updatePremiumTotalsDisplay(row, premiumPercent, premiumValue) {
+    const totalPremiumPercentCell = row.cells[row.cells.length - 2];
+    if (totalPremiumPercentCell) {
+        totalPremiumPercentCell.innerHTML = '';
+        const valueSpan = document.createElement('span');
+        valueSpan.style.fontSize = '15px';
+
+        if (premiumPercent === 0) {
+            valueSpan.textContent = '-';
+        } else {
+            valueSpan.textContent = `${premiumPercent.toFixed(2)}%`;
+        }
+        totalPremiumPercentCell.appendChild(valueSpan);
+    }
+
+    const totalPremiumValueCell = row.cells[row.cells.length - 1];
+    if (totalPremiumValueCell) {
+        totalPremiumValueCell.innerHTML = '';
+        const valueSpan = document.createElement('span');
+        valueSpan.style.fontSize = '15px';
+
+        if (premiumPercent === 0 || premiumValue === 0) {
+            valueSpan.textContent = '-';
+        } else {
+            valueSpan.textContent = premiumValue.toLocaleString(undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+        }
+        totalPremiumValueCell.appendChild(valueSpan);
+    }
+  }
+
+  // Update the existing updateUnitDisplay function to also handle premium totals if needed
+  function updateUnitDisplay(unitCode, unitBasePrice, basePSM) {
+    const table = document.querySelector('#inventoryTable');
+    if (!table) return;
+
+    // Find the row for this unit
+    const rows = table.querySelectorAll('tbody tr');
+    for (const row of rows) {
+        const unitCodeCell = row.cells[0];
+        if (unitCodeCell.textContent === formatDisplayUnitCode(unitCode)) {
+            // Update Unit Base Price cell (7th cell - index 6)
+            const unitBasePriceCell = row.cells[6];
+            if (unitBasePriceCell && unitBasePriceCell.classList.contains('dark-orange-cell')) {
+                unitBasePriceCell.textContent = unitBasePrice === 0 ? '0.00' : unitBasePrice.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+
+            // Update Base PSM cell (8th cell - index 7)
+            const basePSMCell = row.cells[7];
+            if (basePSMCell && basePSMCell.classList.contains('dark-orange-cell')) {
+                basePSMCell.textContent = basePSM === 0 ? '0.00' : basePSM.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+            break;
+        }
+    }
+  }
+
+  // NEW: Update unit display in the table
+  function updateUnitDisplay(unitCode, unitBasePrice, basePSM) {
+      const table = document.querySelector('#inventoryTable');
+      if (!table) return;
+
+      // Find the row for this unit
+      const rows = table.querySelectorAll('tbody tr');
+      for (const row of rows) {
+          const unitCodeCell = row.cells[0];
+          if (unitCodeCell.textContent === formatDisplayUnitCode(unitCode)) {
+              // Update Unit Base Price cell (7th cell - index 6)
+              const unitBasePriceCell = row.cells[6];
+              if (unitBasePriceCell && unitBasePriceCell.classList.contains('dark-orange-cell')) {
+                  unitBasePriceCell.textContent = unitBasePrice === 0 ? '0.00' : unitBasePrice.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                  });
+              }
+
+              // Update Base PSM cell (8th cell - index 7)
+              const basePSMCell = row.cells[7];
+              if (basePSMCell && basePSMCell.classList.contains('dark-orange-cell')) {
+                  basePSMCell.textContent = basePSM === 0 ? '0.00' : basePSM.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                  });
+              }
+              break;
+          }
+      }
+  }
+
+  function showSection(sectionId) {
+    document.querySelectorAll(".section").forEach(sec => sec.classList.remove("active-section"));
+    const targetSection = document.getElementById(`${sectionId}Section`);
+    if (targetSection) {
+      targetSection.classList.add("active-section");
+    }
+
+    document.querySelectorAll(".buttons button").forEach(btn => btn.classList.remove("active"));
+    const activeButton = document.querySelector(`.buttons button[data-section="${sectionId}"]`);
+    if (activeButton) {
+      activeButton.classList.add("active");
+    }
+
+    if (sectionId === 'inventory' && selectedProjectId) {
+        populateInventoryTable();
+    }
+    if (sectionId === 'premiumGroups' && selectedProjectId) {
+        loadPremiumGroups();
+    }
+    // --- NEW: Populate Criteria Section ---
+    if (sectionId === 'criteria' && selectedProjectId && projectUnits && projectUnits.length > 0) {
+        populateCriteriaSection();
+    }
+    // --- END NEW ---
+
+    // --- NEW: Handle Report Section ---
+    if (sectionId === 'report') {
+        if (selectedProjectId && projectUnits && projectUnits.length > 0) {
+            initializeReportSection(); // Builds column selector UI
+            renderReportTable();       // Renders table with default/all columns
+        } else {
+            // Clear report if no project/unit data
+            const selectorContainer = document.querySelector('#reportColumnSelector');
+            const table = document.querySelector('#reportTable');
+            if (selectorContainer) {
+                selectorContainer.innerHTML = '<p class="loading-message">Select a project to load column options.</p>';
+            }
+            if (table) {
+                table.innerHTML = '<caption>Select a project to view the report.</caption>';
+            }
+            // Clear selected columns state
+            reportSelectedColumns.clear();
+        }
+    }
+  }
+
+  function formatDisplayUnitCode(fullUnitCode) {
+    if (!fullUnitCode || fullUnitCode === '-') {
+        return '-';
+    }
+    const lastUnderscoreIndex = fullUnitCode.lastIndexOf('_');
+    if (lastUnderscoreIndex > 0 && lastUnderscoreIndex < fullUnitCode.length - 1) {
+        return fullUnitCode.substring(0, lastUnderscoreIndex);
+    }
+    // If no underscore or underscore is at the end/start, return the code as is or '-'
+    return fullUnitCode || '-';
+  }
+
+  // 1. Initialize and display the column selector UI
+  function initializeReportSection() {
+    const selectorContainer = document.querySelector('#reportColumnSelector');
+    if (!selectorContainer) return;
+
+    // Clear previous content
+    selectorContainer.innerHTML = '';
+
+    const title = document.createElement('span');
+    title.className = 'report-column-selector-title';
+    title.textContent = 'Select Columns:';
+    selectorContainer.appendChild(title);
+
+    const optionsContainer = document.createElement('div');
+    optionsContainer.className = 'report-column-options';
+
+    // Create a checkbox for each available column
+    reportAvailableColumns.forEach(col => {
+        const optionDiv = document.createElement('label');
+        optionDiv.className = 'report-column-option';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = col.key;
+        // Check if column is selected (initially select all, or based on reportSelectedColumns state)
+        // For simplicity, let's select all by default on project load
+        checkbox.checked = reportSelectedColumns.size === 0 || reportSelectedColumns.has(col.key);
+        if (checkbox.checked) {
+            reportSelectedColumns.add(col.key);
+        }
+
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                reportSelectedColumns.add(this.value);
+            } else {
+                reportSelectedColumns.delete(this.value);
+            }
+            // Re-render the table based on new selection
+            renderReportTable();
+        });
+
+        optionDiv.appendChild(checkbox);
+        optionDiv.appendChild(document.createTextNode(col.label));
+        optionsContainer.appendChild(optionDiv);
+    });
+
+    selectorContainer.appendChild(optionsContainer);
+
+    // Optional: Add "Select All" / "Clear All" buttons
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.marginTop = '10px';
+
+    const selectAllBtn = document.createElement('button');
+    selectAllBtn.type = 'button';
+    selectAllBtn.textContent = 'Select All';
+    selectAllBtn.style.marginRight = '10px';
+    selectAllBtn.addEventListener('click', function() {
+        document.querySelectorAll('#reportColumnSelector input[type="checkbox"]').forEach(cb => {
+            cb.checked = true;
+            reportSelectedColumns.add(cb.value);
+        });
+        renderReportTable();
+    });
+
+    // --- Export Excel button (green) ---
+    const exportBtn = document.createElement('button');
+    exportBtn.type = 'button';
+    exportBtn.textContent = 'Export Excel';
+    exportBtn.style.background = '#28a745';
+    exportBtn.style.border = 'none';
+    exportBtn.style.color = 'white';
+    exportBtn.style.padding = '6px 12px';
+    exportBtn.style.borderRadius = '4px';
+    exportBtn.style.cursor = 'pointer';
+    exportBtn.style.fontWeight = '600';
+    exportBtn.addEventListener('click', exportSelectedColumnsToExcel);
+
+    buttonContainer.appendChild(selectAllBtn);
+    buttonContainer.appendChild(exportBtn);
+    selectorContainer.appendChild(buttonContainer);
+  }
+
+  function exportSelectedColumnsToExcel() {
+    if (!selectedProjectId || !projectUnits || projectUnits.length === 0) {
+      alert('No data to export. Please select a project with units.');
+      return;
+    }
+  
+    // Determine visible columns in the same order as the selector
+    let columnsToExport;
+    if (reportSelectedColumns.size === 0) {
+      columnsToExport = reportAvailableColumns;
+    } else {
+      columnsToExport = reportAvailableColumns.filter(col => reportSelectedColumns.has(col.key));
+    }
+  
+    if (columnsToExport.length === 0) {
+      alert('Please select at least one column to export.');
+      return;
+    }
+  
+    // Build header row (labels)
+    const headers = columnsToExport.map(col => col.label);
+  
+    // Build data rows in the same column order
+    const rows = projectUnits.map(unit => {
+      return columnsToExport.map(col => {
+        let value;
+        if (col.key === 'unit_code') {
+          value = formatDisplayUnitCode(unit.unit_code);
+          return value === '-' ? '' : value;
+        } else {
+          value = unit[col.key];
+  
+          // Keep numbers as numbers in Excel where possible
+          if (col.key === 'base_price' || col.key === 'internal_area') {
+            const n = Number(value);
+            return Number.isFinite(n) ? n : '';
+          }
+  
+          return (value === null || value === undefined || value === '') ? '' : value;
+        }
+      });
+    });
+  
+    // Create worksheet from AOA (array-of-arrays) to guarantee header order
+    const aoa = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+  
+    // Optional: make column widths a bit nicer
+    ws['!cols'] = headers.map(h => ({ wch: Math.max(12, String(h).length + 2) }));
+  
+    // Create workbook and append the sheet
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Report');
+  
+    // File name: include project name if available
+    let projectName = '';
+    const projectSelectEl = document.getElementById('projectSelect');
+    if (projectSelectEl && projectSelectEl.selectedIndex > -1) {
+      projectName = projectSelectEl.options[projectSelectEl.selectedIndex].text.trim();
+    }
+    const safeProject = projectName ? projectName.replace(/[\\/:*?"<>|]/g, '_') : `project_${selectedProjectId}`;
+    const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    const filename = `report_${safeProject}_${ts}.xlsx`;
+  
+    XLSX.writeFile(wb, filename);
+  }
+  
+  // 2. Render the report table based on selected columns and projectUnits
+  function renderReportTable() {
+    const table = document.querySelector('#reportTable');
+    if (!table) return;
+
+    // Clear existing table content
+    table.innerHTML = '';
+
+    if (!selectedProjectId || !projectUnits || projectUnits.length === 0) {
+        table.innerHTML = '<caption>No data available. Please select a project.</caption>';
+        return;
+    }
+
+    // Determine columns to display
+    let columnsToDisplay;
+    if (reportSelectedColumns.size === 0) {
+        // If nothing selected (shouldn't happen with default logic, but as fallback)
+        columnsToDisplay = reportAvailableColumns;
+    } else {
+        // Filter available columns based on selected keys, preserving order
+        columnsToDisplay = reportAvailableColumns.filter(col => reportSelectedColumns.has(col.key));
+    }
+
+    if (columnsToDisplay.length === 0) {
+        table.innerHTML = '<caption>No columns selected for display.</caption>';
+        return;
+    }
+
+    // --- Build Table ---
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+
+    columnsToDisplay.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col.label;
+        // Apply sticky column style to the first column if it's the display unit code
+        if (col.key === 'unit_code') {
+            th.style.position = 'sticky';
+            th.style.left = '0';
+            th.style.backgroundColor = 'white';
+            th.style.zIndex = '2';
+            th.style.textAlign = 'left';
+            th.style.borderRight = '2px solid #bbb';
+            th.style.width = '150px';
+            th.style.minWidth = '150px';
+            th.style.maxWidth = '150px';
+        }
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    projectUnits.forEach(unit => {
+        const row = document.createElement('tr');
+        columnsToDisplay.forEach(col => {
+            const td = document.createElement('td');
+            let value;
+            // Handle the special 'unit_code' column
+            if (col.key === 'unit_code') {
+                value = formatDisplayUnitCode(unit.unit_code); // Use the formatting function
+            } else {
+                // Handle standard unit fields
+                value = unit[col.key];
+            }
+
+            // Formatting for specific fields
+            if (col.key === 'base_price' && value != null) {
+                const numValue = parseFloat(value);
+                if (!isNaN(numValue)) {
+                    value = numValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+            } else if (col.key === 'internal_area' && value != null) {
+                 const numValue = parseFloat(value);
+                 if (!isNaN(numValue)) {
+                     value = numValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                 }
+            } else if (value == null || value === '') { // Handle null/undefined/empty after potential formatting
+                value = '-'; // Display '-' for null/undefined/empty
+            }
+
+            // Apply sticky column style to the first column cell if it's the display unit code
+            if (col.key === 'unit_code') {
+                td.style.position = 'sticky';
+                td.style.left = '0';
+                td.style.backgroundColor = 'white';
+                td.style.zIndex = '1'; // Below header
+                td.style.textAlign = 'left';
+                td.style.borderRight = '2px solid #bbb';
+                td.style.width = '150px';
+                td.style.minWidth = '150px';
+                td.style.maxWidth = '150px';
+            }
+
+            td.textContent = value;
+            row.appendChild(td);
+        });
+        tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+    // --- End Build Table ---
+  }
+
+  // Add the missing parseNum function at the top of your JavaScript
+  function parseNum(val) {
+      if (val === '' || val === null || val === undefined) return null;
+      const n = Number(String(val).replace(/,/g, ''));
+      return isNaN(n) ? null : n;
+  }
+
+  async function populateCriteriaSection() {
+    const table = document.querySelector('#criteriaTable');
+    if (!table) return;
+
+    // Helpers
+    const fmt0 = (val) => {
+      if (val === '' || val === null || val === undefined) return '';
+      const n = Number(String(val).replace(/,/g, ''));
+      if (isNaN(n)) return '';
+      return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    };
+    const fmt2 = (val) => {
+      if (val === '' || val === null || val === undefined) return '';
+      const n = Number(String(val).replace(/,/g, ''));
+      if (isNaN(n)) return '';
+      return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    };
+    const parseNum = (val) => {
+      if (val === '' || val === null || val === undefined) return null;
+      const n = Number(String(val).replace(/,/g, ''));
+      return isNaN(n) ? null : n;
+    };
+
+    // Reset
+    table.innerHTML = '';
+
+    if (!selectedProjectId) {
+      table.innerHTML = `<caption>No project selected.</caption>`;
+      return;
+    }
+    if (!projectUnits || projectUnits.length === 0) {
+      table.innerHTML = `<caption>No units found for this project.</caption>`;
+      return;
+    }
+
+    // Determine optional unit fields provided by backend
+    const hasCoveredTerrace = projectUnits.some(u => u.hasOwnProperty('covered_terrace'));
+    const terraceFieldName = hasCoveredTerrace ? 'covered_terrace' : null;
+
+    const hasPenthouse = projectUnits.some(u => u.hasOwnProperty('penthouse'));
+    const hasPenthouseArea = projectUnits.some(u => u.hasOwnProperty('penthouse_area'));
+    const penthouseFieldName = hasPenthouse ? 'penthouse' : (hasPenthouseArea ? 'penthouse_area' : null);
+
+    // Check for roof fields
+    const hasRoofArea = projectUnits.some(u => u.hasOwnProperty('roof_area'));
+    const hasRoofTerracesArea = projectUnits.some(u => u.hasOwnProperty('roof_terraces_area'));
+    const roofFieldName = hasRoofArea ? 'roof_area' : (hasRoofTerracesArea ? 'roof_terraces_area' : null);
+
+    // Check for land fields
+    const hasLandArea = projectUnits.some(u => u.hasOwnProperty('land_area'));
+    const hasGardenArea = projectUnits.some(u => u.hasOwnProperty('garden_area'));
+    const landFieldName = hasLandArea ? 'land_area' : (hasGardenArea ? 'garden_area' : null);
+
+    // Aggregate by Unit Model
+    const bag = {};
+    projectUnits.forEach(u => {
+      const model = u.unit_model;
+      if (!model) return;
+
+      if (!bag[model]) {
+        bag[model] = {
+          count: 0,
+          minInternalArea: null,
+          maxInternalArea: null,
+          // PricingCriteria fields from payload
+          bua_price_per_square_meter: u['pricingcriteria__bua_price_per_square_meter'],
+          extra_bua_percentage: u['pricingcriteria__extra_bua_percentage'], // fraction
+          extra_bua_price: u['pricingcriteria__extra_bua_price'],
+          terrace_percentage: u['pricingcriteria__terrace_percentage'],     // fraction
+          terrace_price: u['pricingcriteria__terrace_price'],
+          penthouse_percentage: u['pricingcriteria__penthouse_percentage'], // fraction
+          penthouse_price: u['pricingcriteria__penthouse_price'],
+          extra_penthouse_percentage_per_square_meter: u['pricingcriteria__extra_penthouse_percentage_per_square_meter'], // fraction
+          extra_penthouse_price_per_square_meter: u['pricingcriteria__extra_penthouse_price_per_square_meter'],           // value
+          // Roof fields
+          roof_percentage: u['pricingcriteria__roof_percentage'], // fraction
+          roof_price: u['pricingcriteria__roof_price'],
+          extra_roof_percentage_per_square_meter: u['pricingcriteria__extra_roof_percentage_per_square_meter'], // fraction
+          extra_roof_price_per_square_meter: u['pricingcriteria__extra_roof_price_per_square_meter'],           // value
+          // Land fields
+          land_percentage_per_square_meter: u['pricingcriteria__land_percentage_per_square_meter'], // fraction
+          land_price_per_square_meter: u['pricingcriteria__land_price_per_square_meter'],
+          extra_land_percentage_per_square_meter: u['pricingcriteria__extra_land_percentage_per_square_meter'], // fraction
+          extra_land_price_per_square_meter: u['pricingcriteria__extra_land_price_per_square_meter'],           // value
+          // For Terrace Area average
+          terrace_sum: 0,
+          terrace_cnt: 0,
+          // For Min/Max Penthouse (positive only)
+          min_ph: null,
+          max_ph: null,
+          // For Min/Max Roof (positive only)
+          min_roof: null,
+          max_roof: null,
+          // For Min/Max Land (positive only)
+          min_land: null,
+          max_land: null,
+        };
+      }
+
+      bag[model].count++;
+
+      // Min/Max Internal Area
+      const area = parseFloat(u.internal_area);
+      if (!isNaN(area)) {
+        if (bag[model].minInternalArea === null || area < bag[model].minInternalArea) bag[model].minInternalArea = area;
+        if (bag[model].maxInternalArea === null || area > bag[model].maxInternalArea) bag[model].maxInternalArea = area;
+      }
+
+      // Accumulate terrace areas > 0 (AVERAGEIFS condition)
+      if (terraceFieldName) {
+        const t = parseFloat(u[terraceFieldName]);
+        if (!isNaN(t) && t > 0) {
+          bag[model].terrace_sum += t;
+          bag[model].terrace_cnt += 1;
+        }
+      }
+
+      // Min/Max P.H over positive values
+      if (penthouseFieldName) {
+        const ph = parseFloat(u[penthouseFieldName]);
+        if (!isNaN(ph) && ph > 0) {
+          if (bag[model].min_ph === null || ph < bag[model].min_ph) bag[model].min_ph = ph;
+          if (bag[model].max_ph === null || ph > bag[model].max_ph) bag[model].max_ph = ph;
+        }
+      }
+
+      // Min/Max Roof over positive values
+      if (roofFieldName) {
+        const roof = parseFloat(u[roofFieldName]);
+        if (!isNaN(roof) && roof > 0) {
+          if (bag[model].min_roof === null || roof < bag[model].min_roof) bag[model].min_roof = roof;
+          if (bag[model].max_roof === null || roof > bag[model].max_roof) bag[model].max_roof = roof;
+        }
+      }
+
+      // Min/Max Land over positive values
+      if (landFieldName) {
+        const land = parseFloat(u[landFieldName]);
+        if (!isNaN(land) && land > 0) {
+          if (bag[model].min_land === null || land < bag[model].min_land) bag[model].min_land = land;
+          if (bag[model].max_land === null || land > bag[model].max_land) bag[model].max_land = land;
+        }
+      }
+    });
+
+    const rows = Object.entries(bag).map(([unitModel, d]) => ({
+      unitModel,
+      count: d.count,
+      minInternalArea: d.minInternalArea,
+      maxInternalArea: d.maxInternalArea,
+      buaPricePerSqm: d.bua_price_per_square_meter,
+      extraBuaPercentage: d.extra_bua_percentage,  // fraction
+      extraBuaPrice: d.extra_bua_price,
+      terracePercentage: d.terrace_percentage,     // fraction
+      terracePrice: d.terrace_price,
+      terraceAreaAvg: (d.terrace_cnt > 0 ? (d.terrace_sum / d.terrace_cnt) : null),
+      minPH: d.min_ph,  // may be null
+      maxPH: d.max_ph,  // may be null
+      penthousePercentage: d.penthouse_percentage, // fraction
+      penthousePrice: d.penthouse_price,
+      extraPenthousePctPerM2: d.extra_penthouse_percentage_per_square_meter, // fraction
+      extraPenthousePricePerM2: d.extra_penthouse_price_per_square_meter,    // value
+      // Roof data
+      minRoof: d.min_roof,  // may be null
+      maxRoof: d.max_roof,  // may be null
+      roofPercentage: d.roof_percentage, // fraction
+      roofPrice: d.roof_price,
+      extraRoofPctPerM2: d.extra_roof_percentage_per_square_meter, // fraction
+      extraRoofPricePerM2: d.extra_roof_price_per_square_meter,    // value
+      // Land data
+      minLand: d.min_land,  // may be null
+      maxLand: d.max_land,  // may be null
+      landPercentage: d.land_percentage_per_square_meter, // fraction
+      landPricePerM2: d.land_price_per_square_meter,
+      extraLandPercentage: d.extra_land_percentage_per_square_meter, // fraction
+      extraLandPricePerM2: d.extra_land_price_per_square_meter,    // value
+    })).sort((a, b) => a.unitModel.localeCompare(b.unitModel));
+
+    if (rows.length === 0) {
+      table.innerHTML = `<caption>No criteria data available for units in this project.</caption>`;
+      return;
+    }
+
+    // THEAD
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    const headers = [
+      { label: 'Unit Model', cls: 'baby-blue' },
+      { label: 'No. of Units', cls: 'grey-invert' },
+      { label: 'BUA price/m2', cls: 'baby-blue' },
+      { label: 'Min Internal Area', cls: 'grey-invert' },
+      { label: 'Max BUA', cls: 'grey-invert' },
+      { label: 'Extra BUA %', cls: 'yellow-bg' },
+      { label: 'Extra BUA Price', cls: 'grey-invert' },
+      { label: 'Terrace %', cls: 'yellow-bg' },
+      { label: 'Terrace Price', cls: 'grey-invert' },
+      { label: 'Terrace Area', cls: 'grey-invert' },
+      { label: 'Min P.H', cls: 'grey-invert' },
+      { label: 'Max P.H', cls: 'grey-invert' },
+      { label: 'PH. %', cls: 'yellow-bg' },
+      { label: 'PH. Price', cls: 'grey-invert' },
+      { label: 'Extra P.H % /m2', cls: 'yellow-bg' },
+      { label: 'Extra P.H price /m2', cls: 'grey-invert' },
+      // ROOF HEADERS
+      { label: 'Min Roof Area', cls: 'grey-invert' },
+      { label: 'Max Roof Area', cls: 'grey-invert' },
+      { label: 'Roof %', cls: 'yellow-bg' },
+      { label: 'Roof Price', cls: 'grey-invert' },
+      { label: 'Extra Roof % /m2', cls: 'yellow-bg' },
+      { label: 'Extra Roof price /m2', cls: 'grey-invert' },
+      // LAND HEADERS
+      { label: 'Min Land Area', cls: 'grey-invert' },
+      { label: 'Max Land Area', cls: 'grey-invert' },
+      { label: 'Land Price / m2 %', cls: 'yellow-bg' },
+      { label: 'Land Price / m2', cls: 'grey-invert' },
+      { label: 'Extra Land Price / m2 %', cls: 'yellow-bg' },
+      { label: 'Extra Land Price / m2', cls: 'grey-invert' }
+    ];
+    headers.forEach(h => {
+      const th = document.createElement('th');
+      th.className = h.cls;
+      th.textContent = h.label;
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    table.appendChild(thead);
+
+    // TBODY
+    const tbody = document.createElement('tbody');
+
+    rows.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.dataset.unitModel = item.unitModel;
+
+      // Unit Model
+      const tdModel = document.createElement('td');
+      tdModel.textContent = item.unitModel || '-';
+      tr.appendChild(tdModel);
+
+      // No. of Units
+      const tdCount = document.createElement('td');
+      tdCount.textContent = item.count?.toLocaleString() ?? '0';
+      tr.appendChild(tdCount);
+
+      // BUA price/m2 (editable)
+      const tdBUA = document.createElement('td');
+      {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.inputMode = 'decimal';
+        inp.placeholder = 'Enter price';
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'bua_price_per_square_meter';
+        if (item.buaPricePerSqm !== null && item.buaPricePerSqm !== undefined) {
+          inp.value = fmt2(item.buaPricePerSqm);
+        }
+        inp.addEventListener('input', function () {
+          const raw = this.value.replace(/,/g, '');
+          if (raw === '' || isNaN(Number(raw))) return;
+          this.value = fmt2(raw);
+          this.setSelectionRange(this.value.length, this.value.length);
+        });
+        inp.addEventListener('blur', function () {
+          const n = parseNum(this.value);
+          const toSend = (n === null) ? '' : n;
+          saveCriteriaField(selectedProjectId, item.unitModel, 'bua_price_per_square_meter', toSend);
+          if (n !== null) this.value = fmt2(n);
+        });
+        tdBUA.appendChild(inp);
+        tr.appendChild(tdBUA);
+      }
+
+      // Min Internal Area (no decimals)
+      const tdMin = document.createElement('td');
+      tdMin.textContent = (item.minInternalArea !== null && item.minInternalArea !== undefined)
+        ? Number(item.minInternalArea).toLocaleString(undefined, { maximumFractionDigits: 0 })
+        : '-';
+      tr.appendChild(tdMin);
+
+      // Max BUA (no decimals)
+      const tdMax = document.createElement('td');
+      tdMax.textContent = (item.maxInternalArea !== null && item.maxInternalArea !== undefined)
+        ? Number(item.maxInternalArea).toLocaleString(undefined, { maximumFractionDigits: 0 })
+        : '-';
+      tr.appendChild(tdMax);
+
+      // Extra BUA % (editable, saved as fraction)
+      const tdExtraPct = document.createElement('td');
+      {
+        const wrap = document.createElement('div');
+        wrap.className = 'criteria-input-wrap';
+
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.inputMode = 'decimal';
+        inp.placeholder = 'Enter %';
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'extra_bua_percentage';
+        if (item.extraBuaPercentage !== null && item.extraBuaPercentage !== undefined) {
+          const p = Number(item.extraBuaPercentage) * 100;
+          if (!isNaN(p)) inp.value = p.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        }
+        inp.addEventListener('input', function () {
+          const raw = this.value.replace(/,/g, '');
+          if (raw === '' || isNaN(Number(raw))) return;
+          const n = Number(raw);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+          this.setSelectionRange(this.value.length, this.value.length);
+        });
+        inp.addEventListener('blur', function () {
+          const raw = this.value.replace(/,/g, '');
+          let n = Number(raw);
+          if (isNaN(n)) n = 0;
+          const valueToSave = n / 100; // store fraction
+          saveCriteriaField(selectedProjectId, item.unitModel, 'extra_bua_percentage', valueToSave);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        });
+
+        const suffix = document.createElement('span');
+        suffix.className = 'suffix';
+        suffix.textContent = '%';
+
+        wrap.appendChild(inp);
+        wrap.appendChild(suffix);
+        tdExtraPct.appendChild(wrap);
+        tr.appendChild(tdExtraPct);
+      }
+
+      // Extra BUA Price (editable override)
+      const tdExtraPrice = document.createElement('td');
+      {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.inputMode = 'decimal';
+        // inp.placeholder = 'Auto-calculated';
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'extra_bua_price';
+        if (item.extraBuaPrice !== null && item.extraBuaPrice !== undefined) {
+          inp.value = fmt2(item.extraBuaPrice);
+        }
+        inp.addEventListener('input', function () {
+          const raw = this.value.replace(/,/g, '');
+          if (raw === '' || isNaN(Number(raw))) return;
+          const n = Number(raw);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+          this.setSelectionRange(this.value.length, this.value.length);
+        });
+        inp.addEventListener('blur', function () {
+          const n = parseNum(this.value);
+          const toSend = (n === null) ? '' : n;
+          saveCriteriaField(selectedProjectId, item.unitModel, 'extra_bua_price', toSend);
+          if (n !== null) this.value = fmt2(n);
+        });
+        tdExtraPrice.appendChild(inp);
+        tr.appendChild(tdExtraPrice);
+      }
+
+      // Terrace % (editable, saved as fraction)
+      const tdTerracePct = document.createElement('td');
+      {
+        const wrap = document.createElement('div');
+        wrap.className = 'criteria-input-wrap';
+
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.inputMode = 'decimal';
+        inp.placeholder = 'Enter %';
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'terrace_percentage';
+        if (item.terracePercentage !== null && item.terracePercentage !== undefined) {
+          const p = Number(item.terracePercentage) * 100;
+          if (!isNaN(p)) inp.value = p.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        }
+        inp.addEventListener('input', function () {
+          const raw = this.value.replace(/,/g, '');
+          if (raw === '' || isNaN(Number(raw))) return;
+          const n = Number(raw);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+          this.setSelectionRange(this.value.length, this.value.length);
+        });
+        inp.addEventListener('blur', function () {
+          const raw = this.value.replace(/,/g, '');
+          let n = Number(raw);
+          if (isNaN(n)) n = 0;
+          const valueToSave = n / 100; // store fraction
+          saveCriteriaField(selectedProjectId, item.unitModel, 'terrace_percentage', valueToSave);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        });
+
+        const suffix = document.createElement('span');
+        suffix.className = 'suffix';
+        suffix.textContent = '%';
+
+        wrap.appendChild(inp);
+        wrap.appendChild(suffix);
+        tdTerracePct.appendChild(wrap);
+        tr.appendChild(tdTerracePct);
+      }
+
+      // Terrace Price (read-only, 0 decimals)
+      const tdTerracePrice = document.createElement('td');
+      {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.readOnly = true;
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'terrace_price';
+        if (item.terracePrice !== null && item.terracePrice !== undefined) {
+          inp.value = fmt0(item.terracePrice);
+        } else {
+          inp.value = '';
+        }
+        tdTerracePrice.appendChild(inp);
+        tr.appendChild(tdTerracePrice);
+      }
+
+      // Terrace Area (AVERAGEIFS; read-only; show '-' if none)
+      const tdTerraceArea = document.createElement('td');
+      {
+        const display = (item.terraceAreaAvg === null || item.terraceAreaAvg === undefined)
+          ? '-'
+          : Number(item.terraceAreaAvg).toLocaleString(undefined, { maximumFractionDigits: 0 });
+        tdTerraceArea.textContent = display;
+        tr.appendChild(tdTerraceArea);
+      }
+
+      // Min P.H (read-only)
+      const tdMinPH = document.createElement('td');
+      tdMinPH.textContent = (item.minPH === null || item.minPH === undefined)
+        ? '-'
+        : Number(item.minPH).toLocaleString(undefined, { maximumFractionDigits: 0 });
+      tr.appendChild(tdMinPH);
+
+      // Max P.H (read-only)
+      const tdMaxPH = document.createElement('td');
+      tdMaxPH.textContent = (item.maxPH === null || item.maxPH === undefined)
+        ? '-'
+        : Number(item.maxPH).toLocaleString(undefined, { maximumFractionDigits: 0 });
+      tr.appendChild(tdMaxPH);
+
+      // Penthouse % (editable, saved as fraction)
+      const tdPhPct = document.createElement('td');
+      {
+        const wrap = document.createElement('div');
+        wrap.className = 'criteria-input-wrap';
+
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.inputMode = 'decimal';
+        inp.placeholder = 'Enter %';
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'penthouse_percentage';
+        if (item.penthousePercentage !== null && item.penthousePercentage !== undefined) {
+          const p = Number(item.penthousePercentage) * 100;
+          if (!isNaN(p)) inp.value = p.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        }
+        inp.addEventListener('input', function () {
+          const raw = this.value.replace(/,/g, '');
+          if (raw === '' || isNaN(Number(raw))) return;
+          const n = Number(raw);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+          this.setSelectionRange(this.value.length, this.value.length);
+        });
+        inp.addEventListener('blur', function () {
+          const raw = this.value.replace(/,/g, '');
+          let n = Number(raw);
+          if (isNaN(n)) n = 0;
+          const valueToSave = n / 100; // fraction
+          saveCriteriaField(selectedProjectId, item.unitModel, 'penthouse_percentage', valueToSave);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        });
+
+        const suffix = document.createElement('span');
+        suffix.className = 'suffix';
+        suffix.textContent = '%';
+
+        wrap.appendChild(inp);
+        wrap.appendChild(suffix);
+        tdPhPct.appendChild(wrap);
+        tr.appendChild(tdPhPct);
+      }
+
+      // Penthouse Price (read-only, 0 decimals) with '-' when zero
+      const tdPhPrice = document.createElement('td');
+      {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.readOnly = true;
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'penthouse_price';
+
+        const setDashIfZero0 = (v) => {
+          const n = Number(String(v).replace(/,/g, ''));
+          return (!isFinite(n) || n === 0) ? '-' : n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+        };
+
+        if (item.penthousePrice !== null && item.penthousePrice !== undefined) {
+          inp.value = setDashIfZero0(item.penthousePrice);
+        } else {
+          const bua = parseNum(item.buaPricePerSqm);
+          const phPct = item.penthousePercentage != null ? Number(item.penthousePercentage) : null; // fraction
+          if (item.minPH && item.minPH > 0 && bua != null && phPct != null) {
+            const calc = Math.ceil((bua * phPct) / 10) * 10; // ROUNDUP to nearest 10
+            inp.value = setDashIfZero0(calc);
+          } else {
+            inp.value = '-';
+          }
+        }
+        tdPhPrice.appendChild(inp);
+        tr.appendChild(tdPhPrice);
+      }
+
+      // Extra Penthouse % /m2 (editable, saved as fraction)
+      const tdExtraPhPct = document.createElement('td');
+      {
+        const wrap = document.createElement('div');
+        wrap.className = 'criteria-input-wrap';
+
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.inputMode = 'decimal';
+        inp.placeholder = 'Enter %';
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'extra_penthouse_percentage_per_square_meter';
+        if (item.extraPenthousePctPerM2 !== null && item.extraPenthousePctPerM2 !== undefined) {
+          const p = Number(item.extraPenthousePctPerM2) * 100;
+          if (!isNaN(p)) inp.value = p.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        }
+        inp.addEventListener('input', function () {
+          const raw = this.value.replace(/,/g, '');
+          if (raw === '' || isNaN(Number(raw))) return;
+          const n = Number(raw);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+          this.setSelectionRange(this.value.length, this.value.length);
+        });
+        inp.addEventListener('blur', function () {
+          const raw = this.value.replace(/,/g, '');
+          let n = Number(raw);
+          if (isNaN(n)) n = 0;
+          const valueToSave = n / 100; // store fraction
+          saveCriteriaField(selectedProjectId, item.unitModel, 'extra_penthouse_percentage_per_square_meter', valueToSave);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        });
+
+        const suffix = document.createElement('span');
+        suffix.className = 'suffix';
+        suffix.textContent = '%';
+
+        wrap.appendChild(inp);
+        wrap.appendChild(suffix);
+        tdExtraPhPct.appendChild(wrap);
+        tr.appendChild(tdExtraPhPct);
+      }
+
+      // Extra Penthouse price /m2 (read-only, 2 decimals, '-' when zero)
+      const tdExtraPhPrice = document.createElement('td');
+      {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.readOnly = true;
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'extra_penthouse_price_per_square_meter';
+
+        const setDashIfZero2 = (v) => {
+          const n = Number(String(v).replace(/,/g, ''));
+          return (!isFinite(n) || n === 0) ? '-' : n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        };
+
+        if (item.extraPenthousePricePerM2 !== null && item.extraPenthousePricePerM2 !== undefined) {
+          inp.value = setDashIfZero2(item.extraPenthousePricePerM2);
+        } else {
+          const phPriceCell = tr.querySelector('input[data-field-name="penthouse_price"]');
+          const phPrice = phPriceCell ? parseNum(phPriceCell.value === '-' ? '' : phPriceCell.value) : null;
+          const extraPct = item.extraPenthousePctPerM2 != null ? Number(item.extraPenthousePctPerM2) : null; // fraction
+          if (item.minPH && item.minPH > 0 && phPrice != null && extraPct != null) {
+            const calc = phPrice * extraPct;
+            inp.value = setDashIfZero2(calc);
+          } else {
+            inp.value = '-';
+          }
+        }
+        tdExtraPhPrice.appendChild(inp);
+        tr.appendChild(tdExtraPhPrice);
+      }
+
+      // --- ROOF FIELDS ---
+
+      // Min Roof Area (read-only)
+      const tdMinRoof = document.createElement('td');
+      tdMinRoof.textContent = (item.minRoof === null || item.minRoof === undefined)
+        ? '-'
+        : Number(item.minRoof).toLocaleString(undefined, { maximumFractionDigits: 0 });
+      tr.appendChild(tdMinRoof);
+
+      // Max Roof Area (read-only)
+      const tdMaxRoof = document.createElement('td');
+      tdMaxRoof.textContent = (item.maxRoof === null || item.maxRoof === undefined)
+        ? '-'
+        : Number(item.maxRoof).toLocaleString(undefined, { maximumFractionDigits: 0 });
+      tr.appendChild(tdMaxRoof);
+
+      // Roof % (editable, saved as fraction)
+      const tdRoofPct = document.createElement('td');
+      {
+        const wrap = document.createElement('div');
+        wrap.className = 'criteria-input-wrap';
+
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.inputMode = 'decimal';
+        inp.placeholder = 'Enter %';
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'roof_percentage';
+        if (item.roofPercentage !== null && item.roofPercentage !== undefined) {
+          const p = Number(item.roofPercentage) * 100;
+          if (!isNaN(p)) inp.value = p.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        }
+        inp.addEventListener('input', function () {
+          const raw = this.value.replace(/,/g, '');
+          if (raw === '' || isNaN(Number(raw))) return;
+          const n = Number(raw);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+          this.setSelectionRange(this.value.length, this.value.length);
+        });
+        inp.addEventListener('blur', function () {
+          const raw = this.value.replace(/,/g, '');
+          let n = Number(raw);
+          if (isNaN(n)) n = 0;
+          const valueToSave = n / 100; // fraction
+          saveCriteriaField(selectedProjectId, item.unitModel, 'roof_percentage', valueToSave);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        });
+
+        const suffix = document.createElement('span');
+        suffix.className = 'suffix';
+        suffix.textContent = '%';
+
+        wrap.appendChild(inp);
+        wrap.appendChild(suffix);
+        tdRoofPct.appendChild(wrap);
+        tr.appendChild(tdRoofPct);
+      }
+
+      // Roof Price (read-only, 0 decimals) with '-' when zero
+      const tdRoofPrice = document.createElement('td');
+      {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.readOnly = true;
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'roof_price';
+
+        const setDashIfZero0 = (v) => {
+          const n = Number(String(v).replace(/,/g, ''));
+          return (!isFinite(n) || n === 0) ? '-' : n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+        };
+
+        if (item.roofPrice !== null && item.roofPrice !== undefined) {
+          inp.value = setDashIfZero0(item.roofPrice);
+        } else {
+          const bua = parseNum(item.buaPricePerSqm);
+          const roofPct = item.roofPercentage != null ? Number(item.roofPercentage) : null; // fraction
+          if (item.minRoof && item.minRoof > 0 && bua != null && roofPct != null) {
+            const calc = Math.ceil((bua * roofPct) / 10) * 10; // ROUNDUP to nearest 10
+            inp.value = setDashIfZero0(calc);
+          } else {
+            inp.value = '-';
+          }
+        }
+        tdRoofPrice.appendChild(inp);
+        tr.appendChild(tdRoofPrice);
+      }
+
+      // Extra Roof % /m2 (editable, saved as fraction)
+      const tdExtraRoofPct = document.createElement('td');
+      {
+        const wrap = document.createElement('div');
+        wrap.className = 'criteria-input-wrap';
+
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.inputMode = 'decimal';
+        inp.placeholder = 'Enter %';
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'extra_roof_percentage_per_square_meter';
+        if (item.extraRoofPctPerM2 !== null && item.extraRoofPctPerM2 !== undefined) {
+          const p = Number(item.extraRoofPctPerM2) * 100;
+          if (!isNaN(p)) inp.value = p.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        }
+        inp.addEventListener('input', function () {
+          const raw = this.value.replace(/,/g, '');
+          if (raw === '' || isNaN(Number(raw))) return;
+          const n = Number(raw);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+          this.setSelectionRange(this.value.length, this.value.length);
+        });
+        inp.addEventListener('blur', function () {
+          const raw = this.value.replace(/,/g, '');
+          let n = Number(raw);
+          if (isNaN(n)) n = 0;
+          const valueToSave = n / 100; // store fraction
+          saveCriteriaField(selectedProjectId, item.unitModel, 'extra_roof_percentage_per_square_meter', valueToSave);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        });
+
+        const suffix = document.createElement('span');
+        suffix.className = 'suffix';
+        suffix.textContent = '%';
+
+        wrap.appendChild(inp);
+        wrap.appendChild(suffix);
+        tdExtraRoofPct.appendChild(wrap);
+        tr.appendChild(tdExtraRoofPct);
+      }
+
+      // Extra Roof price /m2 (read-only, 2 decimals, '-' when zero)
+      const tdExtraRoofPrice = document.createElement('td');
+      {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.readOnly = true;
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'extra_roof_price_per_square_meter';
+
+        const setDashIfZero2 = (v) => {
+          const n = Number(String(v).replace(/,/g, ''));
+          return (!isFinite(n) || n === 0) ? '-' : n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        };
+
+        if (item.extraRoofPricePerM2 !== null && item.extraRoofPricePerM2 !== undefined) {
+          inp.value = setDashIfZero2(item.extraRoofPricePerM2);
+        } else {
+          const roofPriceCell = tr.querySelector('input[data-field-name="roof_price"]');
+          const roofPrice = roofPriceCell ? parseNum(roofPriceCell.value === '-' ? '' : roofPriceCell.value) : null;
+          const extraPct = item.extraRoofPctPerM2 != null ? Number(item.extraRoofPctPerM2) : null; // fraction
+          if (item.minRoof && item.minRoof > 0 && roofPrice != null && extraPct != null) {
+            const calc = roofPrice * extraPct;
+            inp.value = setDashIfZero2(calc);
+          } else {
+            inp.value = '-';
+          }
+        }
+        tdExtraRoofPrice.appendChild(inp);
+        tr.appendChild(tdExtraRoofPrice);
+      }
+
+      // --- LAND FIELDS ---
+
+      // Min Land Area (read-only)
+      const tdMinLand = document.createElement('td');
+      tdMinLand.textContent = (item.minLand === null || item.minLand === undefined)
+        ? '-'
+        : Number(item.minLand).toLocaleString(undefined, { maximumFractionDigits: 0 });
+      tr.appendChild(tdMinLand);
+
+      // Max Land Area (read-only)
+      const tdMaxLand = document.createElement('td');
+      tdMaxLand.textContent = (item.maxLand === null || item.maxLand === undefined)
+        ? '-'
+        : Number(item.maxLand).toLocaleString(undefined, { maximumFractionDigits: 0 });
+      tr.appendChild(tdMaxLand);
+
+      // Land Price / m2 % (editable, saved as fraction)
+      const tdLandPct = document.createElement('td');
+      {
+        const wrap = document.createElement('div');
+        wrap.className = 'criteria-input-wrap';
+
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.inputMode = 'decimal';
+        inp.placeholder = 'Enter %';
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'land_percentage_per_square_meter';
+        if (item.landPercentage !== null && item.landPercentage !== undefined) {
+          const p = Number(item.landPercentage) * 100;
+          if (!isNaN(p)) inp.value = p.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        }
+        inp.addEventListener('input', function () {
+          const raw = this.value.replace(/,/g, '');
+          if (raw === '' || isNaN(Number(raw))) return;
+          const n = Number(raw);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+          this.setSelectionRange(this.value.length, this.value.length);
+        });
+        inp.addEventListener('blur', function () {
+          const raw = this.value.replace(/,/g, '');
+          let n = Number(raw);
+          if (isNaN(n)) n = 0;
+          const valueToSave = n / 100; // fraction
+          saveCriteriaField(selectedProjectId, item.unitModel, 'land_percentage_per_square_meter', valueToSave);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        });
+
+        const suffix = document.createElement('span');
+        suffix.className = 'suffix';
+        suffix.textContent = '%';
+
+        wrap.appendChild(inp);
+        wrap.appendChild(suffix);
+        tdLandPct.appendChild(wrap);
+        tr.appendChild(tdLandPct);
+      }
+
+      // Land Price / m2 (read-only, 0 decimals)
+      const tdLandPrice = document.createElement('td');
+      {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.readOnly = true;
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'land_price_per_square_meter';
+
+        if (item.landPricePerM2 !== null && item.landPricePerM2 !== undefined) {
+          inp.value = fmt0(item.landPricePerM2);
+        } else {
+          const bua = parseNum(item.buaPricePerSqm);
+          const landPct = item.landPercentage != null ? Number(item.landPercentage) : null; // fraction
+          if (bua != null && landPct != null) {
+            const calc = Math.ceil((bua * landPct) / 10) * 10; // ROUNDUP to nearest 10
+            inp.value = fmt0(calc);
+          } else {
+            inp.value = '';
+          }
+        }
+        tdLandPrice.appendChild(inp);
+        tr.appendChild(tdLandPrice);
+      }
+
+      // Extra Land Price / m2 % (editable, saved as fraction)
+      const tdExtraLandPct = document.createElement('td');
+      {
+        const wrap = document.createElement('div');
+        wrap.className = 'criteria-input-wrap';
+
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.inputMode = 'decimal';
+        inp.placeholder = 'Enter %';
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'extra_land_percentage_per_square_meter';
+        if (item.extraLandPercentage !== null && item.extraLandPercentage !== undefined) {
+          const p = Number(item.extraLandPercentage) * 100;
+          if (!isNaN(p)) inp.value = p.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        }
+        inp.addEventListener('input', function () {
+          const raw = this.value.replace(/,/g, '');
+          if (raw === '' || isNaN(Number(raw))) return;
+          const n = Number(raw);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+          this.setSelectionRange(this.value.length, this.value.length);
+        });
+        inp.addEventListener('blur', function () {
+          const raw = this.value.replace(/,/g, '');
+          let n = Number(raw);
+          if (isNaN(n)) n = 0;
+          const valueToSave = n / 100; // store fraction
+          saveCriteriaField(selectedProjectId, item.unitModel, 'extra_land_percentage_per_square_meter', valueToSave);
+          this.value = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        });
+
+        const suffix = document.createElement('span');
+        suffix.className = 'suffix';
+        suffix.textContent = '%';
+
+        wrap.appendChild(inp);
+        wrap.appendChild(suffix);
+        tdExtraLandPct.appendChild(wrap);
+        tr.appendChild(tdExtraLandPct);
+      }
+
+      // Extra Land Price / m2 (read-only, 2 decimals)
+      const tdExtraLandPrice = document.createElement('td');
+      {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.readOnly = true;
+        inp.className = 'criteria-input';
+        inp.dataset.fieldName = 'extra_land_price_per_square_meter';
+
+        if (item.extraLandPricePerM2 !== null && item.extraLandPricePerM2 !== undefined) {
+          inp.value = fmt2(item.extraLandPricePerM2);
+        } else {
+          const landPriceCell = tr.querySelector('input[data-field-name="land_price_per_square_meter"]');
+          const landPrice = landPriceCell ? parseNum(landPriceCell.value === '-' ? '' : landPriceCell.value) : null;
+          const extraPct = item.extraLandPercentage != null ? Number(item.extraLandPercentage) : null; // fraction
+          if (landPrice != null && extraPct != null) {
+            const calc = landPrice * extraPct;
+            inp.value = fmt2(calc);
+          } else {
+            inp.value = '';
+          }
+        }
+        tdExtraLandPrice.appendChild(inp);
+        tr.appendChild(tdExtraLandPrice);
+      }
+
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+  }
+  
+  function saveCriteriaField(projectId, unitModel, fieldName, rawValue) {
+    if (!projectId || !unitModel || !fieldName) {
+        console.error("Missing data for saving criteria field.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('project_id', projectId);
+    formData.append('unit_model', unitModel);
+    formData.append('field_name', fieldName);
+    formData.append('field_value', rawValue);
+
+    fetch('{% url "save_pricing_criteria" %}', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => {
+        if (!r.ok) throw new Error('Network response was not ok');
+        return r.json();
+    })
+    .then(data => {
+        if (!data.success) {
+            console.error("Save criteria error:", data.error);
+            alert("Error saving criteria: " + data.error);
+            return;
+        }
+
+        const row = document.querySelector(`#criteriaTable tr[data-unit-model="${CSS.escape(unitModel)}"]`);
+        if (!row) return;
+
+        const fmt0 = (v) => {
+            if (v === null || v === undefined || v === '') return '';
+            const n = Number(String(v).replace(/,/g, ''));
+            return isNaN(n) ? '' : n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+        };
+        const fmt2 = (v) => {
+            if (v === null || v === undefined || v === '') return '';
+            const n = Number(String(v).replace(/,/g, ''));
+            return isNaN(n) ? '' : n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        };
+        const dashIfZero0 = (v) => {
+            const n = Number(String(v).replace(/,/g, ''));
+            return (!isFinite(n) || n === 0) ? '-' : n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+        };
+        const dashIfZero2 = (v) => {
+            const n = Number(String(v).replace(/,/g, ''));
+            return (!isFinite(n) || n === 0) ? '-' : n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        };
+
+        // Extra BUA Price (if recalculated/returned)
+        if (data.extra_bua_price !== undefined && data.extra_bua_price !== null) {
+            const inp = row.querySelector('input[data-field-name="extra_bua_price"]');
+            if (inp) inp.value = fmt2(data.extra_bua_price);
+        }
+
+        // Terrace Price (if recalculated/returned)
+        if (data.terrace_price !== undefined && data.terrace_price !== null) {
+            const inp = row.querySelector('input[data-field-name="terrace_price"]');
+            if (inp) inp.value = fmt0(data.terrace_price);
+        }
+
+        // Penthouse Price (if recalculated/returned) with '-'
+        if (data.penthouse_price !== undefined && data.penthouse_price !== null) {
+            const inp = row.querySelector('input[data-field-name="penthouse_price"]');
+            if (inp) inp.value = dashIfZero0(data.penthouse_price);
+        }
+
+        // Extra Penthouse price /m2 (if recalculated/returned) with '-'
+        if (data.extra_penthouse_price_per_square_meter !== undefined &&
+            data.extra_penthouse_price_per_square_meter !== null) {
+            const inp = row.querySelector('input[data-field-name="extra_penthouse_price_per_square_meter"]');
+            if (inp) inp.value = dashIfZero2(data.extra_penthouse_price_per_square_meter);
+        }
+
+        // Roof Price (if recalculated/returned) with '-'
+        if (data.roof_price !== undefined && data.roof_price !== null) {
+            const inp = row.querySelector('input[data-field-name="roof_price"]');
+            if (inp) inp.value = dashIfZero0(data.roof_price);
+            
+            // When roof price changes, it may affect extra roof price
+            const extraRoofPctInp = row.querySelector('input[data-field-name="extra_roof_percentage_per_square_meter"]');
+            if (extraRoofPctInp && extraRoofPctInp.value) {
+                const roofPrice = parseFloat(data.roof_price) || 0;
+                const extraRoofPct = parseFloat(extraRoofPctInp.value.replace(/,/g, '')) / 100;
+                if (roofPrice > 0 && !isNaN(extraRoofPct)) {
+                    const extraRoofPrice = roofPrice * extraRoofPct;
+                    const extraRoofPriceInp = row.querySelector('input[data-field-name="extra_roof_price_per_square_meter"]');
+                    if (extraRoofPriceInp) {
+                        extraRoofPriceInp.value = dashIfZero2(extraRoofPrice);
+                    }
+                }
+            }
+        }
+
+        // Extra Roof price /m2 (if recalculated/returned) with '-'
+        if (data.extra_roof_price_per_square_meter !== undefined &&
+            data.extra_roof_price_per_square_meter !== null) {
+            const inp = row.querySelector('input[data-field-name="extra_roof_price_per_square_meter"]');
+            if (inp) inp.value = dashIfZero2(data.extra_roof_price_per_square_meter);
+        }
+
+        // Land Price / m2 (if recalculated/returned)
+        if (data.land_price_per_square_meter !== undefined && data.land_price_per_square_meter !== null) {
+            const inp = row.querySelector('input[data-field-name="land_price_per_square_meter"]');
+            if (inp) inp.value = fmt0(data.land_price_per_square_meter);
+            
+            // When land price changes, it may affect extra land price
+            const extraLandPctInp = row.querySelector('input[data-field-name="extra_land_percentage_per_square_meter"]');
+            if (extraLandPctInp && extraLandPctInp.value) {
+                const landPrice = parseFloat(data.land_price_per_square_meter) || 0;
+                const extraLandPct = parseFloat(extraLandPctInp.value.replace(/,/g, '')) / 100;
+                if (!isNaN(extraLandPct)) {
+                    const extraLandPrice = landPrice * extraLandPct;
+                    const extraLandPriceInp = row.querySelector('input[data-field-name="extra_land_price_per_square_meter"]');
+                    if (extraLandPriceInp) {
+                        extraLandPriceInp.value = fmt2(extraLandPrice);
+                    }
+                }
+            }
+        }
+
+        // Extra Land Price / m2 (if recalculated/returned)
+        if (data.extra_land_price_per_square_meter !== undefined && data.extra_land_price_per_square_meter !== null) {
+            const inp = row.querySelector('input[data-field-name="extra_land_price_per_square_meter"]');
+            if (inp) inp.value = fmt2(data.extra_land_price_per_square_meter);
+        }
+
+        // Also handle cases where BUA price changes (affects multiple calculated fields)
+        if (fieldName === 'bua_price_per_square_meter') {
+            // Update all dependent fields that might not be returned by the server
+            const buaPrice = parseNum(rawValue);
+            
+            // Get current percentages for local recalculation
+            const terracePctInp = row.querySelector('input[data-field-name="terrace_percentage"]');
+            const phPctInp = row.querySelector('input[data-field-name="penthouse_percentage"]');
+            const roofPctInp = row.querySelector('input[data-field-name="roof_percentage"]');
+            const landPctInp = row.querySelector('input[data-field-name="land_percentage_per_square_meter"]');
+            
+            // Recalculate Terrace Price locally
+            if (terracePctInp && terracePctInp.value && buaPrice !== null) {
+                const terracePct = parseFloat(terracePctInp.value.replace(/,/g, '')) / 100;
+                if (!isNaN(terracePct)) {
+                    const terracePrice = Math.ceil((buaPrice * terracePct) / 10) * 10;
+                    const terracePriceInp = row.querySelector('input[data-field-name="terrace_price"]');
+                    if (terracePriceInp) terracePriceInp.value = fmt0(terracePrice);
+                }
+            }
+            
+            // Recalculate Penthouse Price locally (if minPH > 0)
+            const minPHCell = Array.from(row.cells).find(cell => cell.textContent !== '-' && cell.textContent !== '');
+            const hasPositivePH = minPHCell && parseFloat(minPHCell.textContent.replace(/,/g, '')) > 0;
+            
+            if (phPctInp && phPctInp.value && buaPrice !== null && hasPositivePH) {
+                const phPct = parseFloat(phPctInp.value.replace(/,/g, '')) / 100;
+                if (!isNaN(phPct)) {
+                    const phPrice = Math.ceil((buaPrice * phPct) / 10) * 10;
+                    const phPriceInp = row.querySelector('input[data-field-name="penthouse_price"]');
+                    if (phPriceInp) phPriceInp.value = dashIfZero0(phPrice);
+                    
+                    // Also update extra penthouse price
+                    const extraPhPctInp = row.querySelector('input[data-field-name="extra_penthouse_percentage_per_square_meter"]');
+                    if (extraPhPctInp && extraPhPctInp.value) {
+                        const extraPhPct = parseFloat(extraPhPctInp.value.replace(/,/g, '')) / 100;
+                        const extraPhPrice = phPrice * extraPhPct;
+                        const extraPhPriceInp = row.querySelector('input[data-field-name="extra_penthouse_price_per_square_meter"]');
+                        if (extraPhPriceInp) extraPhPriceInp.value = dashIfZero2(extraPhPrice);
+                    }
+                }
+            }
+            
+            // Recalculate Roof Price locally (if minRoof > 0)
+            const minRoofCell = Array.from(row.cells).find((cell, index) => {
+                // Find the Min Roof Area cell (17th cell in the row, 0-based index 16)
+                return index === 16 && cell.textContent !== '-' && cell.textContent !== '';
+            });
+            const hasPositiveRoof = minRoofCell && parseFloat(minRoofCell.textContent.replace(/,/g, '')) > 0;
+            
+            if (roofPctInp && roofPctInp.value && buaPrice !== null && hasPositiveRoof) {
+                const roofPct = parseFloat(roofPctInp.value.replace(/,/g, '')) / 100;
+                if (!isNaN(roofPct)) {
+                    const roofPrice = Math.ceil((buaPrice * roofPct) / 10) * 10;
+                    const roofPriceInp = row.querySelector('input[data-field-name="roof_price"]');
+                    if (roofPriceInp) roofPriceInp.value = dashIfZero0(roofPrice);
+                    
+                    // Also update extra roof price
+                    const extraRoofPctInp = row.querySelector('input[data-field-name="extra_roof_percentage_per_square_meter"]');
+                    if (extraRoofPctInp && extraRoofPctInp.value) {
+                        const extraRoofPct = parseFloat(extraRoofPctInp.value.replace(/,/g, '')) / 100;
+                        const extraRoofPrice = roofPrice * extraRoofPct;
+                        const extraRoofPriceInp = row.querySelector('input[data-field-name="extra_roof_price_per_square_meter"]');
+                        if (extraRoofPriceInp) extraRoofPriceInp.value = dashIfZero2(extraRoofPrice);
+                    }
+                }
+            }
+            
+            // Recalculate Land Price locally
+            if (landPctInp && landPctInp.value && buaPrice !== null) {
+                const landPct = parseFloat(landPctInp.value.replace(/,/g, '')) / 100;
+                if (!isNaN(landPct)) {
+                    const landPrice = Math.ceil((buaPrice * landPct) / 10) * 10;
+                    const landPriceInp = row.querySelector('input[data-field-name="land_price_per_square_meter"]');
+                    if (landPriceInp) landPriceInp.value = fmt0(landPrice);
+                    
+                    // Also update extra land price
+                    const extraLandPctInp = row.querySelector('input[data-field-name="extra_land_percentage_per_square_meter"]');
+                    if (extraLandPctInp && extraLandPctInp.value) {
+                        const extraLandPct = parseFloat(extraLandPctInp.value.replace(/,/g, '')) / 100;
+                        const extraLandPrice = landPrice * extraLandPct;
+                        const extraLandPriceInp = row.querySelector('input[data-field-name="extra_land_price_per_square_meter"]');
+                        if (extraLandPriceInp) extraLandPriceInp.value = fmt2(extraLandPrice);
+                    }
+                }
+            }
+        }
+
+        // Show success message for user feedback
+        // // console.log(`Successfully saved ${fieldName} for ${unitModel}`);
+        
+    })
+    .catch(err => {
+        console.error('Error saving criteria field:', err);
+        alert('An error occurred while saving the criteria.');
+    });
+  }
+
+
+  function saveSubgroupSelection(fullUnitCode, groupName, selectElement) {
+      const selectedOption = selectElement.options[selectElement.selectedIndex];
+      const selectedSubgroupName = selectedOption ? selectedOption.textContent.trim() : '';
+      const valueToSend = (selectedOption && selectedOption.value !== '') ? selectedSubgroupName : '';
+
+      const formData = new FormData();
+      formData.append('unit_code', fullUnitCode);
+      formData.append('group_name', groupName);
+      formData.append('selected_subgroup_name', valueToSend);
+
+      fetch('{% url "save_unit_premium_view" %}', {
+          method: 'POST',
+          body: formData,
+          headers: {
+              'X-CSRFToken': getCookie('csrftoken')
+          }
+      })
+      .then(response => {
+          if (!response.ok) {
+              throw new Error('Network response was not ok');
+          }
+          return response.json();
+      })
+      .then(data => {
+          if (data.success) {
+              const displayCode = fullUnitCode.split('_')[0];
+              if (displayCode) {
+                  const row = selectElement.closest('tr');
+                  if (row) {
+                       // Find the unit object to pass base_price
+                      const unitObj = projectUnits.find(u => u.unit_code === fullUnitCode);
+                      const basePrice = unitObj ? unitObj.base_price : null;
+                      console.log(basePrice)
+                      calculateAndDisplayTotals(row, displayCode, basePrice);
+                  }
+              }
+          } else {
+              alert("Error saving selection: " + data.error);
+          }
+      })
+      .catch(error => {
+          console.error('Error saving subgroup selection:', error);
+          alert('An error occurred while saving the selection.');
+      });
+  }
+
+  function calculateAndDisplayTotals(rowElement, unitDisplayCode, basePrice) {
+    if (!rowElement || !unitDisplayCode) return;
+
+    let totalPremiumPercent = 0;
+
+    dynamicGroupNames.forEach(groupName => {
+        const processedUnitCodePart = unitDisplayCode.replace(/\s+/g, '_');
+        const processedGroupNamePart = groupName.replace(/\s+/g, '_');
+        const selectId = `subgroup-select-${processedUnitCodePart}-${processedGroupNamePart}`;
+        const selectElement = document.getElementById(selectId);
+
+        if (selectElement) {
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            if (selectedOption && selectedOption.value !== '') {
+                const subgroupsForThisGroup = projectSubgroupsData[groupName] || [];
+                let matchedSubgroup = null;
+
+                if (selectedOption.value) {
+                    matchedSubgroup = subgroupsForThisGroup.find(
+                        sg => String(sg.id) === String(selectedOption.value)
+                    );
+                }
+
+                if (!matchedSubgroup && selectedOption.textContent) {
+                    const selectedOptionText = selectedOption.textContent.trim();
+                    matchedSubgroup = subgroupsForThisGroup.find(
+                        sg => sg.name === selectedOptionText
+                    );
+                }
+
+                if (matchedSubgroup) {
+                    const subgroupValueRaw = matchedSubgroup.value;
+                    if (subgroupValueRaw !== undefined && subgroupValueRaw !== null) {
+                        const parsedValue = parseFloat(subgroupValueRaw);
+                        if (!isNaN(parsedValue)) {
+                            totalPremiumPercent += parsedValue;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    const totalPremiumPercentCell = rowElement.cells[rowElement.cells.length - 2];
+    if (totalPremiumPercentCell) {
+        totalPremiumPercentCell.innerHTML = '';
+        const valueSpan = document.createElement('span');
+        valueSpan.style.fontSize = '15px';
+
+        if (totalPremiumPercent === 0) {
+            valueSpan.textContent = '-';
+        } else {
+            valueSpan.textContent = `${totalPremiumPercent.toFixed(2)}%`;
+        }
+        totalPremiumPercentCell.appendChild(valueSpan);
+    }
+
+    const totalPremiumValueCell = rowElement.cells[rowElement.cells.length - 1];
+    if (totalPremiumValueCell) {
+        totalPremiumValueCell.innerHTML = '';
+        const valueSpan = document.createElement('span');
+        valueSpan.style.fontSize = '15px';
+
+        let totalPremiumValue = 0;
+        if (totalPremiumPercent === 0 || basePrice === null || basePrice === undefined) {
+            valueSpan.textContent = '-';
+        } else {
+            const basePriceFloat = parseFloat(basePrice);
+            if (isNaN(basePriceFloat)) {
+                valueSpan.textContent = 'Invalid Base Price';
+            } else {
+                totalPremiumValue = (totalPremiumPercent / 100) * basePriceFloat;
+                // Format as plain number without decimals and currency sign
+                valueSpan.textContent = totalPremiumValue.toLocaleString(undefined, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                });
+            }
+        }
+        totalPremiumValueCell.appendChild(valueSpan);
+
+        // NEW: Save premium totals to database
+        const fullUnitCode = projectUnits.find(u => {
+            const displayCode = formatDisplayUnitCode(u.unit_code);
+            return displayCode === unitDisplayCode;
+        })?.unit_code;
+
+        if (fullUnitCode) {
+            scheduleSavePremiumTotals(
+                fullUnitCode, 
+                totalPremiumPercent === 0 ? '0' : totalPremiumPercent.toFixed(2),
+                totalPremiumValue === 0 ? '0' : totalPremiumValue.toFixed(2)
+            );
+        }
+    }
+  }
+
+  function toggleFilterDropdown(event) {
+      event.stopPropagation();
+
+      if (unitFilterDropdown) {
+          document.body.removeChild(unitFilterDropdown);
+          unitFilterDropdown = null;
+          return;
+      }
+
+      unitFilterDropdown = document.createElement('div');
+      unitFilterDropdown.className = 'filter-dropdown';
+
+      const searchInput = document.createElement('input');
+      searchInput.type = 'text';
+      searchInput.placeholder = 'Search unit codes...';
+      searchInput.oninput = function() {
+          filterUnitOptions(this.value);
+      };
+
+      const selectAllBtn = document.createElement('button');
+      selectAllBtn.textContent = 'Select All';
+      selectAllBtn.onclick = function() {
+          selectAllUnits();
+      };
+
+      const unselectAllBtn = document.createElement('button');
+      unselectAllBtn.textContent = 'Unselect All';
+      unselectAllBtn.onclick = function() {
+          unselectAllUnits();
+      };
+
+      const optionsContainer = document.createElement('div');
+      optionsContainer.id = 'filterOptions';
+
+      unitFilterDropdown.appendChild(searchInput);
+      unitFilterDropdown.appendChild(selectAllBtn);
+      unitFilterDropdown.appendChild(unselectAllBtn);
+      unitFilterDropdown.appendChild(optionsContainer);
+
+      document.body.appendChild(unitFilterDropdown);
+
+      const unitCodeHeader = document.querySelector('#inventoryTable th:first-child');
+      const rect = unitCodeHeader.getBoundingClientRect();
+      unitFilterDropdown.style.position = 'fixed';
+      unitFilterDropdown.style.top = (rect.bottom + window.scrollY) + 'px';
+      unitFilterDropdown.style.left = (rect.left + window.scrollX) + 'px';
+
+      populateFilterOptions();
+
+      document.addEventListener('click', function closeFilter(e) {
+          if (!unitFilterDropdown.contains(e.target) && e.target !== unitCodeHeader) {
+              document.body.removeChild(unitFilterDropdown);
+              unitFilterDropdown = null;
+              document.removeEventListener('click', closeFilter);
+          }
+      });
+  }
+
+  function populateFilterOptions() {
+      const optionsContainer = document.getElementById('filterOptions');
+      optionsContainer.innerHTML = '';
+
+      const uniqueUnitCodes = [...new Set(projectUnits.map(unit => {
+          const fullUnitCode = unit.unit_code || '-';
+          let displayCode = fullUnitCode;
+          if (displayCode !== '-') {
+              const lastUnderscoreIndex = displayCode.lastIndexOf('_');
+              if (lastUnderscoreIndex > 0 && lastUnderscoreIndex < displayCode.length - 1) {
+                  displayCode = displayCode.substring(0, lastUnderscoreIndex);
+              }
+          }
+          return displayCode;
+      }))];
+
+      uniqueUnitCodes.forEach(code => {
+          const label = document.createElement('label');
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = code;
+          checkbox.checked = filteredUnitCodes.size === 0 || !filteredUnitCodes.has(code); // Invert logic for display
+          checkbox.onchange = function() {
+              if (this.checked) {
+                  filteredUnitCodes.delete(code); // Checked means show -> remove from filtered set
+              } else {
+                  filteredUnitCodes.add(code); // Unchecked means hide -> add to filtered set
+              }
+              applyUnitFilter();
+          };
+
+          label.appendChild(checkbox);
+          label.appendChild(document.createTextNode(code));
+          optionsContainer.appendChild(label);
+      });
+  }
+
+  function filterUnitOptions(searchTerm) {
+      const options = document.querySelectorAll('#filterOptions label');
+      options.forEach(option => {
+          const text = option.textContent.toLowerCase();
+          option.style.display = text.includes(searchTerm.toLowerCase()) ? 'block' : 'none';
+      });
+  }
+
+  function selectAllUnits() {
+      const checkboxes = document.querySelectorAll('#filterOptions input[type="checkbox"]');
+      checkboxes.forEach(checkbox => {
+          checkbox.checked = true;
+          filteredUnitCodes.delete(checkbox.value); // Show all -> clear filtered set
+      });
+      applyUnitFilter();
+  }
+
+  function unselectAllUnits() {
+      const checkboxes = document.querySelectorAll('#filterOptions input[type="checkbox"]');
+      const uniqueUnitCodes = [...new Set(projectUnits.map(unit => {
+          const fullUnitCode = unit.unit_code || '-';
+          let displayCode = fullUnitCode;
+          if (displayCode !== '-') {
+              const lastUnderscoreIndex = displayCode.lastIndexOf('_');
+              if (lastUnderscoreIndex > 0 && lastUnderscoreIndex < displayCode.length - 1) {
+                  displayCode = displayCode.substring(0, lastUnderscoreIndex);
+              }
+          }
+          return displayCode;
+      }))];
+      checkboxes.forEach(checkbox => {
+          checkbox.checked = false;
+          filteredUnitCodes.add(checkbox.value); // Hide all -> add all to filtered set
+      });
+      applyUnitFilter();
+  }
+
+  function applyUnitFilter() {
+      populateInventoryTable();
+  }
+
+  function debugProjectUnits() {
+    // console.log('=== DEBUG projectUnits ===');
+    // console.log(`Total units: ${projectUnits.length}`);
+    
+    // Show unique unit models
+    const uniqueModels = [...new Set(projectUnits.map(u => u.unit_model))];
+    // console.log('Unique unit models:', uniqueModels);
+    
+    // Show what criteria fields are available
+    if (projectUnits.length > 0) {
+        const sampleUnit = projectUnits[0];
+        const criteriaFields = Object.keys(sampleUnit).filter(key => key.startsWith('pricingcriteria__'));
+        // console.log('Available criteria fields in first unit:', criteriaFields);
+        
+        // Show values for land-related criteria fields
+        criteriaFields.forEach(field => {
+            if (field.includes('land')) {
+                // console.log(`${field}: ${sampleUnit[field]}`);
+            }
+        });
+    }
+    // console.log('=== END DEBUG ===');
+  }
+
+  function debugProjectUnits() {
+    // console.log('=== DEBUG projectUnits ===');
+    // console.log(`Total units: ${projectUnits.length}`);
+    
+    // Show unique unit models
+    const uniqueModels = [...new Set(projectUnits.map(u => u.unit_model))];
+    // console.log('Unique unit models:', uniqueModels);
+    
+    // Show what criteria fields are available
+    if (projectUnits.length > 0) {
+        const sampleUnit = projectUnits[0];
+        const criteriaFields = Object.keys(sampleUnit).filter(key => key.startsWith('pricingcriteria__'));
+        // console.log('Available criteria fields in first unit:', criteriaFields);
+        
+        // Show values for land-related criteria fields
+        criteriaFields.forEach(field => {
+            if (field.includes('land')) {
+                // console.log(`${field}: ${sampleUnit[field]}`);
+            }
+        });
+    }
+    // console.log('=== END DEBUG ===');
+  }
+
+  // Helper function to calculate dynamic min/max values for a unit model and field
+  function getDynamicMinMaxForUnitModel(unitModel, fieldName) {
+      const unitsOfSameModel = projectUnits.filter(u => u.unit_model === unitModel && u[fieldName] != null);
+      
+      if (unitsOfSameModel.length === 0) {
+          return { min: 0, max: 0 };
+      }
+      
+      let min = Number.MAX_SAFE_INTEGER;
+      let max = 0;
+      
+      unitsOfSameModel.forEach(unit => {
+          const value = parseFloat(unit[fieldName]) || 0;
+          if (value > 0) {
+              min = Math.min(min, value);
+              max = Math.max(max, value);
+          }
+      });
+      
+      // If no positive values found, return defaults
+      if (min === Number.MAX_SAFE_INTEGER) {
+          return { min: 0, max: 0 };
+      }
+      
+      return { min, max };
+  }
+
+  function calculateLandBasePrice(unit) {
+      try {
+          // Get unit's land and garden areas
+          const landArea = parseFloat(unit.land_area) || 0;
+          const gardenArea = parseFloat(unit.garden_area) || 0;
+          const totalLandArea = landArea + gardenArea;
+          
+          // Check for zero denominator - return 0 if no land area
+          if (totalLandArea <= 0) {
+              return 0;
+          }
+          
+          // Find pricing criteria for this unit's model
+          const unitModel = unit.unit_model;
+          if (!unitModel) return 0;
+          
+          // Get criteria data
+          const criteriaUnit = projectUnits.find(u => {
+              if (u.unit_model !== unitModel) return false;
+              const hasCriteria = Object.keys(u).some(key => 
+                  key.startsWith('pricingcriteria__') && u[key] !== null && u[key] !== undefined
+              );
+              return hasCriteria;
+          });
+          
+          if (!criteriaUnit) {
+              return 0;
+          }
+          
+          // Extract criteria values with fallbacks
+          const landPricePerM2 = parseFloat(criteriaUnit['pricingcriteria__land_price_per_square_meter']) || 0;
+          const extraLandPricePerM2 = parseFloat(criteriaUnit['pricingcriteria__extra_land_price_per_square_meter']) || 0;
+          
+          // Get dynamic min land area for this unit model
+          const landMinMax = getDynamicMinMaxForUnitModel(unitModel, 'land_area');
+          const minLandArea = landMinMax.min > 0 ? landMinMax.min : 100; // Fallback to 100 if no min found
+          
+          // Calculate the formula components
+          const baseCost = minLandArea * landPricePerM2;
+          const extraLandArea = Math.max(0, totalLandArea - minLandArea);
+          const extraCost = extraLandArea * extraLandPricePerM2;
+          const totalCost = baseCost + extraCost;
+          
+          // Final calculation with zero division check
+          const landBasePrice = totalLandArea > 0 ? totalCost / totalLandArea : 0;
+          
+          return isNaN(landBasePrice) ? 0 : landBasePrice;
+          
+      } catch (error) {
+          console.error('Error calculating Land Base_price for unit:', unit.unit_code, error);
+          return 0;
+      }
+  }
+
+  function calculateNetBuaBasePrice(unit) {
+      try {
+          // Get unit's internal area and common areas
+          const internalArea = parseFloat(unit.internal_area) || 0;
+          const commonArea = parseFloat(unit.common_area) || 0;
+          const totalBuaArea = internalArea + commonArea;
+          
+          // Check for zero denominator
+          if (totalBuaArea <= 0) {
+              return 0;
+          }
+          
+          // Find pricing criteria for this unit's model
+          const unitModel = unit.unit_model;
+          if (!unitModel) return 0;
+          
+          // Get criteria data
+          const criteriaUnit = projectUnits.find(u => {
+              if (u.unit_model !== unitModel) return false;
+              const hasCriteria = Object.keys(u).some(key => 
+                  key.startsWith('pricingcriteria__') && u[key] !== null && u[key] !== undefined
+              );
+              return hasCriteria;
+          });
+          
+          if (!criteriaUnit) {
+              return 0;
+          }
+          
+          // Extract criteria values with fallbacks
+          const buaPricePerM2 = parseFloat(criteriaUnit['pricingcriteria__bua_price_per_square_meter']) || 0;
+          const extraBuaPrice = parseFloat(criteriaUnit['pricingcriteria__extra_bua_price']) || 0;
+          
+          // Get dynamic min internal area for this unit model
+          const internalMinMax = getDynamicMinMaxForUnitModel(unitModel, 'internal_area');
+          const minInternalArea = internalMinMax.min > 0 ? internalMinMax.min : 80; // Fallback to 80 if no min found
+          
+          // console.log(`Dynamic minInternalArea = ${minInternalArea} for unit model: ${unitModel}`);
+          
+          // Calculate the formula components
+          const baseCost = minInternalArea * buaPricePerM2;
+          const extraBuaArea = Math.max(0, totalBuaArea - minInternalArea);
+          const extraCost = extraBuaArea * extraBuaPrice;
+          const totalCost = baseCost + extraCost;
+          
+          // Final calculation
+          const netBuaBasePrice = totalBuaArea > 0 ? totalCost / totalBuaArea : 0;
+          
+          return isNaN(netBuaBasePrice) ? 0 : netBuaBasePrice;
+          
+      } catch (error) {
+          console.error('Error calculating Net BUA Base Price for unit:', unit.unit_code, error);
+          return 0;
+      }
+  }
+
+  // NEW: Terrace Base Price calculation function
+  function calculateTerraceBasePrice(unit) {
+      try {
+          // Find pricing criteria for this unit's model
+          const unitModel = unit.unit_model;
+          if (!unitModel) return 0;
+          
+          // Get criteria data
+          const criteriaUnit = projectUnits.find(u => {
+              if (u.unit_model !== unitModel) return false;
+              const hasCriteria = Object.keys(u).some(key => 
+                  key.startsWith('pricingcriteria__') && u[key] !== null && u[key] !== undefined
+              );
+              return hasCriteria;
+          });
+          
+          if (!criteriaUnit) {
+              return 0;
+          }
+          
+          // Extract terrace price with fallback
+          const terracePrice = parseFloat(criteriaUnit['pricingcriteria__terrace_price']) || 0;
+          
+          return terracePrice;
+          
+      } catch (error) {
+          console.error('Error calculating Terrace Base Price for unit:', unit.unit_code, error);
+          return 0;
+      }
+  }
+
+  // NEW: Penthouse Base Price calculation function
+  function calculatePenthouseBasePrice(unit) {
+      try {
+          // Get unit's penthouse area
+          const penthouseArea = parseFloat(unit.penthouse_area) || 0;
+          
+          // If penthouse area is 0, return 0
+          if (penthouseArea <= 0) {
+              return 0;
+          }
+          
+          // Find pricing criteria for this unit's model
+          const unitModel = unit.unit_model;
+          if (!unitModel) return 0;
+          
+          // Get criteria data
+          const criteriaUnit = projectUnits.find(u => {
+              if (u.unit_model !== unitModel) return false;
+              const hasCriteria = Object.keys(u).some(key => 
+                  key.startsWith('pricingcriteria__') && u[key] !== null && u[key] !== undefined
+              );
+              return hasCriteria;
+          });
+          
+          if (!criteriaUnit) {
+              return 0;
+          }
+          
+          // Extract criteria values with fallbacks
+          const penthousePrice = parseFloat(criteriaUnit['pricingcriteria__penthouse_price']) || 0;
+          const extraPenthousePricePerM2 = parseFloat(criteriaUnit['pricingcriteria__extra_penthouse_price_per_square_meter']) || 0;
+          
+          // Get dynamic min/max penthouse area for this unit model
+          const penthouseMinMax = getDynamicMinMaxForUnitModel(unitModel, 'penthouse_area');
+          const minPH = penthouseMinMax.min > 0 ? penthouseMinMax.min : 50; // Fallback to 50 if no min found
+          const maxPH = penthouseMinMax.max > 0 ? penthouseMinMax.max : 100; // Fallback to 100 if no max found
+          
+          // console.log(`Dynamic minPH = ${minPH}, maxPH = ${maxPH} for unit model: ${unitModel}`);
+          
+          // Calculate the formula components
+          const baseCost = minPH * penthousePrice;
+          const extraPHArea = Math.max(0, maxPH - minPH);
+          const extraCost = extraPHArea * extraPenthousePricePerM2;
+          const totalCost = baseCost + extraCost;
+          
+          // Final calculation
+          const penthouseBasePrice = penthouseArea > 0 ? totalCost / penthouseArea : 0;
+          
+          return isNaN(penthouseBasePrice) ? 0 : penthouseBasePrice;
+          
+      } catch (error) {
+          console.error('Error calculating Penthouse Base Price for unit:', unit.unit_code, error);
+          return 0;
+      }
+  }
+
+  // NEW: Roof Base Price calculation function
+  function calculateRoofBasePrice(unit) {
+      try {
+          // Get unit's roof areas
+          const roofPergolaArea = parseFloat(unit.roof_pergola_area) || 0;
+          const roofTerracesArea = parseFloat(unit.roof_terraces_area) || 0;
+          const totalRoofArea = roofPergolaArea + roofTerracesArea;
+          
+          // If roof area is 0, return 0
+          if (totalRoofArea <= 0) {
+              return 0;
+          }
+          
+          // Find pricing criteria for this unit's model
+          const unitModel = unit.unit_model;
+          if (!unitModel) return 0;
+          
+          // Get criteria data
+          const criteriaUnit = projectUnits.find(u => {
+              if (u.unit_model !== unitModel) return false;
+              const hasCriteria = Object.keys(u).some(key => 
+                  key.startsWith('pricingcriteria__') && u[key] !== null && u[key] !== undefined
+              );
+              return hasCriteria;
+          });
+          
+          if (!criteriaUnit) {
+              return 0;
+          }
+          
+          // Extract roof price with fallback
+          const roofPrice = parseFloat(criteriaUnit['pricingcriteria__roof_price']) || 0;
+          
+          return roofPrice;
+          
+      } catch (error) {
+          console.error('Error calculating Roof Base Price for unit:', unit.unit_code, error);
+          return 0;
+      }
+  }
+
+  // NEW: Unit Base Price calculation function
+  function calculateUnitBasePrice(unit) {
+    try {
+        // Get all the calculated base prices
+        const landBasePrice = calculateLandBasePrice(unit);
+        const netBuaBasePrice = calculateNetBuaBasePrice(unit);
+        const terraceBasePrice = calculateTerraceBasePrice(unit);
+        const penthouseBasePrice = calculatePenthouseBasePrice(unit);
+        const roofBasePrice = calculateRoofBasePrice(unit);
+        
+        // Get unit areas
+        const landArea = parseFloat(unit.land_area) || 0;
+        const gardenArea = parseFloat(unit.garden_area) || 0;
+        const totalLandArea = landArea + gardenArea;
+        
+        const internalArea = parseFloat(unit.internal_area) || 0;
+        const commonArea = parseFloat(unit.common_area) || 0;
+        const totalBuaArea = internalArea + commonArea;
+        
+        const coveredTerrace = parseFloat(unit.covered_terrace) || 0;
+        const penthouseArea = parseFloat(unit.penthouse_area) || 0;
+        
+        const roofPergolaArea = parseFloat(unit.roof_pergola_area) || 0;
+        const roofTerracesArea = parseFloat(unit.roof_terraces_area) || 0;
+        const totalRoofArea = roofPergolaArea + roofTerracesArea;
+        
+        // Calculate using the Excel formula:
+        // =[@[Land base price]]*SUM(Pricing.Table[@[Gardens]:[Land Area]])+[@[Net BUA base price]]*([@[Internal Area]]+[@[Common Areas]])+[@[Terrace base price]]*[@[Covered Terrace]]+[@[Penthouse base price]]*[@Penthouse]+[@[Roof base price]]*[@[Roof Area]]
+        const unitBasePrice = 
+            (landBasePrice * totalLandArea) +
+            (netBuaBasePrice * totalBuaArea) +
+            (terraceBasePrice * coveredTerrace) +
+            (penthouseBasePrice * penthouseArea) +
+            (roofBasePrice * totalRoofArea);
+        
+        return isNaN(unitBasePrice) ? 0 : unitBasePrice;
+        
+    } catch (error) {
+        console.error('Error calculating Unit Base Price for unit:', unit.unit_code, error);
+        return 0;
+    }
+  }
+
+  // NEW: Save Unit Base Price to database
+  async function saveUnitBasePrice(unitCode, basePrice) {
+    try {
+        const formData = new FormData();
+        formData.append('unit_code', unitCode);
+        formData.append('base_price', basePrice);
+        
+        const response = await fetch('{% url "save_unit_base_price" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to save unit base price');
+        }
+        
+        const data = await response.json();
+        return data.success;
+        
+    } catch (error) {
+        console.error('Error saving unit base price:', error);
+        return false;
+    }
+  }
+
+  // NEW: Auto-save functionality with debouncing
+  let saveTimeout = null;
+  function scheduleSaveUnitBasePrice(unitCode, basePrice) {
+      // Clear any pending save
+      if (saveTimeout) {
+          clearTimeout(saveTimeout);
+      }
+      
+      // Schedule new save after 1 second delay
+      saveTimeout = setTimeout(async () => {
+          const success = await saveUnitBasePrice(unitCode, basePrice);
+          if (success) {
+              // console.log(`Successfully saved base price ${basePrice} for unit ${unitCode}`);
+          } else {
+              console.error(`Failed to save base price for unit ${unitCode}`);
+          }
+      }, 1000);
+  }
+
+  // NEW: Base PSM calculation function
+  function calculateBasePSM(unit) {
+    try {
+        const unitBasePrice = calculateUnitBasePrice(unit);
+        const grossArea = parseFloat(unit.sellable_area) || 0;
+        
+        // Check for zero denominator
+        if (grossArea <= 0) {
+            return 0;
+        }
+        
+        // Calculate Base PSM: Unit Base Price / Gross Area
+        const basePSM = unitBasePrice / grossArea;
+        
+        return isNaN(basePSM) ? 0 : basePSM;
+        
+    } catch (error) {
+        console.error('Error calculating Base PSM for unit:', unit.unit_code, error);
+        return 0;
+    }
+  }
+
+  // NEW: Save Base PSM to database
+  async function saveBasePSM(unitCode, basePSM) {
+    try {
+        const formData = new FormData();
+        formData.append('unit_code', unitCode);
+        formData.append('base_psm', basePSM);
+        
+        const response = await fetch('{% url "save_unit_base_psm" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to save base PSM');
+        }
+        
+        const data = await response.json();
+        return data.success;
+        
+    } catch (error) {
+        console.error('Error saving base PSM:', error);
+        return false;
+    }
+  }
+
+  // NEW: Auto-save functionality for Base PSM
+  let savePSMTimeout = null;
+  function scheduleSaveBasePSM(unitCode, basePSM) {
+    // Clear any pending save
+    if (savePSMTimeout) {
+        clearTimeout(savePSMTimeout);
+    }
+    
+    // Schedule new save after 1 second delay
+    savePSMTimeout = setTimeout(async () => {
+        const success = await saveBasePSM(unitCode, basePSM);
+        if (success) {
+            console.log(`Successfully saved base PSM ${basePSM} for unit ${unitCode}`);
+        } else {
+            console.error(`Failed to save base PSM for unit ${unitCode}`);
+        }
+    }, 1000);
+  }
+
+  // NEW: Save Premium Totals to database
+  async function savePremiumTotals(unitCode, totalPremiumPercent, totalPremiumValue) {
+    try {
+        const formData = new FormData();
+        formData.append('unit_code', unitCode);
+        formData.append('total_premium_percent', totalPremiumPercent);
+        formData.append('total_premium_value', totalPremiumValue);
+        
+        const response = await fetch('{% url "save_unit_premium_totals" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to save premium totals');
+        }
+        
+        const data = await response.json();
+        return data.success;
+        
+    } catch (error) {
+        console.error('Error saving premium totals:', error);
+        return false;
+    }
+  }
+
+  // NEW: Auto-save functionality for premium totals with debouncing
+  let savePremiumTimeout = null;
+  function scheduleSavePremiumTotals(unitCode, totalPremiumPercent, totalPremiumValue) {
+    // Clear any pending save
+    if (savePremiumTimeout) {
+        clearTimeout(savePremiumTimeout);
+    }
+    
+    // Schedule new save after 1 second delay
+    savePremiumTimeout = setTimeout(async () => {
+        const success = await savePremiumTotals(unitCode, totalPremiumPercent, totalPremiumValue);
+        if (success) {
+            console.log(`Successfully saved premium totals for unit ${unitCode}`);
+        } else {
+            console.error(`Failed to save premium totals for unit ${unitCode}`);
+        }
+    }, 1000);
+  }
+
+
+  async function populateInventoryTable() {
+    const table = document.querySelector('#inventoryTable');
+    if (!table) return;
+
+    table.innerHTML = '';
+
+    if (!selectedProjectId) {
+        table.innerHTML = `<caption>No project selected.</caption>`;
+        return;
+    }
+
+    if (!projectUnits || projectUnits.length === 0) {
+        table.innerHTML = `<caption>No units found for this project.</caption>`;
+        return;
+    }
+
+    try {
+        const [headersResponse, subgroupsResponse] = await Promise.all([
+            fetch(`{% url 'get_project_premium_groups' %}?project_id=${encodeURIComponent(selectedProjectId)}`),
+            fetch(`{% url 'get_project_subgroups_data' %}?project_id=${encodeURIComponent(selectedProjectId)}`)
+        ]);
+
+        if (!headersResponse.ok) throw new Error('Failed to fetch premium group headers');
+        const headersData = await headersResponse.json();
+        dynamicGroupNames = headersData.group_names || [];
+
+        if (!subgroupsResponse.ok) throw new Error('Failed to fetch premium subgroup data');
+        const subgroupsData = await subgroupsResponse.json();
+        projectSubgroupsData = subgroupsData.subgroups_data || {};
+
+    } catch (error) {
+        dynamicGroupNames = [];
+        projectSubgroupsData = {};
+    }
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+
+    // Unit Code Header
+    const unitCodeHeader = document.createElement('th');
+    unitCodeHeader.className = 'yellow-header';
+    const headerContent = document.createElement('div');
+    headerContent.style.position = 'relative';
+    headerContent.style.width = '100%';
+    headerContent.textContent = 'Unit Code';
+
+    const filterIcon = document.createElement('span');
+    filterIcon.className = 'filter-icon';
+    filterIcon.textContent = '🔍';
+    filterIcon.title = 'Filter Units';
+    filterIcon.addEventListener('click', toggleFilterDropdown);
+
+    headerContent.appendChild(filterIcon);
+    unitCodeHeader.appendChild(headerContent);
+    headerRow.appendChild(unitCodeHeader);
+
+    // Calculated Columns Headers
+    const calculatedHeaders = [
+        'Land Base Price',
+        'Net BUA Base Price', 
+        'Terrace Base Price',
+        'Penthouse Base Price',
+        'Roof Base Price'
+    ];
+    
+    calculatedHeaders.forEach(headerText => {
+        const header = document.createElement('th');
+        header.className = 'light-orange-header';
+        header.textContent = headerText;
+        headerRow.appendChild(header);
+    });
+
+    // Unit Base Price Column Header
+    const unitBasePriceHeader = document.createElement('th');
+    unitBasePriceHeader.className = 'dark-orange-header';
+    unitBasePriceHeader.textContent = 'Unit Base Price';
+    headerRow.appendChild(unitBasePriceHeader);
+
+    // NEW: Base PSM Column Header
+    const basePSMHeader = document.createElement('th');
+    basePSMHeader.className = 'dark-orange-header';
+    basePSMHeader.textContent = 'Base PSM';
+    headerRow.appendChild(basePSMHeader);
+
+    // Dynamic Premium Group Headers
+    dynamicGroupNames.forEach(groupName => {
+        const header = document.createElement('th');
+        header.className = 'yellow-header';
+        header.textContent = groupName;
+        headerRow.appendChild(header);
+    });
+
+
+    // Static Headers
+    const staticHeaders = ['Total Premiums %', 'Total Premiums Value'];
+    staticHeaders.forEach(headerText => {
+        const header = document.createElement('th');
+        header.className = 'white-brown-header';
+        header.textContent = headerText;
+        headerRow.appendChild(header);
+    });
+
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    projectUnits.forEach(unit => {
+        const fullUnitCode = unit.unit_code || '-';
+        let displayCode = fullUnitCode;
+        if (displayCode !== '-') {
+            const lastUnderscoreIndex = displayCode.lastIndexOf('_');
+            if (lastUnderscoreIndex > 0 && lastUnderscoreIndex < displayCode.length - 1) {
+                displayCode = displayCode.substring(0, lastUnderscoreIndex);
+            }
+        }
+
+        if (filteredUnitCodes.size > 0 && filteredUnitCodes.has(displayCode)) {
+            return;
+        }
+
+        const row = document.createElement('tr');
+        
+        // Unit Code Cell
+        const unitCodeCell = document.createElement('td');
+        unitCodeCell.textContent = displayCode;
+        row.appendChild(unitCodeCell);
+
+        
+
+        // Land Base Price Cell
+        const landBasePriceCell = document.createElement('td');
+        landBasePriceCell.className = 'light-orange-cell';
+        const landBasePrice = calculateLandBasePrice(unit);
+        landBasePriceCell.textContent = landBasePrice === 0 ? '0.00' : landBasePrice.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        landBasePriceCell.style.textAlign = 'right';
+        row.appendChild(landBasePriceCell);
+
+        // Net BUA Base Price Cell
+        const netBuaBasePriceCell = document.createElement('td');
+        netBuaBasePriceCell.className = 'light-orange-cell';
+        const netBuaBasePrice = calculateNetBuaBasePrice(unit);
+        netBuaBasePriceCell.textContent = netBuaBasePrice === 0 ? '0.00' : netBuaBasePrice.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        netBuaBasePriceCell.style.textAlign = 'right';
+        row.appendChild(netBuaBasePriceCell);
+
+        // Terrace Base Price Cell
+        const terraceBasePriceCell = document.createElement('td');
+        terraceBasePriceCell.className = 'light-orange-cell';
+        const terraceBasePrice = calculateTerraceBasePrice(unit);
+        terraceBasePriceCell.textContent = terraceBasePrice === 0 ? '0.00' : terraceBasePrice.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        terraceBasePriceCell.style.textAlign = 'right';
+        row.appendChild(terraceBasePriceCell);
+
+        // Penthouse Base Price Cell
+        const penthouseBasePriceCell = document.createElement('td');
+        penthouseBasePriceCell.className = 'light-orange-cell';
+        const penthouseBasePrice = calculatePenthouseBasePrice(unit);
+        penthouseBasePriceCell.textContent = penthouseBasePrice === 0 ? '0.00' : penthouseBasePrice.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        penthouseBasePriceCell.style.textAlign = 'right';
+        row.appendChild(penthouseBasePriceCell);
+
+        // Roof Base Price Cell
+        const roofBasePriceCell = document.createElement('td');
+        roofBasePriceCell.className = 'light-orange-cell';
+        const roofBasePrice = calculateRoofBasePrice(unit);
+        roofBasePriceCell.textContent = roofBasePrice === 0 ? '0.00' : roofBasePrice.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        roofBasePriceCell.style.textAlign = 'right';
+        row.appendChild(roofBasePriceCell);
+
+        // Unit Base Price Cell
+        const unitBasePriceCell = document.createElement('td');
+        unitBasePriceCell.className = 'dark-orange-cell';
+        const unitBasePrice = calculateUnitBasePrice(unit);
+        unitBasePriceCell.textContent = unitBasePrice === 0 ? '0.00' : unitBasePrice.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        unitBasePriceCell.style.textAlign = 'right';
+        unitBasePriceCell.style.fontWeight = 'bold';
+        row.appendChild(unitBasePriceCell);
+
+        // NEW: Base PSM Cell
+        const basePSMCell = document.createElement('td');
+        basePSMCell.className = 'dark-orange-cell';
+        const basePSM = calculateBasePSM(unit);
+        basePSMCell.textContent = basePSM === 0 ? '0.00' : basePSM.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        basePSMCell.style.textAlign = 'right';
+        basePSMCell.style.fontWeight = 'bold';
+        row.appendChild(basePSMCell);
+
+
+        // Dynamic Premium Group Dropdowns
+        dynamicGroupNames.forEach(groupName => {
+            const cell = document.createElement('td');
+            const selectId = `subgroup-select-${displayCode.replace(/\s+/g, '_')}-${groupName.replace(/\s+/g, '_')}`;
+            const subgroupDataForGroup = projectSubgroupsData[groupName] || [];
+
+            const selectElement = document.createElement('select');
+            selectElement.id = selectId;
+            selectElement.name = `subgroup_${groupName}`;
+
+            selectElement.addEventListener('change', function() {
+                saveSubgroupSelection(fullUnitCode, groupName, this);
+                calculateAndDisplayTotals(row, displayCode, unit.base_price);
+                // Recalculate and save both Unit Base Price and Base PSM when premiums change
+                recalculateAndSaveUnitBasePrice(row, fullUnitCode);
+                recalculateAndSaveBasePSM(row, fullUnitCode);
+            });
+
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '-- Select --';
+            selectElement.appendChild(defaultOption);
+
+            let isPreselected = false;
+            subgroupDataForGroup.forEach(subgroup => {
+                const option = document.createElement('option');
+                option.value = subgroup.id;
+                option.textContent = subgroup.name;
+
+                const groupNameToFieldNameMap = {
+                    'main view': 'main_view',
+                    'secondary views': 'secondary_views',
+                    'levels': 'levels',
+                    'north breeze': 'north_breeze',
+                    'corners': 'corners',
+                    'accessibility': 'accessibility',
+                    'special premiums': 'special_premiums',
+                    'special discounts': 'special_discounts',
+                    'phasing': 'phasing'
+                };
+                const normalizedGroupName = groupName.toLowerCase().trim();
+                const correspondingFieldName = groupNameToFieldNameMap[normalizedGroupName];
+
+                if (correspondingFieldName && unit[correspondingFieldName] && unit[correspondingFieldName].trim() === subgroup.name.trim()) {
+                    option.selected = true;
+                    isPreselected = true;
+                }
+
+                selectElement.appendChild(option);
+            });
+
+            cell.appendChild(selectElement);
+            row.appendChild(cell);
+        });
+
+        // Total Premiums Cells
+        const totalPremiumPercentCell = document.createElement('td');
+        totalPremiumPercentCell.className = 'white-brown-cell';
+        totalPremiumPercentCell.textContent = '';
+        row.appendChild(totalPremiumPercentCell);
+
+        const totalPremiumValueCell = document.createElement('td');
+        totalPremiumValueCell.className = 'white-brown-cell';
+        totalPremiumValueCell.textContent = '';
+        row.appendChild(totalPremiumValueCell);
+
+        tbody.appendChild(row);
+
+        // Save the calculated Unit Base Price and Base PSM to database
+        setTimeout(() => {
+            calculateAndDisplayTotals(row, displayCode, unit.base_price);
+            // Auto-save the calculated Unit Base Price
+            if (unitBasePrice > 0) {
+                scheduleSaveUnitBasePrice(fullUnitCode, unitBasePrice);
+            }
+            // Auto-save the calculated Base PSM
+            if (basePSM > 0) {
+                scheduleSaveBasePSM(fullUnitCode, basePSM);
+            }
+        }, 0);
+    });
+
+    table.appendChild(tbody);
+  }
+
+  // NEW: Recalculate and save Base PSM when values change
+  function recalculateAndSaveBasePSM(row, fullUnitCode) {
+    setTimeout(() => {
+        // Find the unit object in projectUnits
+        const unit = projectUnits.find(u => u.unit_code === fullUnitCode);
+        if (unit) {
+            const basePSM = calculateBasePSM(unit);
+            
+            // Update the display
+            const basePSMCell = row.querySelectorAll('.dark-orange-cell')[1]; // Second dark orange cell
+            if (basePSMCell) {
+                basePSMCell.textContent = basePSM === 0 ? '0.00' : basePSM.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+            
+            // Save to database
+            if (basePSM > 0) {
+                scheduleSaveBasePSM(fullUnitCode, basePSM);
+            }
+        }
+    }, 100);
+  }
+
+  // NEW: Recalculate and save Unit Base Price when premiums change
+  function recalculateAndSaveUnitBasePrice(row, fullUnitCode) {
+      setTimeout(() => {
+          // Find the unit object in projectUnits
+          const unit = projectUnits.find(u => u.unit_code === fullUnitCode);
+          if (unit) {
+              const unitBasePrice = calculateUnitBasePrice(unit);
+              
+              // Update the display
+              const unitBasePriceCell = row.querySelector('.dark-orange-cell');
+              if (unitBasePriceCell) {
+                  if (unitBasePrice === 0) {
+                      unitBasePriceCell.textContent = '0.00';
+                  } else {
+                      unitBasePriceCell.textContent = unitBasePrice.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                      });
+                  }
+              }
+              
+              // Save to database
+              if (unitBasePrice > 0) {
+                  scheduleSaveUnitBasePrice(fullUnitCode, unitBasePrice);
+              }
+          }
+      }, 100);
+  }
+
+  function loadPremiumGroups() {
+      if (!selectedProjectId) {
+          document.getElementById('premiumGroupsList').innerHTML = '<div class="no-groups-message">No project selected.</div>';
+          document.getElementById('addGroupForm').style.display = 'none';
+          document.getElementById('showAddGroupFormBtn').style.display = 'none';
+          return;
+      }
+
+      const url = `{% url 'get_premium_groups' %}?project_id=${encodeURIComponent(selectedProjectId)}`;
+
+      fetch(url)
+        .then(response => {
+          if (!response.ok) { throw new Error('Network response for premium groups was not ok'); }
+          return response.json();
+        })
+        .then(data => {
+          premiumGroups = data.groups || [];
+          renderPremiumGroups();
+          document.getElementById('showAddGroupFormBtn').style.display = 'block';
+        })
+        .catch(error => {
+          console.error('Error fetching premium groups:', error);
+          document.getElementById('premiumGroupsList').innerHTML = '<div class="no-groups-message">Error loading premium groups.</div>';
+          document.getElementById('addGroupForm').style.display = 'none';
+          document.getElementById('showAddGroupFormBtn').style.display = 'none';
+        });
+  }
+
+  function renderPremiumGroups() {
+    const container = document.getElementById('premiumGroupsList');
+    if (!premiumGroups || premiumGroups.length === 0) {
+        container.innerHTML = '<div class="no-groups-message">No premium groups found for this project. Add one to get started.</div>';
+        return;
+    }
+
+    let html = '';
+    premiumGroups.forEach(group => {
+        html += `
+        <div class="premium-group-card" data-group-id="${group.id}">
+            <div class="premium-group-header">
+                <h3 class="premium-group-title">${group.name}</h3>
+                <div class="premium-group-actions">
+                    <button class="btn-small danger" onclick="deletePremiumGroup(${group.id})">Delete</button>
+                </div>
+            </div>
+            <div class="premium-group-content">
+                <ul class="subgroup-list">
+        `;
+        if (group.subgroups && group.subgroups.length > 0) {
+            group.subgroups.forEach(subgroup => {
+                html += `
+                <li class="subgroup-item" data-subgroup-id="${subgroup.id}">
+                    <div class="subgroup-info">
+                        <span class="subgroup-name">${subgroup.name}</span>
+                        <span class="subgroup-value">Value: ${subgroup.value}</span>
+                    </div>
+                    <div>
+                        <button class="btn-small danger" onclick="deletePremiumSubgroup(${subgroup.id})">Delete</button>
+                    </div>
+                </li>
+                `;
+            });
+        } else {
+            html += '<li class="subgroup-item"><em>No subgroups yet.</em></li>';
+        }
+        html += `
+                </ul>
+                <div class="add-subgroup-form">
+                    <input type="text" class="new-subgroup-name" placeholder="Subgroup Name" required>
+                    <input type="number" class="new-subgroup-value" placeholder="Value" required>
+                    <button onclick="addPremiumSubgroup(${group.id})">Add Subgroup</button>
+                </div>
+            </div>
+        </div>
+        `;
+    });
+    container.innerHTML = html;
+  }
+
+  function toggleAddGroupForm() {
+    const form = document.getElementById('addGroupForm');
+    const button = document.getElementById('showAddGroupFormBtn');
+    if (form.style.display === 'none' || form.style.display === '') {
+        form.style.display = 'flex';
+        button.textContent = 'Cancel';
+    } else {
+        form.style.display = 'none';
+        document.getElementById('newGroupName').value = '';
+        button.textContent = 'Add New Group';
+    }
+  }
+
+  function addPremiumGroup() {
+    const nameInput = document.getElementById('newGroupName');
+    const name = nameInput.value.trim();
+
+    if (!name || !selectedProjectId) {
+        alert('Please enter a group name and ensure a project is selected.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('project_id', selectedProjectId);
+    formData.append('name', name);
+
+    fetch('{% url "add_premium_group" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => {
+        if (!response.ok) { throw new Error('Failed to add premium group'); }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            premiumGroups.push(data.group);
+            renderPremiumGroups();
+            nameInput.value = '';
+            toggleAddGroupForm();
+
+            const activeSection = document.querySelector(".section.active-section");
+            if (activeSection && activeSection.id === 'inventorySection') {
+                 populateInventoryTable();
+            }
+        } else {
+            alert('Error: ' + (data.error || 'Failed to add group'));
+        }
+    })
+    .catch(error => {
+        console.error('Error adding premium group:', error);
+        alert('An error occurred while adding the group.');
+    });
+  }
+
+  function deletePremiumGroup(groupId) {
+    if (!confirm('Are you sure you want to delete this premium group and all its subgroups?')) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('group_id', groupId);
+
+    fetch('{% url "delete_premium_group" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => {
+        if (!response.ok) { throw new Error('Failed to delete premium group'); }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            premiumGroups = premiumGroups.filter(g => g.id !== groupId);
+            renderPremiumGroups();
+
+             const activeSection = document.querySelector(".section.active-section");
+            if (activeSection && activeSection.id === 'inventorySection') {
+                 populateInventoryTable();
+            }
+        } else {
+            alert('Error: ' + (data.error || 'Failed to delete group'));
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting premium group:', error);
+        alert('An error occurred while deleting the group.');
+    });
+  }
+
+  function addPremiumSubgroup(groupId) {
+    const groupCard = document.querySelector(`.premium-group-card[data-group-id="${groupId}"]`);
+    if (!groupCard) return;
+
+    const nameInput = groupCard.querySelector('.new-subgroup-name');
+    const valueInput = groupCard.querySelector('.new-subgroup-value');
+
+    const name = nameInput.value.trim();
+    const value = parseFloat(valueInput.value, 10);
+
+    if (!name || isNaN(value)) {
+        alert('Please enter a subgroup name and a valid integer value.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('group_id', groupId);
+    formData.append('name', name);
+    formData.append('value', value);
+
+    fetch('{% url "add_premium_subgroup" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => {
+        if (!response.ok) { throw new Error('Failed to add premium subgroup'); }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            const groupIndex = premiumGroups.findIndex(g => g.id === groupId);
+            if (groupIndex !== -1) {
+                if (!premiumGroups[groupIndex].subgroups) {
+                    premiumGroups[groupIndex].subgroups = [];
+                }
+                premiumGroups[groupIndex].subgroups.push(data.subgroup);
+                renderPremiumGroups();
+            }
+            nameInput.value = '';
+            valueInput.value = '';
+
+            const activeSection = document.querySelector(".section.active-section");
+            if (activeSection && activeSection.id === 'inventorySection') {
+                 populateInventoryTable();
+            }
+        } else {
+            alert('Error: ' + (data.error || 'Failed to add subgroup'));
+        }
+    })
+    .catch(error => {
+        console.error('Error adding premium subgroup:', error);
+        alert('An error occurred while adding the subgroup.');
+    });
+  }
+
+  function deletePremiumSubgroup(subgroupId) {
+    if (!confirm('Are you sure you want to delete this premium subgroup?')) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('subgroup_id', subgroupId);
+
+    fetch('{% url "delete_premium_subgroup" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => {
+        if (!response.ok) { throw new Error('Failed to delete premium subgroup'); }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            let subgroupDeleted = false;
+            for (let i = 0; i < premiumGroups.length; i++) {
+                const group = premiumGroups[i];
+                if (group.subgroups) {
+                    const initialLength = group.subgroups.length;
+                    group.subgroups = group.subgroups.filter(sg => sg.id !== subgroupId);
+                    if (group.subgroups.length < initialLength) {
+                        subgroupDeleted = true;
+                        break;
+                    }
+                }
+            }
+            if (subgroupDeleted) {
+                renderPremiumGroups();
+            }
+
+            const activeSection = document.querySelector(".section.active-section");
+            if (activeSection && activeSection.id === 'inventorySection') {
+                 populateInventoryTable();
+            }
+        } else {
+            alert('Error: ' + (data.error || 'Failed to delete subgroup'));
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting premium subgroup:', error);
+        alert('An error occurred while deleting the subgroup.');
+    });
+  }
+
+  function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i].trim();
+              if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                  cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                  break;
+              }
+            }
+        }
+        return cookieValue;
+    }
+
+  
+    function loadCompanyProjects(companyId) {
+    const projectSelect = document.getElementById("projectSelect");
+    const actionButtons = document.getElementById("actionButtons");
+
+    if (projectSelect) {
+        projectSelect.innerHTML = '<option value="" disabled selected>-- Select Project --</option>';
+        projectSelect.style.display = 'none';
+    }
+    if (actionButtons) {
+        actionButtons.style.display = 'none';
+    }
+    showSection('');
+
+    projectUnits = [];
+    selectedProjectId = null;
+    premiumGroups = [];
+    dynamicGroupNames = [];
+    projectSubgroupsData = {};
+    filteredUnitCodes.clear(); // Clear filters on project/company change
+
+    if (!companyId || companyId === "None") {
+      return;
+    }
+
+    const encodedCompanyId = encodeURIComponent(companyId);
+    const projectsUrl = `{% url 'get_company_projects' %}?company_id=${encodedCompanyId}`;
+
+    fetch(projectsUrl)
+      .then(response => {
+        if (!response.ok) { throw new Error('Network response for projects was not ok'); }
+        return response.json();
+      })
+      .then(data => {
+        const projects = data.projects || [];
+        if (projectSelect) {
+          if (projects.length > 0) {
+            projects.forEach(project => {
+              const option = document.createElement("option");
+              option.value = project.id;
+              option.textContent = project.name;
+              projectSelect.appendChild(option);
+            });
+            projectSelect.style.display = 'inline-block';
+          } else {
+            projectSelect.innerHTML = '<option value="" disabled>-- No Projects Found --</option>';
+            projectSelect.style.display = 'inline-block';
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching projects:', error);
+        if (projectSelect) {
+            projectSelect.innerHTML = '<option value="" disabled>-- Error Loading Projects --</option>';
+            projectSelect.style.display = 'inline-block';
+        }
+      });
+  }
+
+  function onProjectSelected() {
+    const projectId = document.getElementById("projectSelect").value;
+    const actionButtons = document.getElementById("actionButtons");
+
+    selectedProjectId = projectId;
+
+    if (projectId) {
+      const unitsUrl = `{% url 'get_project_units_simple' %}?project_id=${encodeURIComponent(projectId)}`; // Ensure this URL points to the updated view
+
+      fetch(unitsUrl)
+        .then(response => {
+          if (!response.ok) { throw new Error('Network response for units was not ok'); }
+          return response.json();
+        })
+        .then(data => {
+          projectUnits = data.units || []; // This now includes base_price, unit_model, internal_area
+
+          if (actionButtons) {
+            actionButtons.style.display = 'flex';
+          }
+
+
+          // Store the units data
+          projectUnits = data.units || [];
+
+          const activeSection = document.querySelector(".section.active-section");
+          if (activeSection && activeSection.id === 'inventorySection') {
+             populateInventoryTable();
+          } else if (activeSection && activeSection.id === 'premiumGroupsSection') {
+             loadPremiumGroups();
+          } else if (activeSection && activeSection.id === 'criteriaSection') {
+             // --- NEW: Populate Criteria Section if it's the active one ---
+             populateCriteriaSection();
+             // --- END NEW ---
+          }  else if (activeSection && activeSection.id === 'reportSection') { // NEW
+            initializeReportSection(); // Populate column selector
+            renderReportTable();      // Render table with initial/default columns
+         } else {
+             showSection('criteria'); // Show Criteria by default
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching units for project:', error);
+          projectUnits = [];
+
+          if (actionButtons) {
+            actionButtons.style.display = 'flex';
+          }
+          showSection('criteria'); // Show Criteria even on error
+        });
+
+    } else {
+      if (actionButtons) {
+        actionButtons.style.display = 'none';
+      }
+      showSection('');
+      selectedProjectId = null;
+      projectUnits = [];
+      premiumGroups = [];
+      dynamicGroupNames = [];
+      projectSubgroupsData = {};
+      filteredUnitCodes.clear(); // Clear filters
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const companySelect = document.getElementById("companySelect");
+
+    if (selectedCompanyId) {
+        loadCompanyProjects(selectedCompanyId);
+    }
+    else if (companySelect) {
+        companySelect.addEventListener("change", function() {
+             const selectedValue = this.value;
+             if (selectedValue) {
+                 loadCompanyProjects(selectedValue);
+             }
+        });
+    }
+
+    const projectSelect = document.getElementById("projectSelect");
+    if (projectSelect) {
+        projectSelect.addEventListener("change", onProjectSelected);
+    }
+  });
+
+</script>
+
+{% endblock %}

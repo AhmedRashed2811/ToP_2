@@ -1,0 +1,671 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+{% block title %}Special Offers Input{% endblock %}
+{% block content %}
+<style>
+    .container {
+        max-width: 1400px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .selectors {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    select {
+        width: 200px;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+    .payment-box {
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        overflow-x: auto;
+    }
+    #extended-section {
+        max-width: 1200px; /* Adjust as needed */
+        margin: 0 auto; /* Center the box */
+    }
+    h2, h3 {
+        text-align: center;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        table-layout: fixed;
+    }
+    th, td {
+        padding: 4px;
+        font-size: 12px;
+        text-align: center;
+        border: 1px solid #ccc;
+    }
+    th {
+        white-space: normal;
+        word-wrap: break-word;
+        line-height: 1.2;
+    }
+    td {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    input[type="number"] {
+        width: 100%;
+        padding: 6px;
+        margin-bottom: 6px;
+    }
+    .toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: red;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        display: none;
+        z-index: 9999;
+    }
+    /* Responsive rules */
+    @media (max-width: 768px) {
+        .selectors {
+            flex-direction: column;
+            align-items: center;
+        }
+        .payment-box {
+            min-width: 100%;
+            padding: 10px;
+        }
+        table {
+            min-width: 100%;
+            display: block;
+            overflow-x: auto;
+        }
+        th, td {
+            font-size: 12px;
+            padding: 4px;
+        }
+        select {
+            width: 90%;
+        }
+        input[type="number"] {
+            font-size: 14px;
+        }
+    }
+    @media (max-width: 360px) {
+        .payment-box {
+            min-width: 100%;
+            padding: 10px;
+            margin-left: -9%;
+        }
+    }
+    .highlight-row {
+        background-color: #c1bdb0 !important;
+    }
+    .dropdown {
+        position: relative;
+        display: inline-block;
+    }
+    .payment-box
+    .dropdown-button {
+        width: 100%;
+        padding: 8px;
+        text-align: left;
+        border: 1px solid #ccc;
+        background-color: #fff;
+        border-radius: 5px;
+        cursor: pointer;
+        color: black;
+    }
+    .dropdown-years,
+    .dropdown-submenu {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        background-color: white;
+        position: absolute;
+        display: none;
+        z-index: 1000;
+    }
+    .dropdown-years {
+        top: 100%;
+        left: 0;
+    }
+    .dropdown-submenu {
+        top: 0;
+        left: 100%;
+        white-space: nowrap;
+    }
+    .dropdown-years > li {
+        position: relative;
+        padding: 6px 12px;
+        cursor: pointer;
+    }
+    .dropdown-years > li:hover {
+        background-color: #f0f0f0;
+    }
+    .dropdown-years > li:hover > .dropdown-submenu {
+        display: block;
+    }
+    .dropdown-submenu li {
+        padding: 6px 12px;
+    }
+    .dropdown-submenu li:hover {
+        background-color: #eee;
+    }
+</style>
+<div class="container">
+    <h2>Special Offers Input</h2>
+    <div class="selectors">
+        <div>
+            <label for="project">Select Project:</label><br>
+            <select id="project">
+                <option value="">-- Select Project --</option>
+                {% for project in projects %}
+                    <option value="{{ project.id }}">{{ project.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div id="delivery-wrapper" style="display: none; position: relative;">
+            <label for="delivery-menu">Delivery Index:</label><br>
+            <div id="delivery-menu" class="dropdown">
+                <button id="delivery-button" class="dropdown-button">-- Select Delivery --</button>
+                <ul class="dropdown-years" id="dropdown-years">
+                    <!-- Years and submenus will be generated dynamically -->
+                </ul>
+            </div>
+        </div>
+        <div>
+            <label for="year">Select Year:</label><br>
+            <select id="year">
+                {% for y in year_range  %}
+                    <option value="{{ y }}">{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <!-- Scheme selection removed as per request -->
+    </div>
+    <div id="discount-section" class="payment-box" style="display:none; max-width: 1200px; margin: 0 auto 12px;">
+        <h3 style="text-align:center;">Constant Discount</h3>
+        <div style="display:flex; gap:12px; align-items:center; justify-content:center; flex-wrap:wrap;">
+          <label for="constant-discount" style="margin:0;">Constant Discount (%)</label>
+          <input id="constant-discount" type="number" step="0.01" min="0" max="100" style="width:160px;"/>
+          <span id="constant-discount-hint" style="font-size:12px; color:#666;">Saved automatically</span>
+        </div>
+      </div>
+
+      
+    <div id="payments-section" style="display: none;">
+        <div class="payment-box" id="extended-section">
+            <h3>Special Offer Payments</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Label</th>
+                        <th>Value (%)</th>
+                        <th>Cumulative</th>
+                    </tr>
+                </thead>
+                <tbody id="ext-table-body">
+                    <!-- Rows will be injected by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end mt-3">
+        <button id="delete-plan-btn" class="btn btn-danger" style="display: none;">
+            🗑️ Delete This Payment Plan
+        </button>
+    </div>
+
+</div>
+<div class="toast" id="toast">Cumulative percentage cannot exceed 100%</div>
+<script>
+    /* ========= Toast Helper ========= */
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      if (!toast) return;
+      toast.textContent = msg;
+      toast.style.backgroundColor = isError ? 'red' : 'green';
+      toast.style.display = 'block';
+      setTimeout(() => (toast.style.display = 'none'), 3000);
+    }
+    
+    /* ========= DOM Ready ========= */
+    document.addEventListener('DOMContentLoaded', () => {
+      const projectSelect = document.getElementById('project');
+      const yearSelect = document.getElementById('year');
+      const paymentsSection = document.getElementById('payments-section');
+      const deliveryWrapper = document.getElementById('delivery-wrapper');
+      const discountBox = document.getElementById('discount-section');
+      const discountInput = document.getElementById('constant-discount');
+      const deleteButton = document.getElementById('delete-plan-btn');
+    
+      const MAX_ROWS = 50; // DP + Contract + up to 48 PMTs
+    
+      /* ======= Utilities ======= */
+      function debounce(fn, delay = 400) {
+        let t;
+        return (...args) => {
+          clearTimeout(t);
+          t = setTimeout(() => fn(...args), delay);
+        };
+      }
+    
+      /* ======= Table Builder ======= */
+      function createPaymentRows(tableBody, prefix, count) {
+        if (!tableBody) return;
+        tableBody.innerHTML = '';
+        for (let i = 0; i < count && i < MAX_ROWS; i++) {
+          let label = '';
+          if (i === 0) label = 'DP';
+          else if (i === 1) label = 'Contract';
+          else label = `PMT ${i - 1}`;
+    
+          const row = document.createElement('tr');
+          row.id = `${prefix}_row_${i}`;
+          row.innerHTML = `
+            <td>${label}</td>
+            <td><input type="number" step="0.01" min="0" class="${prefix}-value" data-index="${i}"></td>
+            <td><span id="${prefix}_cum_${i}"></span></td>
+          `;
+          tableBody.appendChild(row);
+        }
+      }
+    
+      /* ======= Payment System (Save/Load + Cumulative) ======= */
+      function setupPaymentSystem(prefix, valueClass, saveUrl, fetchUrl) {
+        const tableBody = document.getElementById(`${prefix}-table-body`);
+        let inputs = [];
+    
+        function attachListeners() {
+          inputs = document.querySelectorAll('.' + valueClass);
+          inputs.forEach((input) => {
+            if (input._eventListener) {
+              input.removeEventListener('input', input._eventListener);
+            }
+            const listener = () => {
+              const index = parseInt(input.dataset.index);
+              let value = parseFloat(input.value) || 0;
+              updateCumulativeAndSave(index, value);
+            };
+            input._eventListener = listener;
+            input.addEventListener('input', listener);
+          });
+        }
+    
+        function updateCumulativeAndSave(index, value) {
+          // Apply 0–100 cap across all inputs
+          let total = 0;
+          inputs.forEach((inp) => (total += parseFloat(inp.value) || 0));
+          if (total > 100) {
+            const allowed = 100 - (total - value);
+            const corrected = allowed > 0 ? allowed : 0;
+            inputs[index].value = corrected;
+            value = corrected;
+            total = 100;
+          }
+    
+          // Calculate and render cumulative
+          let cumSum = 0;
+          let cutoff = false;
+          inputs.forEach((inp, i) => {
+            const row = document.getElementById(`${prefix}_row_${i}`);
+            const val = parseFloat(inp.value) || 0;
+            cumSum += val;
+    
+            const cumEl = document.getElementById(`${prefix}_cum_${i}`);
+            if (cumEl) cumEl.textContent = cumSum === 0 ? '' : cumSum.toFixed(2);
+    
+            if (row) row.style.display = cutoff ? 'none' : '';
+            if (cumSum >= 100 && !cutoff) cutoff = true;
+          });
+    
+          // Save to server (as %; server converts to decimal)
+          const projectId = projectSelect.value;
+          const selectedYear = yearSelect.value;
+          if (!projectId || !selectedYear) return;
+    
+          fetch(saveUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+              project_id: parseInt(projectId),
+              year: parseInt(selectedYear),
+              index: index,
+              value: value
+            })
+          }).catch((err) => {
+            console.error('Save error:', err);
+            showToast('Failed to save data.', true);
+          });
+        }
+    
+        function loadFromServer(projectId, year) {
+          fetch(`${fetchUrl}?project_id=${projectId}&year=${year}`)
+            .then((res) => {
+              if (!res.ok) throw new Error(`Server returned ${res.status} ${res.statusText}`);
+              return res.json();
+            })
+            .then((data) => {
+              if (data.success && data.data) {
+                let cum = 0;
+                let cutoff = false;
+    
+                inputs.forEach((input, i) => {
+                  const row = document.getElementById(`${prefix}_row_${i}`);
+                  let val = 0;
+                  if (i === 0) val = data.data.dp1 || 0;
+                  else if (i === 1) val = data.data.dp2 || 0;
+                  else val = data.data[`installment_${i - 1}`] || 0;
+    
+                  input.value = val === 0 ? '' : val;
+    
+                  cum += val;
+                  const cumEl = document.getElementById(`${prefix}_cum_${i}`);
+                  if (cumEl) {
+                    cumEl.textContent = (val === 0 && input.value === '') ? '' : cum.toFixed(2);
+                  }
+    
+                  if (row) row.style.display = cutoff ? 'none' : '';
+                  if (cum >= 100 && !cutoff) cutoff = true;
+                });
+    
+                // Delivery index UI
+                if (data.data.delivery_index) {
+                  document.getElementById('delivery-button').textContent =
+                    getLabelFromPMT(data.data.delivery_index);
+                  highlightPMTRow(data.data.delivery_index);
+                }
+    
+                // If data exists, show delete button
+                if (deleteButton) deleteButton.style.display = 'inline-block';
+              } else {
+                // Hide delete button if no valid data
+                if (deleteButton) deleteButton.style.display = 'none';
+              }
+            })
+            .catch((err) => {
+              showToast(`Fetch failed: ${err.message}`, true);
+              console.error('Fetch error:', err);
+              if (deleteButton) deleteButton.style.display = 'none';
+            });
+        }
+    
+        attachListeners();
+        return { loadFromServer, attachListeners };
+      }
+    
+      /* ======= Load Constant Discount ======= */
+      function loadConstantDiscount(projectId, year) {
+        fetch(`{% url "fetch_special_offer_payment_ajax" %}?project_id=${projectId}&year=${year}`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.success) {
+              const v =
+                d.data && typeof d.data.constant_discount !== 'undefined'
+                  ? d.data.constant_discount
+                  : '';
+              discountInput.value = v === 0 ? '' : v;
+            } else {
+              discountInput.value = '';
+            }
+          })
+          .catch(() => {
+            discountInput.value = '';
+          });
+      }
+    
+      /* ======= Save Constant Discount (debounced) ======= */
+      const saveConstantDiscount = debounce(() => {
+        const pid = projectSelect.value;
+        const yr = yearSelect.value;
+        if (!pid || !yr) return;
+    
+        let val = parseFloat(discountInput.value);
+        if (isNaN(val)) val = 0;
+        if (val < 0) val = 0;
+        if (val > 100) val = 100;
+        discountInput.value = val === 0 ? '' : val;
+    
+        fetch('{% url "save_special_offer_payment_ajax" %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+          },
+          body: JSON.stringify({
+            project_id: parseInt(pid),
+            year: parseInt(yr),
+            constant_discount: val // server divides by 100
+          })
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error('Network error');
+            return res.json();
+          })
+          .then((j) => {
+            if (!j.success) throw new Error(j.message || 'Save failed');
+            // showToast('Constant discount saved'); // uncomment if you want a confirmation
+          })
+          .catch((err) => {
+            showToast('Failed to save constant discount', true);
+            console.error(err);
+          });
+      }, 500);
+    
+      if (discountInput) {
+        discountInput.addEventListener('input', saveConstantDiscount);
+      }
+    
+      /* ======= Delivery Dropdown ======= */
+      function setupDeliveryDropdown() {
+        const deliveryButton = document.getElementById('delivery-button');
+        const dropdownYears = document.getElementById('dropdown-years');
+        if (!deliveryButton || !dropdownYears) return;
+    
+        // Clear existing
+        dropdownYears.innerHTML = '';
+    
+        // Early PMTs (3, 6, 9 months)
+        const earlyLabels = { 1: '3 Months', 2: '6 Months', 3: '9 Months' };
+        for (let pmt = 1; pmt <= 3; pmt++) {
+          const li = document.createElement('li');
+          li.textContent = earlyLabels[pmt];
+          li.dataset.pmt = `PMT ${pmt}`;
+          li.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deliveryButton.textContent = earlyLabels[pmt];
+            highlightPMTRow(`PMT ${pmt}`);
+            saveDeliveryIndex(`PMT ${pmt}`);
+          });
+          dropdownYears.appendChild(li);
+        }
+    
+        // Year 1..11 with quarters
+        for (let year = 1; year <= 11; year++) {
+          const yearLi = document.createElement('li');
+          yearLi.textContent = `Year ${year}`;
+          const submenu = document.createElement('ul');
+          submenu.className = 'dropdown-submenu';
+          [0, 0.25, 0.5, 0.75].forEach((fraction) => {
+            const value = year + fraction;
+            const pmtNum = Math.round(value * 4);
+            const subLi = document.createElement('li');
+            subLi.textContent = `${value.toFixed(2)} (PMT ${pmtNum})`;
+            subLi.dataset.pmt = `PMT ${pmtNum}`;
+            subLi.addEventListener('click', (e) => {
+              e.stopPropagation();
+              deliveryButton.textContent = `Year ${value.toFixed(2)}`;
+              highlightPMTRow(`PMT ${pmtNum}`);
+              saveDeliveryIndex(`PMT ${pmtNum}`);
+            });
+            submenu.appendChild(subLi);
+          });
+          yearLi.appendChild(submenu);
+          dropdownYears.appendChild(yearLi);
+        }
+    
+        // Year 12 (PMT 48)
+        const year12 = document.createElement('li');
+        year12.textContent = 'Year 12 (PMT 48)';
+        year12.dataset.pmt = 'PMT 48';
+        year12.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deliveryButton.textContent = 'Year 12';
+          highlightPMTRow('PMT 48');
+          saveDeliveryIndex('PMT 48');
+        });
+        dropdownYears.appendChild(year12);
+    
+        function saveDeliveryIndex(pmtLabel) {
+          const projectId = projectSelect.value;
+          const selectedYear = yearSelect.value;
+          if (!projectId || !selectedYear) return;
+    
+          fetch('{% url "save_special_offer_payment_ajax" %}', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+              project_id: parseInt(projectId),
+              year: parseInt(selectedYear),
+              index: 0, // ignored server-side for delivery
+              value: 0, // ignored server-side for delivery
+              delivery_index: pmtLabel
+            })
+          }).catch((err) => console.error('Failed to save delivery index:', err));
+        }
+    
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+          if (
+            dropdownYears &&
+            deliveryButton &&
+            !dropdownYears.contains(e.target) &&
+            !deliveryButton.contains(e.target)
+          ) {
+            dropdownYears.style.display = 'none';
+          }
+        });
+    
+        // Toggle on button click
+        deliveryButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          dropdownYears.style.display =
+            dropdownYears.style.display === 'block' ? 'none' : 'block';
+        });
+      }
+    
+      /* ======= Helpers for Delivery Labeling & Row Highlight ======= */
+      function getLabelFromPMT(pmtLabel) {
+        if (!pmtLabel || !pmtLabel.startsWith('PMT')) return '-- Select Delivery --';
+        const pmtNum = parseInt(pmtLabel.replace('PMT', '').trim());
+        if (isNaN(pmtNum)) return '-- Select Delivery --';
+        if (pmtNum <= 3) return `PMT ${pmtNum}`;
+        if (pmtNum === 48) return 'Year 12';
+        const year = (pmtNum / 4).toFixed(2);
+        return `Year ${year}`;
+      }
+    
+      function highlightPMTRow(pmtLabel) {
+        document.querySelectorAll('tr').forEach((row) => row.classList.remove('highlight-row'));
+        if (!pmtLabel.startsWith('PMT')) return;
+        const pmtNum = parseInt(pmtLabel.replace('PMT', '').trim());
+        if (isNaN(pmtNum)) return;
+        const rowIndex = pmtNum + 1; // DP(0), Contract(1), PMT n => n+1
+        const row = document.getElementById(`ext_row_${rowIndex}`);
+        if (row) row.classList.add('highlight-row');
+      }
+    
+      /* ======= Reload Payments (on project/year change) ======= */
+      function reloadPayments() {
+        const pid = projectSelect.value;
+        const selectedYear = yearSelect.value;
+        const years = parseInt(selectedYear) || 0;
+    
+        const show = !!(pid && selectedYear);
+        paymentsSection.style.display = show ? 'block' : 'none';
+        deliveryWrapper.style.display = show ? 'block' : 'none';
+        if (discountBox) discountBox.style.display = show ? 'block' : 'none';
+    
+        if (!show) {
+          if (deleteButton) deleteButton.style.display = 'none';
+          return;
+        }
+    
+        const rowCount = Math.max(2, Math.min(years * 4 + 2, MAX_ROWS));
+        createPaymentRows(document.getElementById('ext-table-body'), 'ext', rowCount);
+    
+        const { loadFromServer, attachListeners } = setupPaymentSystem(
+          'ext',
+          'ext-value',
+          '{% url "save_special_offer_payment_ajax" %}',
+          '{% url "fetch_special_offer_payment_ajax" %}'
+        );
+    
+        attachListeners();
+        loadFromServer(pid, selectedYear);
+        loadConstantDiscount(pid, selectedYear);
+      }
+    
+      // Initial load and listeners
+      reloadPayments();
+      projectSelect.addEventListener('change', reloadPayments);
+      yearSelect.addEventListener('change', reloadPayments);
+      setupDeliveryDropdown();
+    
+      /* ======= Delete Plan Handler ======= */
+      if (deleteButton) {
+        deleteButton.addEventListener('click', function () {
+          const projectId = projectSelect.value;
+          const selectedYear = yearSelect.value;
+          if (!projectId || !selectedYear) return;
+          if (!confirm('Are you sure you want to delete this saved payment plan?')) return;
+    
+          fetch('{% url "delete_special_offer_payment_ajax" %}', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+              project_id: parseInt(projectId),
+              year: parseInt(selectedYear)
+            })
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success) {
+                showToast('✅ ' + data.message);
+                setTimeout(() => location.reload(), 1200);
+              } else {
+                showToast('❌ ' + (data.message || 'Error deleting payment plan.'), true);
+              }
+            })
+            .catch((err) => {
+              showToast('❌ Failed to delete: ' + err.message, true);
+            });
+        });
+      }
+    });
+</script>
+    
+{% endblock %}

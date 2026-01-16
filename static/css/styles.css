@@ -1,0 +1,450 @@
+/* Global Styles */
+body {
+    font-family: "Times New Roman", serif;
+    background-color: #ffffff;
+    margin: 0;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+    background: white;
+    padding: 20px;
+    border-radius: 5px;
+
+}
+
+
+/* Table Styling */
+table {
+    width: auto; /* Allow the table to shrink based on content */
+    max-width: 900px; /* Set a maximum width for the table */
+    border-collapse: collapse;
+    font-size: 14px;
+    background-color: white;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid #d4d4d4;
+    margin-top: -5%; /* Center the table horizontally */
+}
+
+th, td {
+    border: 1px solid #d1d1d1;
+    padding: 6px; /* Reduce padding to make cells narrower */
+    text-align: center;
+    font-size: 13px;
+    white-space: nowrap; /* Prevent text wrapping */
+    overflow: hidden; /* Hide overflowing content */
+    text-overflow: ellipsis; /* Add ellipsis for long text */
+}
+
+th {
+    /* background: linear-gradient(to bottom, #f0f0f0, #dcdcdc); */
+    color: #000;
+    text-transform: uppercase;
+    font-weight: bold;
+    border-bottom: 2px solid #9e9e9e;
+    min-width: 100px; /* Set a minimum width for headers */
+    max-width: 175px; /* Limit the width of headers */
+}
+
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+tr:hover {
+    background-color: #e6f7ff;
+}
+
+table input {
+    width: 80%; /* Reduce input width */
+    border: 1px solid transparent;
+    background: transparent;
+    text-align: center;
+    font-size: 13px;
+    padding: 4px; /* Reduce padding for inputs */
+    outline: none;
+    transition: all 0.2s ease-in-out;
+}
+
+table input:focus {
+    border: 1px solid #0078d4;
+    background-color: #f8f8f8;
+}
+
+table td:first-child {
+    font-weight: bold;
+    background: #f2f2f2;
+    min-width: 80px; /* Set a minimum width for the first column */
+    max-width: 120px; /* Limit the width of the first column */
+}
+
+.highlighted-row {
+    background: #ffeb3b !important; /* Light Yellow */
+    font-weight: bold;
+}
+
+/* Input Container */
+.input-container {
+    display: flex;
+    flex-direction: column; /* Stack input groups vertically */
+    gap: 15px; /* Add spacing between input groups */
+    max-width: 600px; /* Adjust container width */
+    margin-top: 1%;
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 5px;
+
+    background: linear-gradient(to bottom, #f0f0f0, #dcdcdc);
+}
+
+/* Input Group */
+.input-group {
+    display: flex; /* Align label and input horizontally */
+    align-items: center; /* Vertically align items */
+    gap: 10px; /* Add spacing between label and input */
+}
+
+/* Label Styling */
+.input-group label {
+    font-weight: bold;
+    font-size: 14px;
+    color: #333;
+    min-width: 120px; /* Ensure consistent width for labels */
+    text-align: left; /* Align label text to the left */
+}
+
+/* Label Styling */
+.input-container label {
+    font-weight: bold;
+    font-size: 14px;
+    color: #333;
+    text-align: left; /* Align labels to the left */
+    display: block; /* Ensure labels take up the full width */
+    margin-bottom:-10px; /* Add spacing between label and input */
+}
+
+/* Uniform Input Styling */
+.uniform-input {
+    flex: 1; /* Allow inputs to take up remaining space */
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    box-sizing: border-box; /* Include padding and border in width calculation */
+    transition: border-color 0.3s ease;
+    margin-top: -6px;
+}
+
+.uniform-input:focus {
+    border-color: #007bff;
+    outline: none;
+    background-color: #f8f9fa;
+}
+
+/* Center-align text inside the select dropdown */
+.uniform-input select {
+    text-align: center; /* Center-align the selected option */
+    text-align-last: center; /* Ensure alignment works for all browsers */
+    padding: 8px; /* Add padding for better spacing */
+    font-size: 14px; /* Match the font size of other inputs */
+    border: 1px solid #ccc; /* Consistent border styling */
+    border-radius: 3px; /* Rounded corners */
+    width: 100%; /* Ensure the dropdown fills the container */
+    box-sizing: border-box; /* Include padding and border in width calculation */
+}
+
+/* Center-align text inside the dropdown options */
+.uniform-input select option {
+    text-align: center; /* Center-align the text */
+    padding: 8px; /* Add padding for better readability */
+}
+
+/* Flex Container Layout */
+.flex-container {
+    display: flex;
+    justify-content: space-between; /* Distribute space between children */
+    align-items: flex-start;
+    gap: 20px;
+    width: 100%;
+    margin-left: 1%;
+}
+
+
+
+
+/* Adjust the flex properties of child elements */
+.input-container {
+    flex: 1;
+    min-width: 367px;
+    max-width: 360px;
+}
+
+#installmentTableContainer,
+#resultTableContainer {
+    flex: 1;
+    min-width: 352px;
+}
+
+/* Responsive Design */
+@media (max-width: 1000px) {
+    .flex-container {
+        flex-direction: column;
+        align-items: left;
+    }
+
+    .input-container,
+    #installmentTableContainer,
+    #resultTableContainer {
+        width: 100%;
+    }
+
+    table {
+        font-size: 12px;
+    }
+
+    th, td {
+        padding: 6px;
+    }
+}
+
+.hidden {
+    display: none;
+}
+
+/* Custom Dropdown Styling */
+.custom-dropdown {
+    position: relative;
+    width: 100%;
+    cursor: pointer;
+}
+
+.custom-dropdown .selected-option {
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: white;
+    text-align: center; /* Center-align the selected option */
+}
+
+.custom-dropdown .dropdown-options {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    z-index: 10;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.custom-dropdown .dropdown-options li {
+    padding: 8px;
+    text-align: center; /* Center-align the options */
+    cursor: pointer;
+}
+
+.custom-dropdown .dropdown-options li:hover {
+    background-color: #f1f1f1;
+}
+
+.custom-dropdown.open .dropdown-options {
+    display: block;
+}
+
+
+
+/* Custom Dropdown Styling */
+.custom-dropdown-2 {
+    position: relative;
+    width: 100%;
+    cursor: pointer;
+}
+
+.custom-dropdown-2 .selected-option-2 {
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: white;
+    text-align: center; /* Center-align the selected option */
+}
+
+.custom-dropdown-2 .dropdown-options {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    z-index: 10;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.custom-dropdown-2 .dropdown-options li {
+    padding: 8px;
+    text-align: center; /* Center-align the options */
+    cursor: pointer;
+}
+
+.custom-dropdown-2 .dropdown-options li:hover {
+    background-color: #f1f1f1;
+}
+
+.custom-dropdown-2.open .dropdown-options {
+    display: block;
+}
+
+
+/* ✅ Form Styling */
+.form-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 15px;
+    background: white;
+    border-radius: 5px;
+
+}
+
+/* ✅ Input Fields */
+input {
+    padding: 6px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    text-align: center;
+}
+
+/* ✅ F Styling */
+button {
+    padding: 8px 15px;
+    font-size: 14px;
+    border: none;
+    border-radius: 3px;
+    background-color: #C0C1C3;
+    color: white;
+    cursor: pointer;
+    transition: 0.3s ease;
+}
+
+
+.custom-dropdown {
+    position: relative;
+    display: inline-block;
+}
+.custom-dropdown .selected-option {
+    padding: 8px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+}
+.custom-dropdown .dropdown-options {
+    display: none;
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ccc;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    z-index: 1000;
+}
+.custom-dropdown.open .dropdown-options {
+    display: block;
+}
+.custom-dropdown .dropdown-options li {
+    padding: 8px;
+    cursor: pointer;
+}
+.custom-dropdown .dropdown-options li:hover {
+    background-color: #f0f0f0;
+}
+
+
+
+.custom-dropdown-2 {
+    position: relative;
+    display: inline-block;
+}
+.custom-dropdown-2 .selected-option {
+    padding: 8px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+}
+.custom-dropdown-2 .dropdown-options {
+    display: none;
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ccc;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    z-index: 1000;
+}
+.custom-dropdown-2.open .dropdown-options {
+    display: block;
+}
+.custom-dropdown-2 .dropdown-options li {
+    padding: 8px;
+    cursor: pointer;
+}
+.custom-dropdown-2 .dropdown-options li:hover {
+    background-color: #f0f0f0;
+}
+
+
+
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+-webkit-appearance: none;
+margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+    -moz-appearance: textfield;
+}
+
+#unitCodeSearch {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+#unitCode {
+    width: 100%;
+    max-height: 150px; /* Limit dropdown height */
+    overflow-y: auto; /* Enable scrolling if too many options */
+}
+
+#unitCodeSearch {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+#unitCodeOptions {
+    width: 100%;
+}

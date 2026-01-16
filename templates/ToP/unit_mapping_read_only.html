@@ -1,0 +1,1428 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+
+{% block title %}Project Masterplan{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+
+<style>
+    /* =========================================
+       EXISTING STYLES (DO NOT TOUCH)
+       ========================================= */
+    table { margin-top: 0%; }
+
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl {
+            max-width: 100%;
+        }
+    }
+
+    @media (min-width: 768px) {
+        .container, .container-md, .container-sm {
+            max-width: 100%;
+        }
+    }
+
+    table td:first-child {
+        font-weight: bold;
+        background: #f2f2f2;
+        min-width: 147px;
+        max-width: 168px;
+    }
+    
+    .unit-mapping-container {
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+    }
+    
+    .project-selection {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    /* --- CONTAINER STYLES --- */
+    .masterplan-container {
+        background: #f9f9f9;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        position: relative;
+        overflow: hidden; 
+        text-align: center;
+        border: 1px solid #ddd;
+        
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        /* Viewport height for better visibility on laptops */
+        height: 100%;
+        width: 100%;
+        cursor: grab;
+        touch-action: none; 
+    }
+
+    .masterplan-container:active {
+        cursor: grabbing;
+    }
+    
+    #masterplan-wrapper {
+        transform-origin: center center;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* --- FIXED IMAGE WRAPPER FOR PRECISE PINS --- */
+    .masterplan-image-wrapper {
+        position: relative;
+        /* Changed from flex to inline-block to ensure wrapper fits image exactly */
+        display: inline-block; 
+        vertical-align: middle;
+        line-height: 0;
+        transform-origin: center center;
+    }
+    
+    .masterplan-image {
+        /* Removed object-fit to prevent whitespace calculation errors */
+        display: block;
+        max-width: 100%; 
+        max-height: 100%; /* Ensures it fits in the initial view */
+        width: auto;
+        height: auto;
+        pointer-events: none; 
+    }
+    
+    /* --- MARKER STYLES --- */
+    .unit-marker {
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        background: #6c757d; 
+        border: 2px solid #fff;
+        border-radius: 50% 50% 50% 0;
+        cursor: pointer;
+        
+        /* Pin tip acts as the anchor point */
+        transform-origin: 0% 100%;
+        transform: translate(0%, -100%) rotate(-45deg);
+        
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        transition: background 0.3s ease; 
+        z-index: 10;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        
+        /* Reset line-height to ensure text centers inside the pin */
+        line-height: normal; 
+    }
+    
+    .unit-marker span {
+        transform: rotate(45deg); 
+        color: white;
+        font-size: 9px;
+        font-weight: bold;
+        white-space: nowrap;
+        
+        /* UPDATED: Reset margins to ensure true centering */
+        margin: 0; 
+        padding: 0;
+        
+        /* Ensure text alignment is centered */
+        text-align: center;
+        display: block; 
+    }
+    
+    .unit-marker:after { display: none; }
+    
+    .unit-marker:hover {
+        z-index: 20;
+        border-color: #333;
+    }
+
+    .unit-marker.blocked { background: #ffc107 !important; }
+    .unit-marker.blocked span { color: #333 !important; }
+    .unit-marker.building { background: #045eefff !important; }
+    .unit-marker.available { background: #28a745 !important; }
+    .unit-marker.unavailable { background: #dc3545 !important; }
+    
+    /* TOOLTIP STYLES */
+    .unit-tooltip {
+        position: absolute;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 15px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        z-index: 1000;
+        min-width: 280px;
+        width: max-content;
+        max-width: 350px;
+        text-align: left;
+        line-height: 1.5; /* Restore normal line height for text */
+    }
+
+    .unit-tooltip.wide-tooltip {
+        min-width: 300px;
+        width: max-content;
+        max-width: 96%;
+    }
+    
+    .tooltip-header {
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #333;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 5px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .tooltip-close {
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 22px;
+        line-height: 1;
+        color: #999;
+        padding: 0 5px;
+        transition: color 0.2s;
+    }
+
+    .tooltip-close:hover { color: #dc3545; background: #f0f0f0; border-radius: 3px; }
+        
+    .tooltip-field {
+        margin-bottom: 5px;
+        display: flex;
+        justify-content: space-between;
+    }
+    
+    .tooltip-field label {
+        font-weight: bold;
+        margin-right: 10px;
+        color: #666;
+        min-width: 120px;
+    }
+    
+    .tooltip-field span { text-align: right; flex: 1; }
+    
+    /* Building Table Styles */
+    .building-units-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+        font-size: 12px;
+    }
+    .building-units-table th, .building-units-table td {
+        padding: 6px;
+        border: 1px solid #eee;
+        text-align: left;
+        vertical-align: middle;
+    }
+    .building-units-table th {
+        background-color: #f8f9fa;
+        font-weight: bold;
+        color: #555;
+        white-space: nowrap;
+    }
+    .building-units-table td { white-space: nowrap; }
+    .building-scroll-area {
+        max-height: 250px;
+        overflow-y: auto;
+        overflow-x: auto; 
+        margin-bottom: 10px;
+        border: 1px solid #eee;
+    }
+    
+    .buy-now-btn, .buy-btn {
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    
+    .buy-now-btn { padding: 8px 16px; margin-top: 10px; width: 100%; }
+    .buy-btn { padding: 4px 8px; font-size: 11px; }
+    .buy-now-btn:hover, .buy-btn:hover { background: #0056b3; }
+    
+    .no-masterplan { text-align: center; padding: 40px; color: #666; }
+    .loading { text-align: center; padding: 20px; }
+    
+    /* CONTROLS FOR ZOOM */
+    .zoom-controls {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    .zoom-btn {
+        width: 40px;
+        height: 40px;
+        background: #c53e3eff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 20px;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        color: white;
+    }
+    .zoom-btn:active { background: #a52e2eff; }
+
+    /* Responsive Styles */
+    @media (max-width: 767.98px) {
+        .unit-mapping-container { padding: 10px; }
+        .project-selection { padding: 15px; margin-bottom: 15px; }
+        
+        .masterplan-container { 
+            padding: 0; 
+            height: 100%; 
+            background: #e9e9e9;
+        }
+
+        .form-control { font-size: 16px; padding: 12px; }
+        
+        .unit-tooltip {
+            min-width: 280px;
+            max-width: 90vw;
+            padding: 12px;
+            left: 50% !important;
+            transform: translateX(-50%);
+            right: 5vw;
+        }
+        .unit-tooltip.wide-tooltip {
+            min-width: 95vw;
+            max-width: 95vw;
+            left: 2.5vw !important;
+            right: 2.5vw;
+            transform: none;
+        }
+        .tooltip-field { flex-direction: column; margin-bottom: 8px; }
+        .tooltip-field label { min-width: auto; margin-bottom: 2px; font-size: 14px; }
+        .tooltip-field span { text-align: left; font-size: 14px; }
+        
+        .building-scroll-area { max-height: 200px; }
+        .building-units-table { font-size: 11px; display: block; overflow-x: auto; white-space: nowrap; }
+        .building-units-table th, .building-units-table td { padding: 4px; font-size: 11px; }
+        
+        .buy-now-btn, .buy-btn { padding: 10px 16px; font-size: 14px; }
+        .buy-btn { padding: 6px 10px; font-size: 12px; }
+        
+        .unit-marker { width: 24px; height: 24px; }
+        h1 { font-size: 24px; text-align: center; }
+    }
+    
+    @media (max-width: 575.98px) {
+        .unit-mapping-container { padding: 5px; }
+        .project-selection { padding: 10px; }
+        .unit-tooltip { min-width: 260px; padding: 10px; }
+        .tooltip-header { font-size: 14px; }
+        .building-units-table { font-size: 10px; }
+        .building-units-table th, .building-units-table td { padding: 3px; font-size: 10px; }
+        .building-scroll-area { max-height: 150px; }
+    }
+
+    /* --- NEW GLOW ANIMATION --- */
+    @keyframes glowPulse {
+        0% {
+            box-shadow: 0 0 5px rgba(220, 53, 69, 0.8);
+            transform: translate(0%, -100%) rotate(-45deg) scale(1);
+        }
+        50% {
+            box-shadow: 0 0 25px 10px rgba(220, 53, 69, 0.6);
+            transform: translate(0%, -100%) rotate(-45deg) scale(1.2); 
+        }
+        100% {
+            box-shadow: 0 0 5px rgba(220, 53, 69, 0.8);
+            transform: translate(0%, -100%) rotate(-45deg) scale(1);
+        }
+    }
+
+    .glow-active {
+        background-color: #dc3545 !important; /* Bright Red Pin */
+        border-color: #fff !important;
+        z-index: 9999 !important; /* Force on top */
+        animation: glowPulse 1.5s infinite ease-in-out; /* Infinite Pulse */
+    }
+
+    /* --- MODAL & SLIDER STYLES --- */
+    .layout-modal {
+        display: none; 
+        position: fixed; 
+        z-index: 99999; /* Very high z-index to sit above tooltips */
+        left: 0; top: 0; 
+        width: 100%; height: 100%; 
+        overflow: auto; 
+        background-color: rgba(0,0,0,0.85); 
+        animation: fadeIn 0.3s;
+    }
+    .layout-modal-content {
+        position: relative;
+        background-color: #fefefe;
+        margin: 5% auto;
+        padding: 0;
+        border: 1px solid #888;
+        width: 90%;
+        max-width: 800px;
+        border-radius: 8px;
+    }
+    .close-modal {
+        color: white;
+        position: absolute;
+        top: -35px; right: 0;
+        font-size: 30px; font-weight: bold;
+        cursor: pointer; z-index: 10001;
+    }
+    .close-modal:hover { color: #ccc; }
+
+    /* Carousel CSS */
+    .carousel { position: relative; padding-top: 75%; filter: drop-shadow(0 0 10px #0003); perspective: 100px; }
+    .carousel__viewport {
+        position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+        display: flex; overflow-x: scroll; counter-reset: item;
+        scroll-behavior: smooth; scroll-snap-type: x mandatory;
+        margin: 0; padding: 0; list-style: none;
+    }
+    .carousel__slide { position: relative; flex: 0 0 100%; width: 100%; background-color: #333; counter-increment: item; }
+    .carousel__slide img { width: 100%; height: 100%; object-fit: contain; }
+    .carousel__snapper { position: absolute; top: 0; left: 0; width: 100%; height: 100%; scroll-snap-align: center; }
+    .carousel::before, .carousel::after, .carousel__prev, .carousel__next {
+        position: absolute; top: 0; margin-top: 37.5%; width: 4rem; height: 4rem;
+        transform: translateY(-50%); border-radius: 50%; font-size: 0; outline: 0; cursor: pointer;
+    }
+    .carousel::before, .carousel__prev { left: 1rem; }
+    .carousel::after, .carousel__next { right: 1rem; }
+    .carousel::before, .carousel::after {
+        content: ''; z-index: 1; background-color: #333; background-size: 1.5rem 1.5rem;
+        background-repeat: no-repeat; background-position: center center;
+        color: #fff; font-size: 2.5rem; line-height: 4rem; text-align: center; pointer-events: none;
+    }
+    .carousel::before { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='0,50 80,100 80,0' fill='%23fff'/%3E%3C/svg%3E"); }
+    .carousel::after { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='100,50 20,100 20,0' fill='%23fff'/%3E%3C/svg%3E"); }
+
+    /* =========================================
+       NEW STYLES FOR FILTER & MODAL (ADDED)
+       ========================================= */
+    /* Filter Button Trigger */
+    .filter-btn-trigger {
+        width: 40px; height: 40px; background: #007bff; color: white;
+        border: 1px solid #0056b3; border-radius: 4px; font-size: 16px; 
+        cursor: pointer; display: flex; justify-content: center; align-items: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2); margin-bottom: 5px;
+    }
+    .filter-btn-trigger:hover { background: #0056b3; }
+
+    /* Filter Modal */
+    .filter-modal {
+        display: none; position: fixed; z-index: 100000; left: 0; top: 0; 
+        width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); 
+        backdrop-filter: blur(2px);
+    }
+    .filter-modal-content {
+        background-color: #fff; margin: 5vh auto; padding: 0; border-radius: 8px;
+        width: 90%; max-width: 600px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        display: flex; flex-direction: column; max-height: 90vh;
+    }
+    .filter-header {
+        padding: 15px 20px; border-bottom: 1px solid #eee; background: #f8f9fa;
+        display: flex; justify-content: space-between; align-items: center; border-radius: 8px 8px 0 0;
+    }
+    .filter-header h3 { margin: 0; font-size: 18px; color: #333; }
+    .filter-body { padding: 20px; overflow-y: auto; flex: 1; }
+    .filter-footer {
+        padding: 15px 20px; border-top: 1px solid #eee; background: #f8f9fa;
+        display: flex; justify-content: flex-end; gap: 10px; border-radius: 0 0 8px 8px;
+    }
+    .filter-group { margin-bottom: 15px; text-align: left; }
+    .filter-group label { display: block; font-weight: bold; font-size: 12px; color: #555; margin-bottom: 5px; }
+
+    /* Custom Multi-Select */
+    .multi-select-container {
+        border: 1px solid #ccc; border-radius: 4px; padding: 5px; min-height: 38px;
+        display: flex; flex-wrap: wrap; gap: 5px; cursor: text; position: relative; background: #fff;
+    }
+    .multi-select-tag {
+        background: #e9ecef; border: 1px solid #dee2e6; border-radius: 3px;
+        padding: 2px 6px; font-size: 12px; display: flex; align-items: center; gap: 5px;
+    }
+    .multi-select-tag i { cursor: pointer; color: #666; }
+    .multi-select-tag i:hover { color: #dc3545; }
+    .multi-select-input { border: none; outline: none; flex: 1; min-width: 60px; font-size: 14px; padding: 2px; }
+    .multi-select-dropdown {
+        position: absolute; top: 100%; left: -1px; right: -1px; background: white;
+        border: 1px solid #ccc; border-top: none; max-height: 200px; overflow-y: auto;
+        z-index: 10; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        text-align: left;
+    }
+    .multi-select-option { padding: 8px 10px; cursor: pointer; font-size: 14px; }
+    .multi-select-option:hover { background-color: #f1f3f5; }
+    .multi-select-option.selected { background-color: #e2e6ea; color: #888; cursor: default; }
+    .multi-select-option.disabled { opacity: 0.4; pointer-events: none; background: #f9f9f9; }
+    .multi-select-option.hidden { display: none; }
+
+    /* Range Inputs */
+    .range-inputs { display: flex; gap: 10px; align-items: center; }
+    .range-inputs input { width: 50%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+    
+    @media (max-width: 576px) {
+        .filter-modal-content { width: 95%; margin: 2vh auto; max-height: 96vh; }
+        .range-inputs { flex-direction: row; } 
+    }
+
+
+    /* --- LOADING OPTIMIZATION --- */
+    .masterplan-image {
+        opacity: 0;
+        transition: opacity 0.5s ease-in-out;
+        decoding: async; /* Hint to browser to decode off-main-thread */
+    }
+
+    .masterplan-image.loaded {
+        opacity: 1;
+    }
+
+    /* Improve the loading spinner visual */
+    .loading p {
+        font-weight: bold;
+        color: #007bff;
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 0.5; }
+        50% { opacity: 1; }
+        100% { opacity: 0.5; }
+    }
+</style>
+
+<div class="unit-mapping-container">
+    <div class="project-selection">
+        <div class="form-group">
+            <label for="project-select">Select Project:</label>
+            <select id="project-select" class="form-control">
+                <option value="">-- Select a Project --</option>
+                {% for project in projects %}
+                    <option value="{{ project.id }}">{{ project.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    
+    <div class="masterplan-container" id="masterplan-container">
+        <div class="zoom-controls">
+            <button class="filter-btn-trigger" id="open-filter-btn" title="Filter Units"><i class="fa-solid fa-sliders"></i></button>
+            <button class="zoom-btn" id="btn-clear-map-filter" title="Clear Filters" style="display: none; background: #dc3545; font-size: 14px; font-weight: bold;">
+                <i class="fa-solid fa-filter-circle-xmark"></i>
+            </button>
+            <div style="height: 10px;"></div> <button class="zoom-btn" id="zoom-in" title="Zoom In">+</button>
+            <button class="zoom-btn" id="zoom-out" title="Zoom Out">-</button>
+            <button class="zoom-btn" id="zoom-reset" title="Reset">↻</button>
+        </div>
+
+        <div id="masterplan-content" style="width: 100%; height: 100%;">
+            <div class="no-masterplan" id="no-masterplan">
+                <p>Please select a project to load its masterplan</p>
+            </div>
+            <div class="loading" id="loading" style="display: none;">
+                <p>Loading masterplan...</p>
+            </div>
+            <div id="masterplan-wrapper" style="display: none;"></div>
+        </div>
+    </div>
+</div>
+
+<template id="tooltip-template-single">
+    <div class="unit-tooltip">
+        <div class="tooltip-header">
+            <span data-field="unit_code"></span>
+            <span class="tooltip-close" title="Close">&times;</span>
+        </div>
+        <div class="tooltip-field field-price"><label>Price:</label><span data-field="interest_free_unit_price"></span></div>
+        <div class="tooltip-field field-delivery"><label>Delivery Date:</label><span data-field="development_delivery_date"></span></div>
+        <div class="tooltip-field field-finishing"><label>Finishing Type:</label><span data-field="finishing_specs"></span></div>
+        <div class="tooltip-field field-gross"><label>Gross Area:</label><span data-field="sellable_area"></span></div>
+        <div class="tooltip-field field-garden"><label>Garden Area:</label><span data-field="garden_area"></span></div>
+        <div class="tooltip-field field-land"><label>Land Area:</label><span data-field="land_area"></span></div>
+        <div class="tooltip-field field-penthouse"><label>Penthouse Area:</label><span data-field="penthouse_area"></span></div>
+        <div class="tooltip-field field-terrace"><label>Terrace / Roof Area:</label><span data-field="roof_terraces_area"></span></div>
+        <button class="buy-now-btn" data-unit-code="">Buy Now</button>
+    </div>
+</template>
+
+<template id="tooltip-template-building">
+    <div class="unit-tooltip wide-tooltip">
+        <div class="tooltip-header">
+            <span data-field="building_name"></span>
+            <span class="tooltip-close" title="Close">&times;</span>
+        </div>
+        <div class="building-scroll-area">
+            <table class="building-units-table">
+                <thead>
+                    <tr>
+                        <th>Unit</th>
+                        <th>Floor</th>
+                        <th>Status</th>
+                        <th>Price</th>
+                        <th>Finishing Type</th>
+                        <th>Gross Area</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="units-list-body"></tbody>
+            </table>
+        </div>
+    </div>
+</template>
+
+
+<div id="layoutModal" class="layout-modal">
+    <div class="layout-modal-content">
+        <span class="close-modal" onclick="closeLayoutModal()">&times;</span>
+        <div id="modalCarouselContainer"></div>
+    </div>
+</div>
+
+<div id="filterModal" class="filter-modal">
+    <div class="filter-modal-content">
+        <div class="filter-header">
+            <h3><i class="fa-solid fa-filter"></i> Filter Units</h3>
+            <span class="close-modal" onclick="closeFilterModal()" style="font-size: 24px; cursor:pointer;">&times;</span>
+        </div>
+        <div class="filter-body">
+            <div class="filter-group">
+                <label>Unit Code / Name</label>
+                <div class="multi-select-container" id="ms-code">
+                    <input type="text" class="multi-select-input" placeholder="Type to search..." autocomplete="off">
+                    <div class="multi-select-dropdown"></div>
+                </div>
+            </div>
+            
+            <div class="row" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 150px;">
+                    <div class="filter-group">
+                        <label>Bedrooms</label>
+                        <div class="multi-select-container" id="ms-bedrooms">
+                            <input type="text" class="multi-select-input" placeholder="Select..." autocomplete="off">
+                            <div class="multi-select-dropdown"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <div class="filter-group">
+                        <label>Finishing</label>
+                        <div class="multi-select-container" id="ms-finishing">
+                            <input type="text" class="multi-select-input" placeholder="Select..." autocomplete="off">
+                            <div class="multi-select-dropdown"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label>Unit Model</label>
+                <div class="multi-select-container" id="ms-model">
+                    <input type="text" class="multi-select-input" placeholder="Select model..." autocomplete="off">
+                    <div class="multi-select-dropdown"></div>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label>Gross Area (m²)</label>
+                <div class="range-inputs">
+                    <input type="number" id="filter-area-min" placeholder="Min Area">
+                    <span>-</span>
+                    <input type="number" id="filter-area-max" placeholder="Max Area">
+                </div>
+            </div>
+
+            <div class="filter-group" id="filter-group-status" style="display:none;">
+                <label>Status</label>
+                <div class="multi-select-container" id="ms-status">
+                    <input type="text" class="multi-select-input" placeholder="Select..." autocomplete="off">
+                    <div class="multi-select-dropdown"></div>
+                </div>
+            </div>
+        </div>
+        <div class="filter-footer">
+            <button class="btn btn-secondary" onclick="closeFilterModal()">Cancel</button>
+            <button class="btn btn-primary" id="apply-filters-btn">Apply Filters</button>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    // --- GLOBAL VARIABLES FOR FILTERING ---
+    let globalUnitPositions = [];
+    let isUserClient = false;
+    let panzoomInstance = null;
+    let globalUrlFilterList = null; // KEY FIX: Global variable for URL filters
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    const urls = {
+        getProjectMasterplan: "{% url 'get_project_masterplan' 0 %}".replace('/0/', '/'),
+        getUnitDetails: "{% url 'get_unit_details_for_masterplan' 'unit_code' %}".replace('/unit_code/', '/'),
+        home: "{% url 'home' %}",
+        catalog: "{% url 'units_catalog' %}" 
+    };
+
+    // --- FORMATTERS ---
+    function formatPrice(value) {
+        if (!value || value === '-' || value === 'N/A') return 'N/A';
+        let num = parseFloat(value);
+        if (isNaN(num)) return value;
+        return Math.floor(num).toLocaleString('en-US');
+    }
+    function formatArea(value) {
+        if (!value || value === '-' || value === 'N/A') return 'N/A';
+        let num = parseFloat(value);
+        if (isNaN(num)) return value;
+        return num.toLocaleString('en-US');
+    }
+    function isValidMetric(value) {
+        if (value === null || value === undefined) return false;
+        const strVal = String(value).trim().toLowerCase();
+        if (strVal === '' || strVal === 'n/a' || strVal === 'null' || strVal === 'none' || strVal === '-') return false;
+        const num = parseFloat(value);
+        if (!isNaN(num) && num === 0) return false;
+        return true;
+    }
+    function isMobileDevice() { return window.innerWidth <= 767.98; }
+    function getPinLabel(unitCode) {
+        if (!unitCode) return '';
+        let cleanCode = unitCode.split('_')[0];
+        let parts = cleanCode.split('-');
+        let lastPart = parts[parts.length - 1];
+        if (/^\d+$/.test(lastPart)) {
+            return parseInt(lastPart, 10);
+        }
+        return lastPart;
+    }
+
+    // --- CHECK MANAGER STATUS ---
+    let isManager = false;
+    {% for group in request.user.groups.all %}
+        if ("{{ group.name }}" === "Manager" || "{{ group.name }}" === "Admin" || "{{ group.name }}" === "TeamMember" || "{{ group.name }}" === "Developer") {
+            isManager = true;
+        }
+    {% endfor %}
+
+    $(document).ready(function() {
+        let currentProjectId = null;
+        let currentTooltip = null;
+        let currentProjectName = '';
+
+        // --- 1. PARSE URL PARAMS ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const autoProjectId = urlParams.get('project_id');
+        const autoFocusUnit = urlParams.get('focus_unit'); 
+        const rawFilteredCodes = urlParams.get('filtered_codes'); 
+        
+        let filteredCodesArray = null; 
+        
+        if (rawFilteredCodes) {
+            filteredCodesArray = decodeURIComponent(rawFilteredCodes).split(',');
+            // STORE GLOBALLY FOR ACCESS IN TOOLTIP LOGIC
+            globalUrlFilterList = filteredCodesArray;
+            $('#btn-clear-map-filter').show();
+        }
+
+        // --- CLEAR BUTTON LOGIC (FIXED) ---
+        $('#btn-clear-map-filter').on('click', function() {
+            // 1. Reset Global State
+            globalUrlFilterList = null; 
+            
+            // 2. Reset Frontend UI
+            clearFiltersUI();
+            
+            // 3. Show ALL markers
+            $('.unit-marker').show(); 
+            
+            // 4. Remove Glow
+            $('.glow-active').removeClass('glow-active');
+
+            // 5. Hide button
+            $(this).hide();
+            
+            // 6. Clean URL
+            const newUrl = new URL(window.location.href);
+            let changed = false;
+            if(newUrl.searchParams.get('filtered_codes')) {
+                newUrl.searchParams.delete('filtered_codes');
+                changed = true;
+            }
+            if(newUrl.searchParams.get('focus_unit')) {
+                newUrl.searchParams.delete('focus_unit');
+                changed = true;
+            }
+            if(changed) window.history.replaceState({}, '', newUrl);
+        });
+
+        if (autoProjectId) {
+            $('#project-select').val(autoProjectId);
+            const opt = $('#project-select option[value="'+autoProjectId+'"]');
+            if(opt.length) currentProjectName = opt.text();
+            
+            loadMasterplan(autoProjectId, autoFocusUnit, filteredCodesArray);
+
+            if (autoFocusUnit) {
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.delete('focus_unit');
+                window.history.replaceState({}, '', newUrl);
+            }
+        }
+
+        $(document).on('click', function (e) {
+            if (currentTooltip) {
+                if (!$(e.target).closest('.unit-tooltip').length && !$(e.target).closest('.unit-marker').length) {
+                    closeTooltip();
+                }
+            }
+            if (!$(e.target).closest('.multi-select-container').length) {
+                $('.multi-select-dropdown').hide();
+            }
+        });
+        
+        $('#project-select').change(function() {
+            const projectId = $(this).val();
+            currentProjectName = $(this).find('option:selected').text();
+            if (currentTooltip) currentTooltip.remove(); currentTooltip = null;
+            if (projectId) loadMasterplan(projectId, null, null);
+            else showNoMasterplan();
+        });
+        
+        function loadMasterplan(projectId, focusUnitCode, filterList) {
+            showLoading();
+            if (panzoomInstance) {
+                panzoomInstance.destroy(); 
+                panzoomInstance = null;
+            }
+
+            $.ajax({
+                url: urls.getProjectMasterplan + projectId + '/',
+                type: 'GET',
+                success: function(response) {
+                    if (response.has_masterplan) {
+                        initFiltersFromData(response.unit_positions, response.is_client);
+                        displayMasterplan(response.image_url, response.unit_positions, focusUnitCode, filterList);
+                    } else {
+                        showNoMasterplan('No masterplan uploaded for this project');
+                    }
+                },
+                error: function() { showNoMasterplan('Error loading masterplan'); }
+            });
+        }
+        
+        function displayMasterplan(imageUrl, unitPositions, focusTarget, filterList) {
+            const wrapper = $('#masterplan-wrapper');
+            wrapper.empty();
+            wrapper.hide(); 
+
+            const imageWrapper = $('<div class="masterplan-image-wrapper"></div>');
+            // Added decoding="async" for performance
+            const img = $(`<img src="${imageUrl}" class="masterplan-image" decoding="async" alt="Masterplan">`);
+            
+            imageWrapper.append(img);
+            wrapper.append(imageWrapper);
+            
+            // Convert jQuery object to raw HTML Element to use the Decode API
+            const imgElement = img[0];
+
+            // .decode() ensures the image is fully downloaded AND uncompressed in memory
+            // before we proceed to show pins or initialize Panzoom
+            imgElement.decode()
+                .then(() => {
+                    // Once decoded, we can safely show the image and place pins
+                    img.addClass('loaded'); 
+                    wrapper.show();
+                    
+                    unitPositions.forEach(function(position) { 
+                        addUnitMarker(position, imageWrapper, filterList); 
+                    });
+                    
+                    hideLoading();
+                    
+                    const elem = document.getElementById('masterplan-wrapper');
+                    panzoomInstance = Panzoom(elem, {
+                        maxScale: 6, minScale: 1, contain: null, startScale: 1, animate: true
+                    });
+
+                    if (focusTarget) {
+                        const targetMarker = $(`.unit-marker[data-unit-code="${focusTarget}"]`);
+                        if (targetMarker.length) {
+                            targetMarker.addClass('glow-active');
+                            targetMarker.one('click', function() {
+                                $(this).removeClass('glow-active');
+                            });
+                        } else {
+                            setTimeout(() => { panzoomInstance.reset(); }, 50);
+                        }
+                    } else {
+                        setTimeout(() => { panzoomInstance.reset(); }, 50);
+                    }
+                    
+                    elem.addEventListener('panzoomchange', (event) => {
+                        const scale = event.detail.scale;
+                        let markerScale = 1 / scale; 
+                        if (markerScale < 0.3) markerScale = 0.3; 
+                        $('.unit-marker:not(.glow-active)').css('transform', `translate(0%, -100%) rotate(-45deg) scale(${markerScale})`);
+                    });
+
+                    $('#zoom-in').off('click').on('click', panzoomInstance.zoomIn);
+                    $('#zoom-out').off('click').on('click', panzoomInstance.zoomOut);
+                    $('#zoom-reset').off('click').on('click', panzoomInstance.reset);
+                    elem.parentElement.addEventListener('wheel', panzoomInstance.zoomWithWheel);
+                })
+                .catch((encodingError) => {
+                    console.error("Masterplan decode failed:", encodingError);
+                    // Fallback: If decode fails, try to show it anyway using standard load
+                    img.on('load', function() {
+                        img.addClass('loaded');
+                        wrapper.show();
+                        hideLoading();
+                    });
+                    showNoMasterplan('Error rendering high-resolution image');
+                });
+        }
+
+        // --- ADD MARKER (REMOVED FILTERLIST FROM CLOSURE) ---
+        function addUnitMarker(position, container, filterList) {
+            let isVisible = true;
+
+            // Check Initial Filters on Load
+            if (filterList && filterList.length > 0) {
+                isVisible = false;
+                if (position.unit_type === 'single') {
+                    if (filterList.includes(position.unit_code)) isVisible = true;
+                } else if (position.unit_type === 'building') {
+                    let childCodes = position.child_codes || (position.filter_data ? position.filter_data.map(c=>c.unit_code) : []);
+                    if (childCodes && childCodes.some(c => filterList.includes(c))) isVisible = true;
+                }
+            }
+
+            const xPercent = parseFloat(position.x_percent);
+            const yPercent = parseFloat(position.y_percent);
+            if (isNaN(xPercent) || isNaN(yPercent)) return;
+            
+            let markerClass = 'unit-marker';
+            if (position.unit_type === 'building') markerClass += ' building';
+            else {
+                if (position.unit_status === 'Available') markerClass += ' available';
+                else if(position.unit_status === 'Blocked Development') markerClass += ' blocked';
+                else markerClass += ' unavailable';
+            }
+            
+            const label = getPinLabel(position.unit_code);
+            const marker = $(`<div class="${markerClass}" 
+                            data-position-id="${position.id}"
+                            data-unit-code="${position.unit_code}"
+                            title="${position.unit_code}"><span>${label}</span></div>`);
+            
+            marker.css({ left: xPercent + '%', top: yPercent + '%' });
+            
+            if (!isVisible) {
+                marker.hide(); 
+            }
+            
+            marker.on('click touchend', function(e) {
+                e.stopPropagation();
+                if(e.type === 'touchend') e.preventDefault(); 
+                // KEY CHANGE: DO NOT PASS filterList HERE. USE GLOBAL STATE.
+                showUnitTooltip(position, marker);
+            });
+            
+            container.append(marker);
+        }
+        
+        // --- SHOW TOOLTIP (UPDATED TO USE GLOBAL FILTER STATE) ---
+        function showUnitTooltip(position, marker) {
+            if (currentTooltip) currentTooltip.remove(); 
+            currentTooltip = null;
+            
+            // Use the GLOBAL filter list which is reset by the Clear button
+            const currentUrlFilters = globalUrlFilterList; 
+
+            $.ajax({
+                url: urls.getUnitDetails + position.unit_code + '/',
+                type: 'GET',
+                success: function(response) {
+                    let tooltipContent;
+                    
+                    // Gather Frontend Filters
+                    const selCodes = getSelected('ms-code');
+                    const selBeds = getSelected('ms-bedrooms');
+                    const selFinish = getSelected('ms-finishing');
+                    const selMod = getSelected('ms-model');
+                    const selStat = getSelected('ms-status');
+                    const minA = parseFloat($('#filter-area-min').val());
+                    const maxA = parseFloat($('#filter-area-max').val());
+                    
+                    // --- BUILDING TOOLTIP ---
+                    if (response.type === 'building') {
+                        const template = document.getElementById('tooltip-template-building');
+                        tooltipContent = $(template.innerHTML);
+                        tooltipContent.find('[data-field="building_name"]').text(response.building_name);
+                        const tbody = tooltipContent.find('.units-list-body');
+                        
+                        if (!response.data || response.data.length === 0) {
+                            tbody.append('<tr><td colspan="7">No available units.</td></tr>');
+                        } else {
+                            let visibleCount = 0;
+                            response.data.forEach(u => {
+                                // 1. URL Filter Check (Uses Global State Now)
+                                if (currentUrlFilters && currentUrlFilters.length > 0 && !currentUrlFilters.includes(u.unit_code)) return;
+                                
+                                // 2. Frontend Filter Check
+                                if (selCodes.length > 0 && !selCodes.includes(u.unit_code)) return;
+                                if (selBeds.length > 0 && !selBeds.includes(String(u.num_bedrooms))) return;
+                                if (selFinish.length > 0 && !selFinish.includes(u.finishing_specs)) return;
+                                if (selMod.length > 0 && !selMod.includes(u.unit_model)) return;
+                                if (selStat.length > 0 && !selStat.includes(u.status)) return;
+                                
+                                const area = parseFloat(u.sellable_area);
+                                if (!isNaN(minA) && (isNaN(area) || area < minA)) return;
+                                if (!isNaN(maxA) && (isNaN(area) || area > maxA)) return;
+
+                                if (!isManager && u.status !== 'Available' && !u.hasOwnProperty('interest_free_unit_price')) return; 
+                                
+                                visibleCount++;
+                                const fmtFinish = u.finishing_specs || 'N/A';
+                                const fmtArea = formatArea(u.sellable_area);
+                                let priceHtml = u.hasOwnProperty('interest_free_unit_price') ? formatPrice(u.interest_free_unit_price) : '';
+                                
+                                let actionHtml = '<div style="display:flex; gap:5px; align-items:center;">';
+                                if (u.layout_images && u.layout_images.length > 0) {
+                                    const encImgs = encodeURIComponent(JSON.stringify(u.layout_images));
+                                    actionHtml += `<button class="btn btn-sm btn-info text-white" style="padding: 2px 6px; font-size: 11px; border:none; border-radius:3px;" onclick="openLayoutModal('${encImgs}')"><i class="fa-regular fa-images"></i></button>`;
+                                }
+                                let catLink = `${urls.catalog}?search_code=${encodeURIComponent(u.unit_code)}`;
+                                if (response.company_id) catLink += `&company_id=${response.company_id}`;
+                                actionHtml += `<a href="${catLink}" class="btn btn-sm btn-light border" style="padding: 2px 6px; font-size: 11px; color: #0d6efd;"><i class="fa-solid fa-circle-info"></i></a>`;
+                                if (u.status === 'Available' || isManager) actionHtml += `<button class="buy-btn" data-code="${u.unit_code}" style="margin:0; padding: 2px 8px; font-size: 11px;">Buy</button>`;
+                                actionHtml += '</div>';
+
+                                tbody.append(`<tr><td>${u.unit_code}</td><td>${u.floor}</td><td>${u.status}</td><td>${priceHtml}</td><td>${fmtFinish}</td><td>${fmtArea}</td><td>${actionHtml}</td></tr>`);
+                            });
+                            if (visibleCount === 0) tbody.append('<tr><td colspan="7">No matching units found.</td></tr>');
+                        }
+
+                    // --- SINGLE TOOLTIP ---
+                    } else {
+                        const u = response.data;
+                        const template = document.getElementById('tooltip-template-single');
+                        tooltipContent = $(template.innerHTML);
+                        
+                        tooltipContent.find('[data-field="unit_code"]').text(u.unit_code);
+                        tooltipContent.find('[data-field="development_delivery_date"]').text(u.development_delivery_date||'N/A');
+                        tooltipContent.find('[data-field="finishing_specs"]').text(u.finishing_specs||'N/A');
+                        
+                        if (u.hasOwnProperty('interest_free_unit_price')) {
+                             tooltipContent.find('.field-price').show().find('span').text(formatPrice(u.interest_free_unit_price));
+                        } else tooltipContent.find('.field-price').hide();
+
+                        if (isValidMetric(u.sellable_area)) tooltipContent.find('[data-field="sellable_area"]').text(formatArea(u.sellable_area)); else tooltipContent.find('.field-gross').remove();
+                        if (isValidMetric(u.garden_area)) tooltipContent.find('[data-field="garden_area"]').text(formatArea(u.garden_area)); else tooltipContent.find('.field-garden').remove();
+                        if (isValidMetric(u.land_area)) tooltipContent.find('[data-field="land_area"]').text(formatArea(u.land_area)); else tooltipContent.find('.field-land').remove();
+                        if (isValidMetric(u.penthouse_area)) tooltipContent.find('[data-field="penthouse_area"]').text(formatArea(u.penthouse_area)); else tooltipContent.find('.field-penthouse').remove();
+                        if (isValidMetric(u.roof_terraces_area)) tooltipContent.find('[data-field="roof_terraces_area"]').text(formatArea(u.roof_terraces_area)); else tooltipContent.find('.field-terrace').remove();
+
+                        if (u.status === 'Available' || isManager) tooltipContent.find('.buy-now-btn').attr('data-unit-code', u.unit_code);
+                        else tooltipContent.find('.buy-now-btn').remove();
+
+                        if (u.layout_images && u.layout_images.length > 0) {
+                            const encImgs = encodeURIComponent(JSON.stringify(u.layout_images));
+                            const lBtn = `<button class="buy-now-btn" style="background-color: #17a2b8; margin-top: 5px; margin-bottom:5px;" onclick="openLayoutModal('${encImgs}')"><i class="fa-regular fa-images"></i> View Brochure</button>`;
+                            if (tooltipContent.find('.buy-now-btn').length) tooltipContent.find('.buy-now-btn').before(lBtn); else tooltipContent.append(lBtn);
+                        }
+
+                        let unitCatalogLink = `${urls.catalog}?search_code=${encodeURIComponent(u.unit_code)}`;
+                        if (response.company_id) unitCatalogLink += `&company_id=${response.company_id}`;
+                        const catalogBtnHtml = `<div style="text-align: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;"><a href="${unitCatalogLink}" class="text-decoration-none fw-bold" style="font-size: 13px; color: #0d6efd;"><i class="fa-solid fa-list-ul"></i> Show Details in Catalog</a></div>`;
+                        tooltipContent.append(catalogBtnHtml);
+                    }
+
+                    $('body').append(tooltipContent);
+                    currentTooltip = tooltipContent;
+                    
+                    if (isMobileDevice()) {
+                        const cssObj = (response.type === 'building') ? { top: '20px', left: '2.5vw', right: '2.5vw', 'max-height': '80vh', 'overflow-y': 'auto' } : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', 'max-width': '90vw' };
+                        tooltipContent.css({...cssObj, position: 'fixed', 'z-index': '9999'});
+                        const backdrop = $('<div class="tooltip-backdrop" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 9998;"></div>').insertBefore(tooltipContent).on('click', closeTooltip);
+                        tooltipContent.data('backdrop', backdrop);
+                    } else {
+                        const rect = marker[0].getBoundingClientRect();
+                        let left = rect.left + window.scrollX - (tooltipContent.outerWidth()/2) + (rect.width/2);
+                        let top = rect.top + window.scrollY - tooltipContent.outerHeight() - 10;
+                        if(left<10) left=10; if(left+tooltipContent.outerWidth()>window.innerWidth) left = window.innerWidth-tooltipContent.outerWidth()-10;
+                        if(top<10) top = rect.bottom+10;
+                        tooltipContent.css({ position: 'absolute', top: top+'px', left: left+'px', 'z-index': '9999' });
+                    }
+
+                    tooltipContent.find('.tooltip-close').on('click', function(e) { e.stopPropagation(); closeTooltip(); });
+                    tooltipContent.on('click', '.buy-btn, .buy-now-btn', function() {
+                        if ($(this).attr('onclick') && $(this).attr('onclick').includes('openLayoutModal')) return;
+                        const c = $(this).attr('data-code') || $(this).attr('data-unit-code');
+                        if (c) redirectToHomeWithUnit(c);
+                    });
+                },
+                error: function() { alert('Error loading details.'); }
+            });
+        }
+
+        function closeTooltip() {
+            if (currentTooltip) {
+                if (currentTooltip.data('backdrop')) currentTooltip.data('backdrop').remove();
+                currentTooltip.remove();
+                currentTooltip = null;
+            }
+        }
+        
+        function redirectToHomeWithUnit(unitCode) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = urls.home;
+            const csrfInput = document.createElement('input'); csrfInput.type = 'hidden'; csrfInput.name = 'csrfmiddlewaretoken'; csrfInput.value = csrftoken; form.appendChild(csrfInput);
+            const unitInput = document.createElement('input'); unitInput.type = 'hidden'; unitInput.name = 'unit_code'; unitInput.value = unitCode; form.appendChild(unitInput);
+            if (currentProjectName) {
+                const projectInput = document.createElement('input'); projectInput.type = 'hidden'; projectInput.name = 'project_name'; projectInput.value = currentProjectName; form.appendChild(projectInput);
+            }
+            document.body.appendChild(form); form.submit();
+        }
+        
+        function showLoading() { $('#no-masterplan, #masterplan-wrapper').hide(); $('#loading').show(); }
+        function hideLoading() { $('#loading').hide(); }
+        function showNoMasterplan(msg='Please select a project') { $('#no-masterplan').html(`<p>${msg}</p>`).show(); $('#masterplan-wrapper, #loading').hide(); }
+        
+        // ===============================================
+        // FRONTEND FILTERING LOGIC
+        // ===============================================
+        $('#open-filter-btn').click(function() { 
+            $('#filterModal').fadeIn(200); 
+            updateDependentFilters();
+        });
+        window.closeFilterModal = function() { $('#filterModal').fadeOut(200); };
+        
+        $('#filter-area-min, #filter-area-max').on('input', updateDependentFilters);
+
+        $('#apply-filters-btn').click(function() {
+            const selCodes = getSelected('ms-code');
+            const selBeds = getSelected('ms-bedrooms');
+            const selFin = getSelected('ms-finishing');
+            const selMod = getSelected('ms-model');
+            const selStat = getSelected('ms-status');
+            const minA = parseFloat($('#filter-area-min').val());
+            const maxA = parseFloat($('#filter-area-max').val());
+            
+            const hasFilter = (selCodes.length+selBeds.length+selFin.length+selMod.length+selStat.length > 0 || !isNaN(minA) || !isNaN(maxA));
+
+            if(!hasFilter) {
+                $('.unit-marker').show();
+                $('#btn-clear-map-filter').hide();
+                closeFilterModal();
+                return;
+            }
+
+            $('.unit-marker').each(function() {
+                const marker = $(this);
+                const posId = marker.data('position-id');
+                const posData = globalUnitPositions.find(p => p.id == posId);
+                let isVisible = false;
+
+                if(posData && posData.filter_data) {
+                    for(let u of posData.filter_data) {
+                        const mCode = selCodes.length === 0 || selCodes.includes(u.unit_code);
+                        const mBed = selBeds.length === 0 || selBeds.includes(u.bedrooms);
+                        const mFin = selFin.length === 0 || selFin.includes(u.finishing);
+                        const mMod = selMod.length === 0 || selMod.includes(u.model);
+                        const mStat = selStat.length === 0 || selStat.includes(u.status);
+                        const mArea = (isNaN(minA) || u.area >= minA) && (isNaN(maxA) || u.area <= maxA);
+
+                        if(mCode && mBed && mFin && mMod && mStat && mArea) {
+                            isVisible = true;
+                            break;
+                        }
+                    }
+                }
+                if(isVisible) marker.show(); else marker.hide();
+            });
+
+            $('#btn-clear-map-filter').show();
+            closeFilterModal();
+        });
+    });
+
+    // ===============================================
+    // FILTER HELPER FUNCTIONS
+    // ===============================================
+
+    function initFiltersFromData(positions, isClient) {
+        globalUnitPositions = positions; 
+        isUserClient = isClient;
+
+        const uniqueBeds = new Set();
+        const uniqueFinishing = new Set();
+        const uniqueModels = new Set();
+        const uniqueStatus = new Set();
+        const uniqueCodes = new Set();
+        let minA = 1000000, maxA = 0;
+
+        positions.forEach(pos => {
+            if(pos.filter_data) {
+                pos.filter_data.forEach(u => {
+                    uniqueCodes.add(u.unit_code);
+                    if(u.bedrooms && u.bedrooms !== '-') uniqueBeds.add(u.bedrooms);
+                    if(u.finishing && u.finishing !== 'N/A') uniqueFinishing.add(u.finishing);
+                    if(u.model && u.model !== 'N/A') uniqueModels.add(u.model);
+                    if(u.status) uniqueStatus.add(u.status);
+                    
+                    if(u.area > 0) {
+                        if(u.area < minA) minA = u.area;
+                        if(u.area > maxA) maxA = u.area;
+                    }
+                });
+            }
+        });
+
+        if(minA === 1000000) minA = 0;
+
+        setupMultiSelect('ms-code', Array.from(uniqueCodes).sort());
+        setupMultiSelect('ms-bedrooms', Array.from(uniqueBeds).sort((a,b) => parseFloat(a)-parseFloat(b)));
+        setupMultiSelect('ms-finishing', Array.from(uniqueFinishing).sort());
+        setupMultiSelect('ms-model', Array.from(uniqueModels).sort());
+        
+        $('#filter-area-min').attr('placeholder', `Min (${Math.floor(minA)})`);
+        $('#filter-area-max').attr('placeholder', `Max (${Math.ceil(maxA)})`);
+
+        if(!isClient) {
+            $('#filter-group-status').show();
+            setupMultiSelect('ms-status', Array.from(uniqueStatus).sort());
+        } else {
+            $('#filter-group-status').hide();
+        }
+    }
+
+    function setupMultiSelect(id, options) {
+        const container = $(`#${id}`);
+        const dropdown = container.find('.multi-select-dropdown');
+        dropdown.empty();
+        
+        options.forEach(opt => {
+            dropdown.append(`<div class="multi-select-option" data-value="${opt}">${opt}</div>`);
+        });
+
+        container.off('click').on('click', function(e) {
+            if(!$(e.target).closest('.multi-select-tag').length) {
+                $('.multi-select-dropdown').not(dropdown).hide();
+                dropdown.toggle();
+                container.find('input').focus();
+            }
+        });
+
+        container.find('input').off('input').on('input', function() {
+            const val = $(this).val().toLowerCase();
+            dropdown.show();
+            dropdown.find('.multi-select-option').each(function() {
+                const text = $(this).text().toLowerCase();
+                $(this).toggleClass('hidden', !text.includes(val));
+            });
+        });
+
+        dropdown.off('click').on('click', '.multi-select-option', function(e) {
+            e.stopPropagation();
+            if($(this).hasClass('selected') || $(this).hasClass('disabled')) return;
+            
+            const val = $(this).data('value');
+            addTag(container, val);
+            $(this).addClass('selected');
+            container.find('input').val('');
+            
+            updateDependentFilters();
+        });
+    }
+
+    function addTag(container, value) {
+        const tag = $(`<div class="multi-select-tag" data-value="${value}">${value} <i class="fa-solid fa-xmark"></i></div>`);
+        tag.insertBefore(container.find('input'));
+        
+        tag.find('i').click(function(e) {
+            e.stopPropagation();
+            const val = $(this).parent().data('value');
+            $(this).parent().remove();
+            container.find(`.multi-select-option[data-value="${val}"]`).removeClass('selected');
+            updateDependentFilters();
+        });
+    }
+
+    function getSelected(id) {
+        return $(`#${id} .multi-select-tag`).map((_, el) => $(el).data('value')).get();
+    }
+
+    function clearFiltersUI() {
+        $('.multi-select-tag').remove();
+        $('.multi-select-option').removeClass('selected disabled');
+        $('input[type="number"]').val('');
+        // Restore Placeholders to initial state via init or just reset dependency
+        updateDependentFilters();
+    }
+
+    function updateDependentFilters() {
+        const selCodes = getSelected('ms-code');
+        const selBeds = getSelected('ms-bedrooms');
+        const selFin = getSelected('ms-finishing');
+        const selMod = getSelected('ms-model');
+        const selStat = getSelected('ms-status');
+        const minA = parseFloat($('#filter-area-min').val());
+        const maxA = parseFloat($('#filter-area-max').val());
+
+        const valid = { beds: new Set(), fin: new Set(), mod: new Set(), stat: new Set(), codes: new Set() };
+        let dynMin = 1000000, dynMax = 0;
+        let foundAny = false;
+
+        globalUnitPositions.forEach(pos => {
+            if(!pos.filter_data) return;
+            pos.filter_data.forEach(u => {
+                const mCode = selCodes.length === 0 || selCodes.includes(u.unit_code);
+                const mBed = selBeds.length === 0 || selBeds.includes(u.bedrooms);
+                const mFin = selFin.length === 0 || selFin.includes(u.finishing);
+                const mMod = selMod.length === 0 || selMod.includes(u.model);
+                const mStat = selStat.length === 0 || selStat.includes(u.status);
+                const mArea = (isNaN(minA) || u.area >= minA) && (isNaN(maxA) || u.area <= maxA);
+
+                if (mCode && mFin && mMod && mStat && mArea) valid.beds.add(u.bedrooms);
+                if (mCode && mBed && mMod && mStat && mArea) valid.fin.add(u.finishing);
+                if (mCode && mBed && mFin && mStat && mArea) valid.mod.add(u.model);
+                if (mCode && mBed && mFin && mMod && mArea) valid.stat.add(u.status);
+                // Added Global Dependency for Unit Codes
+                if (mBed && mFin && mMod && mStat && mArea) valid.codes.add(u.unit_code);
+
+                // Update dynamic ranges based on selections
+                if (mCode && mBed && mFin && mMod && mStat) {
+                    if (u.area > 0) {
+                        if (u.area < dynMin) dynMin = u.area;
+                        if (u.area > dynMax) dynMax = u.area;
+                        foundAny = true;
+                    }
+                }
+            });
+        });
+
+        toggleOptions('ms-bedrooms', valid.beds);
+        toggleOptions('ms-finishing', valid.fin);
+        toggleOptions('ms-model', valid.mod);
+        toggleOptions('ms-status', valid.stat);
+        toggleOptions('ms-code', valid.codes);
+
+        if (foundAny) {
+             $('#filter-area-min').attr('placeholder', `Min (${Math.floor(dynMin)})`);
+             $('#filter-area-max').attr('placeholder', `Max (${Math.ceil(dynMax)})`);
+        } else {
+             $('#filter-area-min').attr('placeholder', 'Min');
+             $('#filter-area-max').attr('placeholder', 'Max');
+        }
+    }
+
+    function toggleOptions(id, validSet) {
+        $(`#${id} .multi-select-option`).each(function() {
+            const val = $(this).data('value');
+            $(this).toggleClass('disabled', !validSet.has(val));
+        });
+    }
+
+    // ===============================================
+    // EXISTING MODAL & SLIDER LOGIC
+    // ===============================================
+
+    window.openLayoutModal = function(encodedImages) {
+        const images = JSON.parse(decodeURIComponent(encodedImages));
+        const container = document.getElementById('modalCarouselContainer');
+        const total = images.length;
+        let slidesHtml = '';
+
+        images.forEach((imgUrl, index) => {
+            const i = index + 1;
+            const prevId = i === 1 ? total : i - 1;
+            const nextId = i === total ? 1 : i + 1;
+
+            slidesHtml += `
+                <li id="carousel__slide${i}" tabindex="0" class="carousel__slide">
+                    <div class="carousel__snapper">
+                        <img src="${imgUrl}" alt="Layout ${i}">
+                        <a href="#carousel__slide${prevId}" class="carousel__prev"></a>
+                        <a href="#carousel__slide${nextId}" class="carousel__next"></a>
+                    </div>
+                </li>`;
+        });
+
+        container.innerHTML = `
+            <section class="carousel" aria-label="Gallery">
+                <ol class="carousel__viewport">${slidesHtml}</ol>
+            </section>
+        `;
+        
+        document.getElementById('layoutModal').style.display = "block";
+    };
+
+    window.closeLayoutModal = function() {
+        document.getElementById('layoutModal').style.display = "none";
+        document.getElementById('modalCarouselContainer').innerHTML = '';
+    };
+
+    window.onclick = function(event) {
+        const layoutModal = document.getElementById('layoutModal');
+        const filterModal = document.getElementById('filterModal');
+        
+        if (event.target == layoutModal) {
+            closeLayoutModal();
+        }
+        // ADDED: Close filter modal on outside click
+        if (event.target == filterModal) {
+            closeFilterModal();
+        }
+    };
+
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('.carousel__prev, .carousel__next')) {
+            e.preventDefault();
+            const href = e.target.getAttribute('href');
+            if (href) {
+                const targetId = href.substring(1);
+                const targetSlide = document.getElementById(targetId);
+                const viewport = targetSlide ? targetSlide.closest('.carousel__viewport') : null;
+                if (targetSlide && viewport) {
+                    viewport.scrollTo({ left: targetSlide.offsetLeft, behavior: 'smooth' });
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

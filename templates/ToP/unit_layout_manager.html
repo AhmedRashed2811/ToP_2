@@ -1,0 +1,547 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+
+{% block title %}Unit Brochure Manager{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+
+    @media (min-width: 768px) {
+
+        .container, .container-md, .container-sm {
+
+            max-width: 100%;
+
+        }
+
+    }
+
+
+
+    @media (min-width: 576px) {
+
+        .container, .container-sm {
+
+            max-width: 100%;
+
+        }
+
+    }
+
+    /* --- 1. GENERAL UI STYLES --- */
+    .filter-card {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        padding: 25px;
+        margin-bottom: 30px;
+        border-top: 4px solid #0d6efd;
+    }
+    
+    .upload-area {
+        border: 2px dashed #dee2e6;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        transition: 0.3s;
+        margin-bottom: 40px;
+    }
+    .upload-area:hover { background: #fff; border-color: #0d6efd; }
+
+    /* --- 2. CAROUSEL STYLES --- */
+    .gallery-wrapper {
+        max-width: 800px;
+        margin: 0 auto;
+        padding-bottom: 50px;
+    }
+
+    .carousel {
+        position: relative;
+        padding-top: 75%; /* Aspect Ratio 4:3 */
+        filter: drop-shadow(0 0 10px #0003);
+        perspective: 100px;
+        overflow: hidden;
+        border-radius: 8px;
+        background: #f0f0f0;
+    }
+
+    .carousel__viewport {
+        position: absolute;
+        top: 0; right: 0; bottom: 0; left: 0;
+        display: flex;
+        overflow-x: scroll;
+        counter-reset: item;
+        scroll-behavior: smooth;
+        scroll-snap-type: x mandatory;
+        margin: 0; padding: 0;
+        list-style: none;
+        /* Hide Scrollbar */
+        scrollbar-width: none; 
+        -ms-overflow-style: none; 
+    }
+    .carousel__viewport::-webkit-scrollbar { display: none; }
+
+    .carousel__slide {
+        position: relative;
+        flex: 0 0 100%;
+        width: 100%;
+        background-color: #333;
+        counter-increment: item;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        scroll-snap-align: center; /* Essential for snapping */
+    }
+
+    /* Image Styling */
+    .slide_image_content {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        position: absolute;
+        top: 0; left: 0;
+        z-index: 1;
+    }
+
+    /* Navigation Controls Overlay */
+    .carousel__snapper {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        z-index: 2;
+    }
+
+    /* Navigation Dots */
+    .carousel__navigation {
+        position: absolute;
+        right: 0; bottom: 0; left: 0;
+        text-align: center;
+        z-index: 10;
+        padding-bottom: 10px;
+    }
+
+    .carousel__navigation-list, .carousel__navigation-item {
+        display: inline-block; margin: 0; padding: 0;
+    }
+
+    .carousel__navigation-button {
+        display: inline-block;
+        width: 1rem; height: 1rem;
+        background-color: rgba(255,255,255,0.5);
+        background-clip: content-box;
+        border: 0.2rem solid transparent;
+        border-radius: 50%;
+        font-size: 0;
+        transition: transform 0.1s;
+        cursor: pointer;
+        text-decoration: none; /* Prevent underline */
+    }
+    .carousel__navigation-button:hover { background-color: #fff; }
+
+    /* Arrows */
+    .carousel::before, .carousel::after, .carousel__prev, .carousel__next {
+        position: absolute;
+        top: 0; margin-top: 37.5%;
+        width: 3rem; height: 3rem;
+        transform: translateY(-50%);
+        border-radius: 50%;
+        font-size: 0; outline: 0; z-index: 5; cursor: pointer;
+    }
+    .carousel::before, .carousel__prev { left: 1rem; }
+    .carousel::after, .carousel__next { right: 1rem; }
+
+    .carousel::before, .carousel::after {
+        content: ''; z-index: 4;
+        background-color: rgba(51, 51, 51, 0.5);
+        background-size: 1.5rem 1.5rem;
+        background-repeat: no-repeat;
+        background-position: center center;
+        pointer-events: none;
+    }
+    .carousel::before { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='0,50 80,100 80,0' fill='%23fff'/%3E%3C/svg%3E"); }
+    .carousel::after { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='100,50 20,100 20,0' fill='%23fff'/%3E%3C/svg%3E"); }
+
+    /* Delete Button */
+    .delete-overlay-btn {
+        position: absolute;
+        top: 15px; right: 15px;
+        z-index: 20;
+        background: rgba(220, 53, 69, 0.9);
+        color: white; border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: 0.2s;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    .delete-overlay-btn:hover { background: #dc3545; transform: scale(1.05); }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="text-dark fw-bold"><i class="fa-regular fa-images text-primary me-2"></i>Brochure Manager</h3>
+        {% comment %} {% if is_manager %}<span class="badge bg-info text-dark">Manager Mode (View Only)</span>{% endif %} {% endcomment %}
+    </div>
+
+    <div class="filter-card">
+        <div class="row g-3 align-items-end">
+            {% if not is_manager %}
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-uppercase text-muted">Company</label>
+                <select id="sel_company" class="form-select" onchange="handleFilterChange('company')">
+                    <option value="">-- Select --</option>
+                    {% for c in companies %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-uppercase text-muted">Project</label>
+                <select id="sel_project" class="form-select" onchange="handleFilterChange('project')" disabled>
+                    <option value="">-- Select --</option>
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-uppercase text-muted">Building Type</label>
+                <select id="sel_b_type" class="form-select" onchange="handleFilterChange('building_type')" disabled>
+                    <option value="">-- Select --</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-uppercase text-muted">Unit Type</label>
+                <select id="sel_u_type" class="form-select" onchange="handleFilterChange('unit_type')" disabled>
+                    <option value="">-- Select --</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-uppercase text-muted">Unit Model</label>
+                <select id="sel_u_model" class="form-select" onchange="handleFilterChange('unit_model')" disabled>
+                    <option value="">-- Select --</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div id="uploadContainer" class="upload-area d-none">
+        <h5 class="mb-3 text-secondary">Upload Layouts for <span id="uploadModelName" class="text-primary fw-bold"></span></h5>
+        <div class="d-flex justify-content-center gap-3">
+            <input type="file" id="fileInput" class="form-control w-50" multiple accept="image/*">
+            <button class="btn btn-success" onclick="uploadFiles()">
+                <i class="fa-solid fa-cloud-arrow-up me-2"></i>Upload
+            </button>
+        </div>
+        <div id="uploadSpinner" class="mt-2 d-none text-muted small">
+            <i class="fa-solid fa-spinner fa-spin"></i> Uploading...
+        </div>
+    </div>
+
+    <div id="galleryContainer" class="gallery-wrapper mt-4">
+        </div>
+    
+    <div id="emptyState" class="text-center py-5 d-none">
+        <h4 class="text-muted"><i class="fa-regular fa-image display-4 mb-3 d-block"></i>No layouts found</h4>
+    </div>
+</div>
+
+<script>
+    // --- CONFIG & STATE ---
+    const isManager = {{ is_manager|yesno:"true,false" }};
+    const initialCompanyId = "{{ initial_company_id|default:'' }}";
+    
+    let state = {
+        company: initialCompanyId,
+        project: '',
+        building_type: '',
+        unit_type: '',
+        unit_model: ''
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (state.company) fetchData('company');
+    });
+
+    // --- MAIN FILTER LOGIC ---
+    function handleFilterChange(changedField) {
+        state[changedField] = getValue(changedField);
+
+        if (changedField === 'company') resetState(['project', 'building_type', 'unit_type', 'unit_model']);
+        if (changedField === 'project') resetState(['building_type', 'unit_type', 'unit_model']);
+        if (changedField === 'building_type') resetState(['unit_type', 'unit_model']);
+        if (changedField === 'unit_type') resetState(['unit_model']);
+
+        fetchData(changedField);
+    }
+
+    function resetState(fields) {
+        fields.forEach(f => {
+            state[f] = '';
+            const el = document.getElementById(getElId(f));
+            el.innerHTML = '<option value="">-- Select --</option>';
+            el.disabled = true;
+            el.value = "";
+        });
+        toggleUI(false); 
+    }
+
+    // --- AJAX DATA FETCH ---
+    function fetchData(triggerSource) {
+        const params = new URLSearchParams(state).toString();
+        const url = `${window.location.pathname}?${params}`;
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(res => res.json())
+            .then(data => {
+                if(data.error) return showToast('error', data.error);
+
+                if (triggerSource === 'company' && data.projects) updateSelect('sel_project', data.projects);
+                if ((triggerSource === 'company' || triggerSource === 'project') && data.building_types) updateDropdownSimple('sel_b_type', data.building_types);
+                if ((triggerSource === 'project' || triggerSource === 'building_type') && data.unit_types) updateDropdownSimple('sel_u_type', data.unit_types);
+                if ((triggerSource === 'building_type' || triggerSource === 'unit_type') && data.unit_models) updateDropdownSimple('sel_u_model', data.unit_models);
+
+                // Gallery Logic
+                if (state.unit_model) {
+                    if (data.gallery) {
+                        renderGallery(data.gallery);
+                        toggleUI(true);
+                    } else {
+                        renderGallery([]); 
+                        toggleUI(true);
+                    }
+                } else {
+                    toggleUI(false);
+                }
+            })
+            .catch(err => console.error(err));
+    }
+
+    // --- DOM HELPERS ---
+    function getValue(field) {
+        if(field === 'company' && isManager) return state.company;
+        const el = document.getElementById(getElId(field));
+        return el ? el.value : '';
+    }
+
+    function getElId(field) {
+        if(field === 'building_type') return 'sel_b_type';
+        if(field === 'unit_type') return 'sel_u_type';
+        if(field === 'unit_model') return 'sel_u_model';
+        return 'sel_' + field;
+    }
+
+    function updateSelect(id, items) {
+        const el = document.getElementById(id);
+        el.innerHTML = '<option value="">-- Select --</option>';
+        if (items && items.length > 0) {
+            items.forEach(item => { el.innerHTML += `<option value="${item.id}">${item.name}</option>`; });
+            el.disabled = false;
+        } else { el.disabled = true; }
+    }
+
+    function updateDropdownSimple(id, items) {
+        const el = document.getElementById(id);
+        el.innerHTML = '<option value="">-- Select --</option>';
+        if (items && items.length > 0) {
+            items.forEach(item => { el.innerHTML += `<option value="${item}">${item}</option>`; });
+            el.disabled = false;
+        } else { el.disabled = true; }
+    }
+
+    function toggleUI(show) {
+        const upDiv = document.getElementById('uploadContainer');
+        const galDiv = document.getElementById('galleryContainer');
+        const emptyDiv = document.getElementById('emptyState');
+        
+        if (show) {
+            if(!isManager) {
+                upDiv.classList.remove('d-none');
+                document.getElementById('uploadModelName').textContent = state.unit_model;
+            }
+        } else {
+            upDiv.classList.add('d-none');
+            galDiv.innerHTML = '';
+            galDiv.style.display = 'none';
+            emptyDiv.classList.add('d-none');
+        }
+    }
+
+    // --- UPLOAD ---
+    function uploadFiles() {
+        const input = document.getElementById('fileInput');
+        const files = input.files;
+        if (files.length === 0) return showToast('warning', 'Please select files first.');
+
+        const formData = new FormData();
+        formData.append('action', 'upload');
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        
+        formData.append('company_id', state.company);
+        formData.append('project_id', state.project);
+        formData.append('building_type', state.building_type);
+        formData.append('unit_type', state.unit_type);
+        formData.append('unit_model', state.unit_model);
+
+        for (let i = 0; i < files.length; i++) {
+            formData.append('images', files[i]);
+        }
+
+        const btn = document.querySelector('#uploadContainer button');
+        const spinner = document.getElementById('uploadSpinner');
+        btn.disabled = true; spinner.classList.remove('d-none');
+
+        fetch(window.location.pathname, {
+            method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false; spinner.classList.add('d-none');
+            if (data.success) {
+                showToast('success', data.message);
+                input.value = ''; 
+                renderGallery(data.gallery);
+            } else {
+                showToast('error', data.error || 'Upload failed');
+            }
+        })
+        .catch(err => {
+            btn.disabled = false; spinner.classList.add('d-none');
+            showToast('error', 'Server error');
+        });
+    }
+
+    // --- DELETE ---
+    function deleteImage(id) {
+        Swal.fire({
+            title: 'Delete this layout?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Yes, delete'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const url = `delete/${id}/`;
+                const formData = new FormData();
+                formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+                fetch(url, {
+                    method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.success) {
+                        showToast('success', 'Image deleted.');
+                        fetchData('unit_model'); 
+                    } else {
+                        showToast('error', 'Delete failed');
+                    }
+                });
+            }
+        });
+    }
+
+    // --- RENDER GALLERY (HTML GENERATION) ---
+    function renderGallery(images) {
+        const container = document.getElementById('galleryContainer');
+        const emptyState = document.getElementById('emptyState');
+
+        container.innerHTML = '';
+
+        if (!images || images.length === 0) {
+            container.style.display = 'none';
+            emptyState.classList.remove('d-none');
+            return;
+        }
+
+        emptyState.classList.add('d-none');
+        container.style.display = 'block';
+        
+        const total = images.length;
+        let slidesHtml = '';
+        let navHtml = '';
+
+        images.forEach((img, index) => {
+            const i = index + 1; // 1-based index
+            const prevId = i === 1 ? total : i - 1;
+            const nextId = i === total ? 1 : i + 1;
+
+            // Delete Button logic
+            const deleteBtn = !isManager ? 
+                `<button class="delete-overlay-btn" onclick="deleteImage(${img.id})">
+                    <i class="fa-solid fa-trash-can"></i> Delete
+                 </button>` : '';
+
+            // Slides
+            slidesHtml += `
+                <li id="carousel__slide${i}" tabindex="0" class="carousel__slide">
+                    <img src="${img.url}" class="slide_image_content" alt="${img.label}">
+                    ${deleteBtn}
+                    <div class="carousel__snapper">
+                        <a href="#carousel__slide${prevId}" class="carousel__prev">Go to previous slide</a>
+                        <a href="#carousel__slide${nextId}" class="carousel__next">Go to next slide</a>
+                    </div>
+                </li>`;
+
+            // Navigation Dots
+            navHtml += `
+                <li class="carousel__navigation-item">
+                    <a href="#carousel__slide${i}" class="carousel__navigation-button">Go to slide ${i}</a>
+                </li>`;
+        });
+
+        container.innerHTML = `
+            <section class="carousel" aria-label="Gallery">
+                <ol class="carousel__viewport">
+                    ${slidesHtml}
+                </ol>
+                <aside class="carousel__navigation">
+                    <ol class="carousel__navigation-list">
+                        ${navHtml}
+                    </ol>
+                </aside>
+            </section>
+        `;
+    }
+
+    // --- FIX: SCROLL INTERCEPTION TO PREVENT PAGE JUMP ---
+    // This listener intercepts clicks on carousel controls
+    document.addEventListener('click', function(e) {
+        // Match prev/next arrows OR navigation dots
+        if (e.target.matches('.carousel__prev, .carousel__next, .carousel__navigation-button')) {
+            e.preventDefault(); // Stop page from scrolling to top
+
+            // Extract target ID (e.g., "carousel__slide2")
+            const href = e.target.getAttribute('href');
+            if (href) {
+                const targetId = href.substring(1); 
+                const targetSlide = document.getElementById(targetId);
+                const viewport = targetSlide ? targetSlide.closest('.carousel__viewport') : null;
+
+                if (targetSlide && viewport) {
+                    // Scroll ONLY the carousel viewport
+                    viewport.scrollTo({
+                        left: targetSlide.offsetLeft,
+                        behavior: 'smooth'
+                    });
+                }
+            }
+        }
+    });
+
+    function showToast(icon, title) {
+        Swal.fire({
+            toast: true, position: 'top-end', showConfirmButton: false,
+            timer: 3000, timerProgressBar: true, icon: icon, title: title,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+    }
+</script>
+{% endblock %}

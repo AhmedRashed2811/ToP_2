@@ -1,0 +1,836 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+{% block title %}Manage Companies{% endblock %}
+{% block content %}
+
+<style>
+    /* --- General Layout --- */
+    .container {
+        padding: 20px;
+        text-align: center;
+        max-width: 100%;
+    }
+
+    h1 { margin-bottom: 20px; }
+
+    /* --- Buttons --- */
+    .submit-button {
+        background-color: green; 
+        color: white; 
+        padding: 10px 16px; 
+        border: none; 
+        border-radius: 4px; 
+        text-decoration: none; 
+        display: inline-block; 
+        margin-left: 10px;
+    }
+
+    .btn { margin: 2px; }
+    .logo-img { height: 40px; max-width: 80px; object-fit: contain; border-radius: 6px; }
+
+    /* --- Search Bar --- */
+    .search-container {
+        margin-bottom: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    .search-container input[type="text"] {
+        width: 100%;
+        max-width: 400px;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+
+    /* --- DESKTOP TABLE STYLES --- */
+    .table-container {
+        width: 100%;
+        overflow-x: auto; 
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+    }
+
+    .company-table {
+        width: auto;
+        min-width: 100%;
+        border-collapse: collapse;
+        margin: auto;
+    }
+
+    .company-table th, .company-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+        vertical-align: middle;
+        white-space: nowrap; 
+    }
+
+    .company-table th {
+        background-color: #f4f4f4;
+        font-weight: bold;
+    }
+
+    /* Specific Request: First Child Styling */
+    table td:first-child {
+        font-weight: bold;
+        background: #f2f2f2;
+        min-width: 80px;
+        max-width: 100%;
+    }
+
+    /* Desktop Inputs */
+    .company-table input[type="text"],
+    .company-table input[type="date"],
+    .company-table input[type="number"],
+    .company-table select { 
+        width: 100%; 
+        min-width: 120px;
+        padding: 5px; 
+        border: 1px solid #ccc; 
+        border-radius: 4px; 
+    }
+
+    /* Badge Styles for Types */
+    .badge {
+        display: inline-block;
+        padding: 0.35em 0.65em;
+        font-size: 0.75em;
+        font-weight: 700;
+        line-height: 1;
+        color: #fff;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: baseline;
+        border-radius: 0.25rem;
+        margin: 1px;
+    }
+    .badge-erp { background-color: #0d6efd; }
+    .badge-gs { background-color: #198754; }
+    .badge-native { background-color: #6c757d; }
+
+    /* --- VISIBILITY UTILITIES --- */
+    @media (min-width: 901px) {
+        .desktop-hidden {
+            display: none;
+        }
+    }
+
+    /* Hide Config button on Mobile (since fields are visible in cards) */
+    @media (max-width: 900px) {
+        .config-btn {
+            display: none !important;
+        }
+    }
+
+    /* --- MOBILE CARD VIEW --- */
+    @media (max-width: 900px) {
+        
+        /* 1. Reset standard table display to block layout */
+        .company-table, .company-table thead, .company-table tbody, .company-table th, .company-table td, .company-table tr {
+            display: block;
+        }
+
+        /* 2. Hide Header */
+        .company-table thead tr {
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+        }
+
+        /* 3. Style Row as Card */
+        .company-table tr.company-row {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 15px;
+        }
+
+        /* 4. Style Cells inside Card */
+        .company-table td {
+            border: none;
+            border-bottom: 1px solid #eee;
+            position: relative;
+            padding-left: 45%; 
+            padding-top: 10px;
+            padding-bottom: 10px;
+            text-align: right;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            min-height: 40px;
+            white-space: normal; 
+        }
+
+        /* 5. Inject Labels */
+        .company-table td::before {
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            transform: translateY(-50%);
+            width: 40%;
+            content: attr(data-label);
+            font-weight: bold;
+            text-align: left;
+            color: #555;
+            font-size: 14px;
+        }
+
+        /* 6. Mobile Input Styling */
+        .company-table input[type="text"],
+        .company-table input[type="date"],
+        .company-table select {
+            width: 55% !important;
+            text-align: left;
+            margin: 0;
+        }
+
+        .company-table input[type="checkbox"] {
+            width: 20px; height: 20px;
+        }
+
+        /* Hide specific rows via JS based on type */
+        .mobile-hidden {
+            display: none !important;
+        }
+
+        /* Action Row Styling */
+        .company-table td:last-child {
+            border-bottom: 0;
+            justify-content: center;
+            padding-left: 0;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .company-table td:last-child::before { content: ""; }
+    }
+
+    /* Scrollbar */
+    .table-container::-webkit-scrollbar { width: 10px; height: 10px; }
+    .table-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+    .table-container::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+    .table-container::-webkit-scrollbar-thumb:hover { background: #555; }
+
+    /* Modal Styling */
+    .modal-body .form-label {
+        font-weight: bold;
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+        display: block;
+        text-align: left;
+    }
+    .modal-body .row {
+        margin-bottom: 10px;
+    }
+    .nav-tabs .nav-link {
+        color: #555;
+    }
+    .nav-tabs .nav-link.active {
+        font-weight: bold;
+        color: green;
+    }
+
+    /* Toast Customization */
+    .toast-body {
+        font-size: 1rem;
+        font-weight: 500;
+    }
+</style>
+
+<h1>Manage Companies</h1>
+
+{% if messages %}
+  <div class="messages" style="max-width: 600px; margin: 0 auto 20px auto;">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="toast-container position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 9999;">
+    <div id="syncToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="10000">
+        <div class="d-flex">
+            <div class="toast-body" id="syncToastBody">
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<div class="search-container">
+  <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; width: 100%;">
+    <input type="text" id="searchInput" placeholder="Search Company Name..." onkeyup="filterTable()">
+    
+    {% if not is_team_member %}
+        <a href="{% url 'create_company' %}" class="submit-button">Create Company</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="table-container">
+  <table class="company-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Logo</th>
+        <th>Joining Date</th>
+        <th>Projects</th>
+        <th>Users</th>
+        <th>Active</th>
+        <th>Type</th>
+        
+        <th class="desktop-hidden">ERP URL</th>
+        <th class="desktop-hidden">ERP URL Key</th>
+        <th class="desktop-hidden">ERP Units URL</th>
+        <th class="desktop-hidden">ERP Units URL Key</th>
+        <th class="desktop-hidden">ERP Hold Unit URL</th>
+        <th class="desktop-hidden">ERP Hold Unit URL Key</th>
+        <th class="desktop-hidden">ERP Leads URL</th>
+        <th class="desktop-hidden">ERP Leads URL Key</th>
+        <th class="desktop-hidden">Google Sheet URL</th>
+        <th class="desktop-hidden">Sheet GID</th>
+        <th class="desktop-hidden">Sheet Title</th>
+        
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="companyTableBody">
+      {% for company in companies %}
+      <tr class="company-row" data-company-id="{{ company.id }}">
+        
+        <td data-label="Name">
+          <input type="text" data-field="name" value="{{ company.name }}" required {% if is_team_member %}disabled{% endif %}>
+        </td>
+
+        <td data-label="Logo">
+            {% if not is_team_member %}
+                <form method="post" action="{% url 'upload_company_logo' company.id %}" enctype="multipart/form-data" id="logo-form-{{ company.id }}">
+                    {% csrf_token %}
+                    <input type="file" name="logo" id="logo-input-{{ company.id }}" accept="image/*" style="display: none;" onchange="document.getElementById('logo-form-{{ company.id }}').submit();">
+                    {% if company.logo %}
+                    <img src="{{ company.logo.url }}" alt="Logo" class="logo-img" style="cursor: pointer;" onclick="document.getElementById('logo-input-{{ company.id }}').click();" />
+                    {% else %}
+                    <button type="button" onclick="document.getElementById('logo-input-{{ company.id }}').click();" class="btn btn-outline-primary btn-sm">Upload</button>
+                    {% endif %}
+                </form>
+            {% else %}
+                {% if company.logo %}
+                    <img src="{{ company.logo.url }}" alt="Logo" class="logo-img" />
+                {% else %}
+                    <span style="color: #999; font-style: italic;">No Logo</span>
+                {% endif %}
+            {% endif %}
+        </td>
+
+        <td data-label="Joining Date">
+          <input type="date" data-field="joining_date" value="{{ company.joining_date|date:'Y-m-d' }}" required {% if is_team_member %}disabled{% endif %}>
+        </td>
+
+        <td data-label="Projects">{{ company.project_count }}</td>
+        <td data-label="Users">{{ company.num_users }}</td>
+
+        <td data-label="Active">
+          <input type="checkbox" data-field="is_active" id="is-active-{{ company.id }}" {% if company.is_active %}checked{% endif %} {% if is_team_member %}disabled{% endif %}>
+        </td>
+
+        <td data-label="Type">
+            <div id="type-badges-{{ company.id }}">
+                {% if "erp" in company.comp_type %}<span class="badge badge-erp">ERP</span>{% endif %}
+                {% if "google_sheets" in company.comp_type %}<span class="badge badge-gs">Sheets</span>{% endif %}
+                {% if "native" in company.comp_type %}<span class="badge badge-native">Native</span>{% endif %}
+                {% if not company.comp_type %}
+                    <span class="badge badge-native">Native</span>
+                {% endif %}
+            </div>
+        </td>
+
+        <td data-label="ERP URL" class="erp-col desktop-hidden">
+          <input type="text" data-field="erp_url" value="{{ company.erp_url|default_if_none:'' }}" placeholder="https://..." {% if is_team_member %}disabled{% endif %}>
+        </td>
+        <td data-label="ERP Key" class="erp-col desktop-hidden">
+          <input type="text" data-field="erp_url_key" value="{{ company.erp_url_key|default_if_none:'' }}" placeholder="Key" {% if is_team_member %}disabled{% endif %}>
+        </td>
+        <td data-label="Units URL" class="erp-col desktop-hidden">
+          <input type="text" data-field="erp_url_units" value="{{ company.erp_url_units|default_if_none:'' }}" placeholder="https://..." {% if is_team_member %}disabled{% endif %}>
+        </td>
+        <td data-label="Units Key" class="erp-col desktop-hidden">
+          <input type="text" data-field="erp_url_units_key" value="{{ company.erp_url_units_key|default_if_none:'' }}" placeholder="Key" {% if is_team_member %}disabled{% endif %}>
+        </td>
+        <td data-label="Hold URL" class="erp-col desktop-hidden">
+          <input type="text" data-field="erp_url_unit" value="{{ company.erp_url_unit|default_if_none:'' }}" placeholder="https://..." {% if is_team_member %}disabled{% endif %}>
+        </td>
+        <td data-label="Hold Key" class="erp-col desktop-hidden">
+          <input type="text" data-field="erp_url_unit_key" value="{{ company.erp_url_unit_key|default_if_none:'' }}" placeholder="Key" {% if is_team_member %}disabled{% endif %}>
+        </td>
+        <td data-label="Leads URL" class="erp-col desktop-hidden">
+          <input type="text" data-field="erp_url_leads" value="{{ company.erp_url_leads|default_if_none:'' }}" placeholder="https://..." {% if is_team_member %}disabled{% endif %}>
+        </td>
+        <td data-label="Leads Key" class="erp-col desktop-hidden">
+          <input type="text" data-field="erp_url_leads_key" value="{{ company.erp_url_leads_key|default_if_none:'' }}" placeholder="Key" {% if is_team_member %}disabled{% endif %}>
+        </td>
+
+        <td data-label="Sheet URL" class="gs-col desktop-hidden">
+          <input type="text" data-field="google_sheet_url" value="{{ company.google_sheet_url|default_if_none:'' }}" placeholder="Sheet URL" {% if is_team_member %}disabled{% endif %}>
+        </td>
+        <td data-label="Sheet GID" class="gs-col desktop-hidden">
+          <input type="text" data-field="google_sheet_gid" value="{{ company.google_sheet_gid|default_if_none:'' }}" placeholder="GID" {% if is_team_member %}disabled{% endif %}>
+        </td>
+        <td data-label="Sheet Title" class="gs-col desktop-hidden">
+          <input type="text" data-field="google_sheet_title" value="{{ company.google_sheet_title|default_if_none:'' }}" placeholder="Title" {% if is_team_member %}disabled{% endif %}>
+        </td>
+
+        <td data-label="Actions">
+          {% if not is_team_member %}
+          <form id="saveForm-{{ company.id }}" method="post" style="display: inline;">
+            {% csrf_token %}
+            <input type="hidden" name="company_id" value="{{ company.id }}">
+            <input type="hidden" name="action" value="save">
+            
+            <input type="hidden" name="name" id="hidden-name-{{ company.id }}" value="{{ company.name }}">
+            <input type="hidden" name="joining_date" id="hidden-joining_date-{{ company.id }}" value="{{ company.joining_date|date:'Y-m-d' }}">
+            <input type="hidden" name="is_active" id="hidden-is_active-{{ company.id }}" value="{% if company.is_active %}true{% else %}false{% endif %}">
+            
+            <div id="hidden-comp_type-container-{{ company.id }}">
+                {% for t in company.comp_type %}
+                    <input type="hidden" name="comp_type" value="{{ t }}">
+                {% endfor %}
+            </div>
+
+            <input type="hidden" name="erp_url" id="hidden-erp_url-{{ company.id }}" value="{{ company.erp_url|default_if_none:'' }}">
+            <input type="hidden" name="erp_url_key" id="hidden-erp_url_key-{{ company.id }}" value="{{ company.erp_url_key|default_if_none:'' }}">
+            <input type="hidden" name="erp_url_units" id="hidden-erp_url_units-{{ company.id }}" value="{{ company.erp_url_units|default_if_none:'' }}">
+            <input type="hidden" name="erp_url_units_key" id="hidden-erp_url_units_key-{{ company.id }}" value="{{ company.erp_url_units_key|default_if_none:'' }}">
+            <input type="hidden" name="erp_url_unit" id="hidden-erp_url_unit-{{ company.id }}" value="{{ company.erp_url_unit|default_if_none:'' }}">
+            <input type="hidden" name="erp_url_unit_key" id="hidden-erp_url_unit_key-{{ company.id }}" value="{{ company.erp_url_unit_key|default_if_none:'' }}">
+            <input type="hidden" name="erp_url_leads" id="hidden-erp_url_leads-{{ company.id }}" value="{{ company.erp_url_leads|default_if_none:'' }}">
+            <input type="hidden" name="erp_url_leads_key" id="hidden-erp_url_leads_key-{{ company.id }}" value="{{ company.erp_url_leads_key|default_if_none:'' }}">
+
+            <input type="hidden" name="google_sheet_url" id="hidden-google_sheet_url-{{ company.id }}" value="{{ company.google_sheet_url|default_if_none:'' }}">
+            <input type="hidden" name="google_sheet_gid" id="hidden-google_sheet_gid-{{ company.id }}" value="{{ company.google_sheet_gid|default_if_none:'' }}">
+            <input type="hidden" name="google_sheet_title" id="hidden-google_sheet_title-{{ company.id }}" value="{{ company.google_sheet_title|default_if_none:'' }}">
+
+            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+          </form>
+          {% endif %}
+
+          {% if not is_team_member %}
+          <button type="button" class="btn btn-secondary btn-sm config-btn" data-bs-toggle="modal" data-bs-target="#configModal-{{ company.id }}">
+            ⚙️ Config
+          </button>
+          {% endif %}
+
+          {% if 'google_sheets' in company.comp_type %}
+          <button type="button" 
+                  id="sync-btn-{{ company.id }}"
+                  class="btn btn-warning btn-sm sync-btn-group" 
+                  onclick="syncUnits('{{ company.id }}')">
+              Sync
+          </button>
+          {% endif %}
+
+          {% if not is_team_member %}
+          <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ company.id }}">Delete</button>
+          {% endif %}
+        </td>
+      </tr>
+
+      <div class="modal fade" id="configModal-{{ company.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Configuration: {{ company.name }}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <ul class="nav nav-tabs" id="configTab-{{ company.id }}" role="tablist">
+                <li class="nav-item tab-header-general" role="presentation">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#general-{{ company.id }}" type="button" role="tab">General & Types</button>
+                </li>
+                <li class="nav-item tab-header-erp" role="presentation" style="display: none;">
+                  <button class="nav-link" data-bs-toggle="tab" data-bs-target="#erp-{{ company.id }}" type="button" role="tab">ERP Settings</button>
+                </li>
+                <li class="nav-item tab-header-sheets" role="presentation" style="display: none;">
+                  <button class="nav-link" data-bs-toggle="tab" data-bs-target="#sheets-{{ company.id }}" type="button" role="tab">Google Sheets</button>
+                </li>
+              </ul>
+              <div class="tab-content pt-3" id="configTabContent-{{ company.id }}">
+                
+                <div class="tab-pane fade show active" id="general-{{ company.id }}" role="tabpanel">
+                     <div class="alert alert-info py-2">Select all modules applicable to this company.</div>
+                     <div class="mb-3">
+                        <label class="form-label">Active Modules:</label>
+                        <div class="d-flex gap-3 flex-wrap">
+                            <div class="form-check">
+                                <input class="form-check-input type-checkbox" type="checkbox" value="erp" 
+                                       id="type-erp-{{ company.id }}" 
+                                       data-company-id="{{ company.id }}"
+                                       {% if "erp" in company.comp_type %}checked{% endif %}>
+                                <label class="form-check-label" for="type-erp-{{ company.id }}">ERP System</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input type-checkbox" type="checkbox" value="google_sheets" 
+                                       id="type-gs-{{ company.id }}" 
+                                       data-company-id="{{ company.id }}"
+                                       {% if "google_sheets" in company.comp_type %}checked{% endif %}>
+                                <label class="form-check-label" for="type-gs-{{ company.id }}">Google Sheets</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input type-checkbox" type="checkbox" value="native" 
+                                       id="type-native-{{ company.id }}" 
+                                       data-company-id="{{ company.id }}"
+                                       {% if "native" in company.comp_type %}checked{% endif %}>
+                                <label class="form-check-label" for="type-native-{{ company.id }}">Native (Manual Upload)</label>
+                            </div>
+                        </div>
+                     </div>
+                     <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Company Name</label>
+                            <input type="text" class="form-control modal-input" data-field="name" value="{{ company.name }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Joining Date</label>
+                            <input type="date" class="form-control modal-input" data-field="joining_date" value="{{ company.joining_date|date:'Y-m-d' }}">
+                        </div>
+                     </div>
+                </div>
+
+                <div class="tab-pane fade" id="erp-{{ company.id }}" role="tabpanel">
+                    <div class="row">
+                        <div class="col-6"><label class="form-label">Main URL</label><input type="text" class="form-control modal-input" data-field="erp_url" value="{{ company.erp_url|default_if_none:'' }}"></div>
+                        <div class="col-6"><label class="form-label">Main Key</label><input type="text" class="form-control modal-input" data-field="erp_url_key" value="{{ company.erp_url_key|default_if_none:'' }}"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6"><label class="form-label">Units URL</label><input type="text" class="form-control modal-input" data-field="erp_url_units" value="{{ company.erp_url_units|default_if_none:'' }}"></div>
+                        <div class="col-6"><label class="form-label">Units Key</label><input type="text" class="form-control modal-input" data-field="erp_url_units_key" value="{{ company.erp_url_units_key|default_if_none:'' }}"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6"><label class="form-label">Hold Unit URL</label><input type="text" class="form-control modal-input" data-field="erp_url_unit" value="{{ company.erp_url_unit|default_if_none:'' }}"></div>
+                        <div class="col-6"><label class="form-label">Hold Unit Key</label><input type="text" class="form-control modal-input" data-field="erp_url_unit_key" value="{{ company.erp_url_unit_key|default_if_none:'' }}"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6"><label class="form-label">Leads URL</label><input type="text" class="form-control modal-input" data-field="erp_url_leads" value="{{ company.erp_url_leads|default_if_none:'' }}"></div>
+                        <div class="col-6"><label class="form-label">Leads Key</label><input type="text" class="form-control modal-input" data-field="erp_url_leads_key" value="{{ company.erp_url_leads_key|default_if_none:'' }}"></div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="sheets-{{ company.id }}" role="tabpanel">
+                    <div class="row">
+                        <div class="col-12"><label class="form-label">Sheet URL</label><input type="text" class="form-control modal-input" data-field="google_sheet_url" value="{{ company.google_sheet_url|default_if_none:'' }}"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6"><label class="form-label">GID</label><input type="text" class="form-control modal-input" data-field="google_sheet_gid" value="{{ company.google_sheet_gid|default_if_none:'' }}"></div>
+                        <div class="col-6"><label class="form-label">Title</label><input type="text" class="form-control modal-input" data-field="google_sheet_title" value="{{ company.google_sheet_title|default_if_none:'' }}"></div>
+                    </div>
+                </div>
+
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-success" data-bs-dismiss="modal">Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal fade" id="deleteModal-{{ company.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Confirm Deletion</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">Delete "{{ company.name }}"?</div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <form method="post" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="company_id" value="{{ company.id }}">
+                <input type="hidden" name="action" value="delete">
+                <button type="submit" class="btn btn-danger">Delete</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="modal fade" id="syncResultsModal" tabindex="-1" aria-labelledby="syncResultsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title" id="syncResultsModalLabel">Sync Results</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="syncSummary" class="alert mb-3"></div>
+                
+                <div id="errorTableContainer" style="display: none;">
+                    <h6 class="text-danger fw-bold"><i class="fas fa-exclamation-triangle"></i> Failed Rows:</h6>
+                    <table class="table table-sm table-bordered table-hover mt-2" style="font-size: 0.85rem;">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="width: 80px;">Row #</th>
+                                <th style="width: 150px;">Unit Code</th>
+                                <th>Reason for Failure</th>
+                            </tr>
+                        </thead>
+                        <tbody id="syncErrorTableBody">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Filter by Name
+function filterTable() {
+  const q = document.getElementById("searchInput").value.toLowerCase();
+  document.querySelectorAll("#companyTableBody tr.company-row").forEach(row => {
+    const nameVal = row.querySelector("input[data-field='name']").value.toLowerCase();
+    row.style.display = nameVal.includes(q) ? "" : "none";
+  });
+}
+
+/**
+ * AJAX Sync Function
+ */
+async function syncUnits(companyId) {
+    if(!confirm("Are you sure you want to delete existing units and sync from the Sheet?")) return;
+
+    const btn = document.getElementById(`sync-btn-${companyId}`);
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Syncing...`;
+    btn.disabled = true;
+
+    const url = `{% url 'company_sheet_sync' 0 %}`.replace('0', companyId);
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+        
+        if(response.ok && data.success) {
+            // Populate Results Modal
+            const summaryDiv = document.getElementById('syncSummary');
+            const errorTableContainer = document.getElementById('errorTableContainer');
+            const errorTableBody = document.getElementById('syncErrorTableBody');
+
+            // 1. Set Summary Style
+            const hasErrors = data.row_errors && data.row_errors.length > 0;
+            summaryDiv.className = hasErrors ? "alert alert-warning" : "alert alert-success";
+            summaryDiv.innerHTML = `<strong>${data.message}</strong><br>
+                                    Synced: ${data.synced_count} | Deleted Old: ${data.deleted_count}`;
+
+            // 2. Populate Error Table if failures exist
+            if (hasErrors) {
+                errorTableBody.innerHTML = ""; // Clear old rows
+                data.row_errors.forEach(err => {
+                    const row = `<tr>
+                        <td class="text-center fw-bold">${err.row}</td>
+                        <td><code>${err.unit_code}</code></td>
+                        <td class="text-danger">${err.reason}</td>
+                    </tr>`;
+                    errorTableBody.insertAdjacentHTML('beforeend', row);
+                });
+                errorTableContainer.style.display = 'block';
+            } else {
+                errorTableContainer.style.display = 'none';
+            }
+
+            // 3. Show the Modal
+            const resultsModal = new bootstrap.Modal(document.getElementById('syncResultsModal'));
+            resultsModal.show();
+            
+            
+        } else {
+            showToast("Error: " + (data.message || "Unknown error occurred"), "danger");
+        }
+    } catch (error) {
+        showToast("Network Error: " + error.message, "danger");
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+// Helper to show animated toast
+function showToast(message, type) {
+    const toastEl = document.getElementById('syncToast');
+    const toastBody = document.getElementById('syncToastBody');
+    
+    // Set message
+    toastBody.innerText = message;
+    
+    // Reset classes and set color
+    toastEl.className = `toast align-items-center text-white border-0 bg-${type}`;
+    
+    // Show Toast
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
+}
+
+
+/**
+ * Updates interface elements based on Company Type selection (Multi-Select)
+ */
+function updateInterface(companyId) {
+    // Get all checkboxes for this company in the modal
+    const erpCheck = document.getElementById(`type-erp-${companyId}`);
+    const gsCheck = document.getElementById(`type-gs-${companyId}`);
+    const nativeCheck = document.getElementById(`type-native-${companyId}`);
+
+    // Determine current selection state
+    const isErp = erpCheck ? erpCheck.checked : false;
+    const isGs = gsCheck ? gsCheck.checked : false;
+    const isNative = nativeCheck ? nativeCheck.checked : false;
+
+    // --- Update Badge Display in Table Row ---
+    const badgeContainer = document.getElementById(`type-badges-${companyId}`);
+    if (badgeContainer) {
+        let badgesHtml = '';
+        if (isErp) badgesHtml += '<span class="badge badge-erp">ERP</span> ';
+        if (isGs) badgesHtml += '<span class="badge badge-gs">Sheets</span> ';
+        if (isNative) badgesHtml += '<span class="badge badge-native">Native</span> ';
+        if (!isErp && !isGs && !isNative) badgesHtml = '<span class="text-muted small">None</span>';
+        badgeContainer.innerHTML = badgesHtml;
+    }
+
+    // --- Update Hidden Inputs for Save Form ---
+    const hiddenContainer = document.getElementById(`hidden-comp_type-container-${companyId}`);
+    if (hiddenContainer) {
+        let hiddenHtml = '';
+        if (isErp) hiddenHtml += `<input type="hidden" name="comp_type" value="erp">`;
+        if (isGs) hiddenHtml += `<input type="hidden" name="comp_type" value="google_sheets">`;
+        if (isNative) hiddenHtml += `<input type="hidden" name="comp_type" value="native">`;
+        // If nothing selected, maybe default to native? keeping empty allows backend to handle default
+        hiddenContainer.innerHTML = hiddenHtml;
+    }
+
+    // --- Update Modal Tab Visibility ---
+    const modal = document.getElementById(`configModal-${companyId}`);
+    if (modal) {
+        const erpTabHeader = modal.querySelector('.tab-header-erp');
+        const sheetsTabHeader = modal.querySelector('.tab-header-sheets');
+
+        if (erpTabHeader) erpTabHeader.style.display = isErp ? '' : 'none';
+        if (sheetsTabHeader) sheetsTabHeader.style.display = isGs ? '' : 'none';
+    }
+
+    // --- Update Mobile Card Column Visibility ---
+    const row = document.querySelector(`tr[data-company-id='${companyId}']`);
+    if (row) {
+        const erpCols = row.querySelectorAll('.erp-col');
+        const gsCols = row.querySelectorAll('.gs-col');
+
+        // Toggle visibility based on whether the specific type is ACTIVE
+        erpCols.forEach(el => {
+            if (isErp) el.classList.remove('mobile-hidden');
+            else el.classList.add('mobile-hidden');
+        });
+
+        gsCols.forEach(el => {
+            if (isGs) el.classList.remove('mobile-hidden');
+            else el.classList.add('mobile-hidden');
+        });
+        
+        // --- Sync Button Visibility ---
+        // If "Google Sheets" is unchecked, hide the sync button in the table row
+        // If "Google Sheets" is checked, show it.
+        // Note: The button might not exist if it wasn't rendered initially, 
+        // but typically users refresh page to see major changes. 
+        // For dynamic updates, we can toggle display if element exists.
+        const syncBtn = document.getElementById(`sync-btn-${companyId}`);
+        if (syncBtn) {
+            syncBtn.style.display = isGs ? 'inline-block' : 'none';
+        }
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  
+  // Initialize Interface for all rows based on initial checkbox state
+  document.querySelectorAll(".company-row").forEach(row => {
+      const id = row.dataset.companyId;
+      updateInterface(id); 
+  });
+
+  // Listener for Type Checkboxes in Modals
+  document.querySelectorAll(".type-checkbox").forEach(cb => {
+      cb.addEventListener("change", function() {
+          const id = this.dataset.companyId;
+          updateInterface(id);
+      });
+  });
+
+  // Sync Logic (Any input with data-field -> Updates hidden form input)
+  const allInputs = document.querySelectorAll("input[data-field], select[data-field]");
+  
+  allInputs.forEach(input => {
+      input.addEventListener("input", function() {
+          let companyId;
+          const row = input.closest(".company-row");
+          const modal = input.closest(".modal");
+          
+          if (row) companyId = row.dataset.companyId;
+          else if (modal) companyId = modal.id.split("-")[1];
+
+          if (!companyId) return;
+
+          const fieldName = input.getAttribute("data-field");
+          const targetHiddenId = `hidden-${fieldName}-${companyId}`;
+          const hiddenInput = document.getElementById(targetHiddenId);
+
+          if (hiddenInput) {
+              if (input.type === "checkbox") {
+                  hiddenInput.value = input.checked ? "true" : "false";
+              } else {
+                  hiddenInput.value = input.value;
+              }
+              
+              // Mirror values to other inputs with same data-field (modal <-> table)
+              const mirrors = document.querySelectorAll(`[data-field='${fieldName}']`);
+              mirrors.forEach(mirror => {
+                  let mirrorId;
+                  const r = mirror.closest(".company-row");
+                  const m = mirror.closest(".modal");
+                  if (r) mirrorId = r.dataset.companyId;
+                  else if(m) mirrorId = m.id.split("-")[1];
+
+                  if (mirrorId === companyId && mirror !== input) {
+                      if(input.type === "checkbox") mirror.checked = input.checked;
+                      else mirror.value = input.value;
+                  }
+              });
+          }
+      });
+  });
+
+});
+</script>
+
+<script src="{% static 'script/bootstrap.bundle.min.js' %}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+{% endblock %}

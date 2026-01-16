@@ -1,0 +1,181 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Login{% endblock %}</title>
+    <!-- Link to external CSS -->
+    <style>
+
+/* General Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f4f9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+/* Login Container */
+.login-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Login Box */
+.login-box h1 {
+    text-align: center;
+    color: #333333;
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+/* Form Styling */
+.login-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    font-size: 14px;
+    color: #555555;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.input-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.input-wrapper input[type="text"],
+.input-wrapper input[type="password"] {
+    width: 80%; /* Ensure both inputs have the same width */
+    padding: 10px;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+.input-wrapper input[type="text"]:focus,
+.input-wrapper input[type="password"]:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+.show-password-label {
+    margin-left: 10px;
+    font-size: 14px;
+    color: #555555;
+    display: flex;
+    align-items: center;
+}
+
+.show-password-label input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+/* Login Button */
+.btn-login {
+    background-color: #007bff;
+    color: #ffffff;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-login:hover {
+    background-color: #0056b3;
+}
+
+/* Signup Link */
+.signup-link {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 14px;
+    color: #666666;
+}
+
+.signup-link a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.signup-link a:hover {
+    text-decoration: underline;
+}
+    
+
+    </style>
+</head>
+<body>
+    {% block content %}
+    <div class="login-container">
+        <div class="login-box">
+            <h1>Login</h1>
+            {% if error_message %}
+                <p style="color: red;">{{ error_message }}</p>
+            {% endif %}
+
+            <form method="POST" action="{% url 'login' %}" class="login-form">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="username">Email</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="username" name="username" placeholder="Enter your Email" required>
+                    </div>
+                </div>
+                <div class="form-group password-group">
+                    <label for="password">Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="password" name="password" placeholder="Enter your Password" required>
+                        <label for="show-password" class="show-password-label">
+                            <input type="checkbox" id="show-password"> Show
+                        </label>
+                    </div>
+                </div>
+                <button type="submit" class="btn-login">Login</button>
+            </form>
+        
+        </div>
+    </div>
+
+    <!-- JavaScript to toggle password visibility -->
+    <script>
+        const passwordField = document.getElementById('password');
+        const showPasswordCheckbox = document.getElementById('show-password');
+
+        showPasswordCheckbox.addEventListener('change', function () {
+            if (this.checked) {
+                passwordField.type = 'text';
+            } else {
+                passwordField.type = 'password';
+            }
+        });
+    </script>
+    {% endblock %}
+</body>
+</html>

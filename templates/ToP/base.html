@@ -1,0 +1,621 @@
+{% load static %}  
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <title>{% block title %}My App{% endblock %}</title>
+
+    <link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
+    <link href="{% static 'css/tabulator.min.css' %}" rel="stylesheet">
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{% static 'images/favicon.ico' %}">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
+
+        <!-- Bootstrap -->
+        <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    
+        {% comment %} <!-- WebDataRocks -->
+        <link rel="stylesheet" href="https://cdn.webdatarocks.com/latest/webdatarocks.min.css" />
+        <script src="https://cdn.webdatarocks.com/latest/webdatarocks.toolbar.min.js"></script>
+        <script src="https://cdn.webdatarocks.com/latest/webdatarocks.js"></script> {% endcomment %}
+
+
+
+        <!-- jQuery -->
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+        
+    
+
+
+    <style>
+        body {
+            font-family: Times;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navbar {
+            background-color: #bbb5ae;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .nav-links {
+            display: flex;
+        }
+
+        .nav-links a,
+        .dropdown-toggle {
+            
+            font-weight: bold;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+        }
+
+        .nav-links a:hover,
+        .dropdown-toggle:hover {
+            background-color: #E4E5E7;
+            color: #333;
+        }
+
+        .dropdown {
+            position: relative;
+                
+        }
+        
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: white;
+            display: none;
+            flex-direction: column;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            border-radius: 4px;
+            min-width: 180px;
+            z-index: 2000;
+            color:black;
+        }
+        
+        .dropdown:hover .dropdown-menu {
+            display: flex;
+        }
+
+
+        .dropdown-item {
+            padding: 10px;
+            text-decoration: none;
+            color: #333;
+            color:#c0392b;
+
+        }
+
+        .dropdown-item:hover {
+            background-color: #f2f2f2;
+            color:black;
+        }
+
+
+        .dropdown-item-2 {
+            padding: 10px;
+            text-decoration: none;
+            color:#333;
+            background-color: #f2f2f2;
+
+        }
+
+        .dropdown-item-2:hover {
+            background-color: #f2f2f2;
+            color:black;
+        }
+
+        .logout {
+            background-color: #e74c3c;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .logout:hover {
+            background-color: #c0392b;
+        }
+
+        .container {
+            margin-top: 80px;
+            padding: 20px;
+            
+        }
+
+
+        .container-new{
+            padding: 20px;
+            margin-top: 4%;
+        }
+
+        .modal-content { border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .modal-header { background-color: #f8f9fa; border-bottom: 1px solid #ddd; }
+        .modal-title { font-size: 20px; color: #333; }
+        .modal-body { font-size: 18px; color: #555; }
+        .modal-footer { border-top: 1px solid #ddd; }
+        .modal-footer .btn-secondary { background-color: #6c757d; border: none; }
+        .modal-footer .btn-danger { background-color: #dc3545; border: none; }
+
+
+        .navbar-left-items{
+            display: flex;
+             align-items: center;
+              gap: 20px;
+               margin-left: auto;
+        }
+
+        
+        /* Responsive Navbar Styles */
+        .hamburger {
+            display: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #333;
+        }
+
+        @media (max-width: 1200px) {
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                background-color: #bbb5ae;
+                position: absolute;
+                top: 60px;
+                right: 0;
+                width: 100%;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+
+            .nav-links.active {
+                display: flex;
+            }
+
+            .hamburger {
+                display: block;
+            }
+
+            .container-new {
+                margin-top: 6%;
+            }
+
+        }
+
+        @media (max-width: 1000px) {
+
+            .container-new {
+                margin-top: 8%;
+            }
+        }
+
+        
+
+
+
+        @media (max-width: 450px) {
+            .container-new {
+                margin-top: 13%;
+            }
+
+
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+            color: white;
+            white-space: nowrap; /* 👈 Important: prevent text wrapping */
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+        }
+        
+    </style>
+</head>
+
+<body>
+
+    
+    {% if not request.user.email == "test@prometheus.com.eg" %}
+    
+        <div class="navbar">
+
+            
+            {% for group in request.user.groups.all %}
+                {% if group.name in 'Client' or group.name in 'Manager'  or group.name in 'Controller' or group.name in 'FinanceManager'%}
+                    <div class="hamburger mobile-menu-toggle" id="hamburger-2">&#9776;</div>
+                    <img 
+                        src="{{ company.logo.url }}" 
+                        alt="Logo" 
+                        style="height: 40px; object-fit: contain; margin-right: 20px;"
+                    >
+                {% elif group.name in 'Controller' %}
+                    <img 
+                        src="{{ company.logo.url }}" 
+                        alt="Logo" 
+                        style="height: 40px; object-fit: contain; margin-right: 20px;"
+                    >
+                {% else %}
+                    <div class="hamburger mobile-menu-toggle" id="hamburger">&#9776;</div>
+                {% endif %}
+            {% endfor %}
+            
+            <div class="nav-links" id="navLinks">
+                {% for group in request.user.groups.all %}
+                    {% if group.name in 'Admin Developer' %}
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Sales</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'home' %}">TOP</a>
+                                <a class="dropdown-item-2" href="{% url 'unit_mapping_read_only' %}">Masterplans</a>
+                                <a class="dropdown-item-2" href="{% url 'units_catalog' %}">Catalog</a>
+                                <a class="dropdown-item-2" href="{% url 'sales_requests_demo' %}">Approvals</a>
+                            </div>
+                        </div>
+
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Approvals</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'sales_requests_demo' %}">Approvals</a>
+                                <a class="dropdown-item-2" href="{% url 'historical_sales_requests_analysis_page' %}">Approvals History</a>
+                            </div>
+                        </div>
+                        
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Projects</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'project_dashboard' %}">Manage Projects</a> 
+                                <a class="dropdown-item-2" href="{% url 'unit_mapping' %}">Masterplan Settings</a>
+                                <a class="dropdown-item-2" href="{% url 'dual_payments_input' %}">Payments Input</a>
+                                <a class="dropdown-item-2" href="{% url 'special_offers_input' %}">Special Offer Input</a>
+                                <a class="dropdown-item-2"  href="{% url 'project_web_config' %}">Web Configurations</a>
+                            </div>
+                        </div>
+
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Inventory</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'import_hub' %}">Inventory Hub</a>
+                                <a class="dropdown-item-2" href="{% url 'units_data' %}">Manage Inventory</a>
+                                <a class="dropdown-item-2" href="{% url 'unit_layout_manager' %}">Unit Brochure</a>
+                            </div>
+                        </div>
+                        
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Reports</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'inventory_model' %}">Inventory Report</a>
+                                <a class="dropdown-item-2" href="{% url 'sales_performance_analysis' %}">Sales Performance Analysis</a>
+                                <a class="dropdown-item-2" href="{% url 'sales_dashboard' %}">Sales Team Report</a>
+
+                            </div>
+                        </div>
+
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Market Research</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'market_research_model_master_data' %}">Master Data</a>
+                                <a class="dropdown-item-2" href="{% url 'market_unit_data_list' %}">Units Data</a>
+                                <a class="dropdown-item-2" href="{% url 'market_explorer' %}">Market Explorer</a>
+                            </div>
+                        </div>
+                        
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Pricing</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'pricing_model' %}">Pricing Model</a>
+                            </div>
+                        </div>
+                        
+
+                        
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Users & Companies</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'manage_users' %}">Manage Users</a>
+                                <a class="dropdown-item-2" href="{% url 'manage_companies' %}">Manage Companies</a>
+                                <a class="dropdown-item-2" href="{% url 'management_dashboard_view' %}">Attendance Sheet</a>
+                                <a class="dropdown-item-2" href="{% url 'manage_google_service_accounts' %}">Google Sheets</a>
+                                {% if request.user.is_superuser %}
+                                    <a class="dropdown-item-2" href="{% url 'dashboard_home' %}">Database</a>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        
+
+                        {% comment %}
+                        
+                            <div class="dropdown" style="margin-top: 2%;display:none;">
+                                <span class="dropdown-toggle">Services</span>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item-2" href="{% url 'sales_dashboard' %}">Sales Dashboard</a>
+
+                                </div>
+                            </div> 
+                        {% endcomment %}
+
+                    
+                    {% elif group.name in 'TeamMember' %}
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Sales</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'home' %}">TOP</a>
+                                <a class="dropdown-item-2" href="{% url 'unit_mapping_read_only' %}">Masterplans</a>
+                                <a class="dropdown-item-2" href="{% url 'units_catalog' %}">Units Catalog</a>
+                                
+                                
+                            </div>
+                        </div>
+
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Projects</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'project_dashboard' %}">Manage Projects</a> 
+                                <a class="dropdown-item-2" href="{% url 'unit_mapping' %}">Masterplan Settings</a>
+                                <a class="dropdown-item-2" href="{% url 'dual_payments_input' %}">Payments Input</a>
+                                <a class="dropdown-item-2" href="{% url 'special_offers_input' %}">Special Offer Input</a>
+                            </div>
+                        </div>
+
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Inventory</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'import_hub' %}">Inventory Hub</a>
+                                <a class="dropdown-item-2" href="{% url 'units_data' %}">Manage Inventory</a>
+                                <a class="dropdown-item-2" href="{% url 'manage_companies' %}">Sync Google Sheets</a>
+                                <a class="dropdown-item-2" href="{% url 'unit_layout_manager' %}">Unit Brochure</a>
+                            </div>
+                        </div>
+                        
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Reports</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'inventory_model' %}">Inventory Report</a>
+                                <a class="dropdown-item-2" href="{% url 'sales_performance_analysis' %}">Sales Performance Analysis</a>
+                                <a class="dropdown-item-2" href="{% url 'pricing_model' %}">Pricing Model</a>
+                            </div>
+                        </div>
+                        
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Market Research</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'market_research_model_master_data' %}">Master Data</a>
+                                <a class="dropdown-item-2" href="{% url 'market_unit_data_list' %}">Units Data</a>
+                                <a class="dropdown-item-2" href="{% url 'market_explorer' %}">Market Explorer</a>
+                            </div>
+                        </div>
+
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Attendance</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'attendance_capture_view' %}">Attendance</a>
+                            </div>
+                        </div>
+
+
+
+                        {% comment %} <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Services</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'upload_csv' %}">Upload Inventory</a>
+                            </div>
+                        </div> {% endcomment %}
+
+                        
+                    {% elif group.name == 'Controller' %}
+                         
+                            <a  style="color:#333;" href="{% url 'sales_requests_list' %}">Sales Requests</a>    
+                            <a style="color:#333;"  href="{% url 'units_data' %}">Inventory</a>
+
+                    
+                    {% elif group.name == 'Manager' %}
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Sales</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'home' %}">TOP</a>
+                                <a class="dropdown-item-2" href="{% url 'unit_mapping_read_only' %}">Masterplans</a>
+                                <a class="dropdown-item-2" href="{% url 'units_catalog' %}">Catalogs</a>
+                            </div>
+                        </div>
+
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Approvals</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'sales_requests_list' %}">Approvals</a>
+                                <a class="dropdown-item-2" href="{% url 'historical_sales_requests_analysis_page' %}">Approvals History</a>
+                            </div>
+                        </div>
+
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Inventory</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'units_data' %}">Manage Inventory</a>
+                                <a class="dropdown-item-2" href="{% url 'unit_layout_manager' %}">Unit Brochure</a>
+                            </div>
+                        </div>
+                        
+
+                        
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Reports</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'inventory_model' %}">Inventory Report</a>
+                                <a class="dropdown-item-2" href="{% url 'sales_performance_analysis' %}">Sales Performance Analysis</a>
+                                <a class="dropdown-item-2" href="{% url 'sales_dashboard' %}">Sales Team Report</a>
+                                <a class="dropdown-item-2" href="{% url 'historical_sales_requests_analysis_page' %}">Approvals History</a>
+                            </div>
+                        </div>
+
+
+
+                        {% comment %} <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Inventory</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'units_data' %}">Full Data</a>
+                            </div>
+                        </div>
+                         {% endcomment %}
+                        
+                        
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Market Research</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'market_explorer' %}">Market Explorer</a>
+                            </div>
+                        </div>
+
+                    {% elif group.name == 'Client' %}
+
+                         {% comment %} <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Sale Unit</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'home' %}">TOP</a>
+                                <a class="dropdown-item-2" href="{% url 'unit_mapping_read_only' %}">Projects Masterplan</a>
+                            </div>
+                        </div> {% endcomment %}
+                        <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'home' %}">TOP</a>
+                        <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'unit_mapping_read_only' %}">Masterplans</a>
+                        <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'units_catalog' %}">Catalog</a>
+                        <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'historical_sales_requests_analysis_page' %}">History</a>
+
+
+
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <div class="navbar-left-items" id="navbar-left-items">
+                
+                <div class="dropdown">
+                    <span class="user-name-btn" style="color: white; cursor: pointer;">
+                        {{ request.user.full_name }} <i class="fas fa-caret-down"></i>
+                    </span>
+                    <div class="dropdown-menu user-menu-align">
+                        <a class="dropdown-item-2" href="{% url 'change_password' %}">Change Password</a>
+                    </div>
+                </div>
+
+                {% if request.session.impersonator_id %}
+                    <form method="post" action="{% url 'revert_impersonation' %}">
+                        {% csrf_token %}
+                        <button class="btn btn-dark">Back to Admin</button>
+                    </form>
+                {% else %}
+                    <button class="logout" data-bs-toggle="modal" data-bs-target="#logoutModal">Logout</button>    
+                {% endif %}
+
+            </div>
+        </div>
+    {% endif %}
+        
+
+
+    {% with user_groups=request.user.groups.all|join:"," %}
+        <div {% if "Client" not in user_groups and  "Manager" not in user_groups%} class="container" {% else %} class="container-new" {% endif %} >
+            {% block content %}{% endblock %}
+        </div>
+    {% endwith %} 
+
+    <!-- Logout Modal -->
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"> <!-- Center the modal -->
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logoutModalLabel">Logout Confirmation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to logout? 
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="{% url 'logout' %}" class="btn btn-danger">Logout</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Mobile menu toggle for any element with the mobile-menu-toggle class
+            document.querySelectorAll('.mobile-menu-toggle').forEach(toggle => {
+                toggle.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Prevent click from bubbling to document
+                    const navLinks = document.getElementById("navLinks");
+                    if (navLinks) {
+                        navLinks.classList.toggle("active");
+                    }
+                });
+            });
+
+            // Alternative: Also handle any element with ID containing "hamburger"
+            const allHamburgers = document.querySelectorAll('[id*="hamburger"]');
+            allHamburgers.forEach(ham => {
+                if (!ham.classList.contains('mobile-menu-toggle')) {
+                    ham.addEventListener('click', function(e) {
+                        e.stopPropagation(); // Prevent click from bubbling to document
+                        const navLinks = document.getElementById("navLinks");
+                        if (navLinks) {
+                            navLinks.classList.toggle("active");
+                        }
+                    });
+                }
+            });
+
+            // Close mobile menu when clicking anywhere outside
+            document.addEventListener('click', function(e) {
+                const navLinks = document.getElementById("navLinks");
+                const hamburger = document.querySelector('.mobile-menu-toggle') || 
+                                document.querySelector('[id*="hamburger"]');
+                
+                if (navLinks && navLinks.classList.contains('active') && 
+                    !navLinks.contains(e.target) && 
+                    (!hamburger || !hamburger.contains(e.target))) {
+                    navLinks.classList.remove('active');
+                }
+            });
+
+            // Disable autocomplete for all inputs
+            document.querySelectorAll("input").forEach(input => {
+                input.setAttribute("autocomplete", "off");
+            });
+        });
+    </script>
+
+    <script src="{% static 'script/tabulator.min.js' %}"></script>
+    <script src="{% static 'script/bootstrap.bundle.min.js' %}"></script>
+
+    
+</body>
+</html>

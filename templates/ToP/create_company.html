@@ -1,0 +1,193 @@
+{% extends 'ToP/base.html' %}
+
+{% block title %}Create Company{% endblock %}
+
+{% block content %}
+<style>
+    .submit-button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        font-size: 1em;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        margin-top: 30px;
+        margin-left: 43px;
+    }
+    .submit-button:hover { background-color: #0056b3; }
+    .error-message { color: red; font-weight: bold; }
+    .section { margin-top: 20px; }
+    
+    /* Optional: Style for checkboxes if they aren't styled by bootstrap */
+    ul#id_comp_type {
+        list-style-type: none;
+        padding: 0;
+    }
+    ul#id_comp_type li {
+        display: inline-block;
+        margin-right: 15px;
+    }
+</style>
+
+<div style="text-align: center;">
+    <h1>Create a New Company</h1>
+
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+            <p class="{% if message.tags %}{{ message.tags }}{% endif %}" style="color: green; font-weight: bold;">
+                {{ message }}
+            </p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if generated_key %}
+        <div style="margin-top: 30px;">
+            <p style="color: #007bff; font-weight: bold;">
+                🔑 ERP API Key: {{ generated_key }}
+            </p>
+            <small style="color: red;">This key will not be shown again — make sure to save it now.</small>
+        </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" style="margin-top:50px;">
+        {% csrf_token %}
+
+        <div class="section">
+            {% if form.name.errors %}
+                <ul class="errorlist">
+                    {% for error in form.name.errors %}
+                        <li class="error-message">{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            <label for="{{ form.name.id_for_label }}">Name:</label>
+            {{ form.name }}
+        </div>
+
+        <div class="section">
+            <label>Company Type:</label>
+            {{ form.comp_type }}
+        </div>
+
+        <div class="section">
+            <label for="{{ form.joining_date.id_for_label }}">Joining Date:</label>
+            {{ form.joining_date }}
+        </div>
+
+        <div class="section">
+            <label for="{{ form.is_active.id_for_label }}">Is Active?</label>
+            {{ form.is_active }}
+        </div>
+
+        <div id="erp-section" class="section" style="display:none;">
+            <h3>ERP Configuration</h3>
+            <div>
+                <label for="{{ form.erp_url.id_for_label }}">ERP System URL:</label>
+                {{ form.erp_url }}
+            </div>
+
+            <div>
+                <label for="{{ form.erp_url_key.id_for_label }}">ERP System URL Key:</label>
+                {{ form.erp_url_key }}
+            </div>
+
+            <div>
+                <label for="{{ form.erp_url_units.id_for_label }}">ERP System Units URL:</label>
+                {{ form.erp_url_units }}
+            </div>
+
+            <div>
+                <label for="{{ form.erp_url_units_key.id_for_label }}">ERP System Units URL Key:</label>
+                {{ form.erp_url_units_key }}
+            </div>
+
+            <div>
+                <label for="{{ form.erp_url_unit.id_for_label }}">ERP System Unit URL:</label>
+                {{ form.erp_url_unit }}
+            </div>
+
+            <div>
+                <label for="{{ form.erp_url_unit_key.id_for_label }}">ERP System Unit URL Key:</label>
+                {{ form.erp_url_unit_key }}
+            </div>
+
+            <div>
+                <label for="{{ form.erp_url_leads.id_for_label }}">ERP System Leads URL:</label>
+                {{ form.erp_url_leads }}
+            </div>
+
+            <div>
+                <label for="{{ form.erp_url_leads_key.id_for_label }}">ERP System Leads URL Key:</label>
+                {{ form.erp_url_leads_key }}
+            </div>
+        </div>
+
+        <div id="gs-section" class="section" style="display:none;">
+            <h3>Google Sheets Configuration</h3>
+            <div>
+                <label for="{{ form.google_sheet_url.id_for_label }}">Google Sheet URL:</label>
+                {{ form.google_sheet_url }}
+            </div>
+            <div>
+                <label for="{{ form.google_sheet_gid.id_for_label }}">Worksheet GID (optional):</label>
+                {{ form.google_sheet_gid }}
+            </div>
+            <div>
+                <label for="{{ form.google_sheet_title.id_for_label }}">Worksheet Title (optional):</label>
+                {{ form.google_sheet_title }}
+            </div>
+        </div>
+
+        <div class="section">
+            <label for="{{ form.logo.id_for_label }}">Upload Logo:</label>
+            {{ form.logo }}
+        </div>
+
+        <button type="submit" class="submit-button">Create Company</button>
+    </form>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Selector for all checkbox inputs associated with comp_type
+        // Django usually renders them as input[name="comp_type"]
+        const checkboxes = document.querySelectorAll('input[name="comp_type"]');
+        
+        const erpSection = document.getElementById("erp-section");
+        const gsSection = document.getElementById("gs-section");
+
+        function toggleSections() {
+            let erpSelected = false;
+            let gsSelected = false;
+
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    if (cb.value === "erp") erpSelected = true;
+                    if (cb.value === "google_sheets") gsSelected = true;
+                }
+            });
+
+            erpSection.style.display = erpSelected ? "block" : "none";
+            gsSection.style.display = gsSelected ? "block" : "none";
+        }
+
+        // Attach event listener to all checkboxes
+        checkboxes.forEach(cb => {
+            cb.addEventListener("change", toggleSections);
+        });
+
+        // Initial check
+        toggleSections();
+    });
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

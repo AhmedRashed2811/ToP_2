@@ -1,0 +1,370 @@
+{% extends 'ToP/base.html' %}
+{% block title %}Unit Warehouse Import{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    .source-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: transform 0.2s;
+        background: white;
+    }
+    .source-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .source-icon {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+    .hidden { display: none; }
+    .log-box {
+        background: #1e1e1e;
+        color: #00ff00;
+        padding: 15px;
+        border-radius: 5px;
+        font-family: monospace;
+        height: 200px;
+        overflow-y: auto;
+        margin-top: 20px;
+    }
+
+    /* --- Styles for Tag Input --- */
+    .tag-container {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        min-height: 48px;
+        padding: 6px;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        background-color: #fff;
+        cursor: text;
+    }
+    .tag-container:focus-within {
+        border-color: #86b7fe;
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    .tag {
+        background-color: #dc3545; /* Red for delete context */
+        color: white;
+        padding: 4px 10px;
+        border-radius: 16px;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+    }
+    .tag .close-tag {
+        margin-left: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        line-height: 1;
+    }
+    .tag-input {
+        border: none;
+        outline: none;
+        flex-grow: 1;
+        padding: 4px;
+        min-width: 150px;
+    }
+</style>
+
+<div class="container mt-4">
+    {% csrf_token %}
+    
+    <div class="text-center mb-5">
+        <h1>Unit Warehouse Import Hub</h1>
+        <p class="text-muted">Aggregate inventory data from multiple sources into a single warehouse.</p>
+    </div>
+
+    <div class="row justify-content-center mb-5">
+        <div class="col-md-6">
+            <label class="form-label fw-bold">Select Warehouse (Company)</label>
+            <select id="companySelect" class="form-select form-select-lg">
+                <option value="" selected disabled>Choose a company...</option>
+                {% for company in companies %}
+                <option value="{{ company.id }}">{{ company.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div id="sourcesPanel" class="row hidden">
+        <div class="col-md-4">
+            <div class="source-card text-center">
+                <div class="source-icon">📄</div>
+                <h3>CSV Upload</h3>
+                <p class="text-muted small">Upload manual files. Good for bulk historical data.</p>
+                <input type="file" id="csvInput" class="form-control mb-3" accept=".csv">
+                <button class="btn btn-primary w-100" onclick="triggerImport('csv')">Upload & Merge</button>
+            </div>
+        </div>
+
+        <div class="col-md-4" id="card-sheet">
+            <div class="source-card text-center">
+                <div class="source-icon">📊</div>
+                <h3>Google Sheets</h3>
+                <p class="text-muted small">Fetch live data from configured spreadsheet.</p>
+                <div class="alert alert-light py-1 small mb-3" id="sheetUrlDisplay">Not Configured</div>
+                <button class="btn btn-success w-100" onclick="triggerImport('sheet')">Fetch & Merge</button>
+            </div>
+        </div>
+
+        <div class="col-md-4" id="card-erp">
+            <div class="source-card text-center">
+                <div class="source-icon">🔌</div>
+                <h3>ERP API</h3>
+                <p class="text-muted small">Connect to external ERP endpoint.</p>
+                <div class="alert alert-light py-1 small mb-3" id="erpUrlDisplay">Not Configured</div>
+                <button class="btn btn-warning w-100" onclick="triggerImport('erp')">Request & Merge</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="deletePanel" class="row hidden justify-content-center">
+        <div class="col-md-12">
+            <div class="source-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="text-danger m-0"><span class="source-icon" style="font-size:1.5rem;">🗑️</span>Units</h3>
+                    <button class="btn btn-outline-danger" onclick="executeDelete()" title="Delete Selected">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
+                            <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528M8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5"/>
+                        </svg>
+                    </button>
+                </div>
+                <p class="text-muted small">Type a unit code and press <strong>Enter</strong> to add it to the deletion list.</p>
+                
+                <div class="tag-container" id="tagContainer" onclick="document.getElementById('unitTagInput').focus()">
+                    <input type="text" id="unitTagInput" class="tag-input" placeholder="Type unit code (e.g. A-101)...">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="consolePanel" class="hidden">
+        <h5>Import Logs</h5>
+        <div id="consoleLog" class="log-box">
+            <div>> Waiting for command...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Configuration loaded from Django
+    const companyConfigs = {{ company_configs|safe }};
+
+    const companySelect = document.getElementById('companySelect');
+    const sourcesPanel = document.getElementById('sourcesPanel');
+    const deletePanel = document.getElementById('deletePanel'); // New Panel
+    
+    const cardSheet = document.getElementById('card-sheet');
+    const cardErp = document.getElementById('card-erp');
+    const sheetDisplay = document.getElementById('sheetUrlDisplay');
+    const erpDisplay = document.getElementById('erpUrlDisplay');
+    const consoleLog = document.getElementById('consoleLog');
+    const consolePanel = document.getElementById('consolePanel');
+
+    // --- Tag System Logic ---
+    const unitTagInput = document.getElementById('unitTagInput');
+    const tagContainer = document.getElementById('tagContainer');
+    let unitsToDelete = new Set(); // Use Set for unique values
+
+    unitTagInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const code = this.value.trim();
+            if (code && !unitsToDelete.has(code)) {
+                addTag(code);
+            }
+            this.value = '';
+        }
+    });
+
+    function addTag(code) {
+        unitsToDelete.add(code);
+        
+        const tag = document.createElement('div');
+        tag.className = 'tag';
+        tag.innerHTML = `
+            ${code} 
+            <span class="close-tag" onclick="removeTag(this, '${code}')">&times;</span>
+        `;
+        // Insert before the input field
+        tagContainer.insertBefore(tag, unitTagInput);
+    }
+
+    function removeTag(element, code) {
+        unitsToDelete.delete(code);
+        element.parentElement.remove();
+    }
+    // ------------------------
+
+    // Retrieve CSRF Token from the DOM
+    function getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+
+    // Handle Selection Change
+    companySelect.addEventListener('change', function() {
+        const id = this.value;
+        const config = companyConfigs[id];
+
+        if (!config) return;
+
+        // Reset UI
+        sourcesPanel.classList.remove('hidden');
+        deletePanel.classList.remove('hidden'); // Show Delete Panel
+        consolePanel.classList.add('hidden');
+        consoleLog.innerHTML = '<div>> Ready.</div>';
+
+        // Clear tags on company switch
+        unitsToDelete.clear();
+        document.querySelectorAll('.tag').forEach(t => t.remove());
+
+        // Toggle Cards based on capability
+        cardSheet.style.display = config.has_sheets ? 'block' : 'none';
+        cardErp.style.display = config.has_erp ? 'block' : 'none';
+
+        // Update Info
+        sheetDisplay.innerText = config.sheet_url ? 'Link: ' + config.sheet_url.substring(0, 30) + '...' : 'No URL Configured';
+        erpDisplay.innerText = config.erp_url ? 'Endpoint: ' + config.erp_url.substring(0, 30) + '...' : 'No URL Configured';
+    });
+
+    function log(msg, type='info') {
+        const color = type === 'error' ? 'red' : (type === 'success' ? '#00ff00' : 'white');
+        const time = new Date().toLocaleTimeString();
+        consoleLog.innerHTML += `<div style="color:${color}">[${time}] ${msg}</div>`;
+        consoleLog.scrollTop = consoleLog.scrollHeight;
+    }
+
+    // Existing Import Function
+    async function triggerImport(sourceType) {
+        // ... (Your existing import logic remains exactly here) ...
+        const companyId = companySelect.value;
+        if (!companyId) return alert("Select a company first");
+
+        consolePanel.classList.remove('hidden');
+        log(`Starting ${sourceType.toUpperCase()} import...`);
+
+        const formData = new FormData();
+        formData.append('company_id', companyId);
+        formData.append('source_type', sourceType);
+
+        if (sourceType === 'csv') {
+            const fileInput = document.getElementById('csvInput');
+            if (fileInput.files.length === 0) {
+                return log("Error: No file selected", 'error');
+            }
+            formData.append('csv_file', fileInput.files[0]);
+        }
+
+        try {
+            const response = await fetch("{% url 'trigger_unified_import' %}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCsrfToken() 
+                }
+            });
+
+            if (response.status === 403) throw new Error("Permission Denied (CSRF).");
+
+            const data = await response.json();
+
+            if (data.success) {
+                const s = data.stats;
+                log(`Success! Received ${s.total_received} rows.`, 'success');
+                log(`-> Created: ${s.created}`, 'success');
+                log(`-> Updated: ${s.updated}`, 'success');
+                log(`-> Skipped: ${s.skipped}`);
+                
+                if (s.errors.length > 0) {
+                    log(`Warning: ${s.errors.length} row errors occurred.`, 'error');
+                    s.errors.slice(0, 5).forEach(err => log(err, 'error'));
+                }
+            } else {
+                log(`Failed: ${data.error}`, 'error');
+            }
+
+        } catch (err) {
+            log(`System Error: ${err.message}`, 'error');
+        }
+    }
+
+    // --- NEW: Delete Units Function ---
+    async function executeDelete() {
+        const companyId = companySelect.value;
+        if (!companyId) return Swal.fire('Error', 'Please select a company first.', 'error');
+        
+        const unitsArray = Array.from(unitsToDelete);
+        
+        if (unitsArray.length === 0) {
+            return Swal.fire('No Units Selected', 'Please type a unit code and press Enter.', 'warning');
+        }
+
+        // 1. SweetAlert Confirmation
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: `You are about to delete ${unitsArray.length} units from the database. This cannot be undone!`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete them!'
+        });
+
+        if (!result.isConfirmed) return;
+
+        // 2. AJAX Request
+        try {
+            consolePanel.classList.remove('hidden');
+            log(`Deleting ${unitsArray.length} units...`, 'info');
+
+            const response = await fetch("{% url 'delete_hub_units' %}", {
+                method: 'POST',
+                body: JSON.stringify({
+                    company_id: companyId,
+                    unit_codes: unitsArray
+                }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                }
+            });
+
+            if (response.status === 403) throw new Error("Permission Denied.");
+
+            const data = await response.json();
+
+            if (data.success) {
+                // 3. Success Feedback
+                Swal.fire('Deleted!', `Successfully deleted ${data.deleted_count} units.`, 'success');
+                
+                log(`Deleted ${data.deleted_count} units successfully.`, 'success');
+                if (data.not_found_count > 0) {
+                    log(`Note: ${data.not_found_count} units were not found.`, 'info');
+                }
+
+                // Clear inputs
+                unitsToDelete.clear();
+                document.querySelectorAll('.tag').forEach(t => t.remove());
+                unitTagInput.value = '';
+
+            } else {
+                Swal.fire('Error', data.error || 'Deletion failed', 'error');
+                log(`Deletion Failed: ${data.error}`, 'error');
+            }
+
+        } catch (err) {
+            Swal.fire('System Error', err.message, 'error');
+            log(`System Error: ${err.message}`, 'error');
+        }
+    }
+</script>
+{% endblock %}

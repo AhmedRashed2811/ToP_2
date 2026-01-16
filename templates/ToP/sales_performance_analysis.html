@@ -1,0 +1,1705 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+{% block title %}Sales Performance Analysis{% endblock %}
+
+{% block content %}
+<style>
+    .container{
+        margin-top: 30px;
+    }
+    .table {
+        margin-top: 0%;
+    }
+
+    .bg-primary {
+        background-color: rgb(226 116 10) !important;
+    }
+
+    .bg-success{
+        background-color: rgb(226 116 10) !important;
+    }
+
+    #resetBtn, #downloadAllBtn {
+        display: none;
+    }
+
+    .card {
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+    }
+    
+    .form-select, .btn {
+        border-radius: 8px;
+    }
+    
+    .form-select:focus, .btn:focus {
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        border-color: #007bff;
+    }
+
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .analysis-content {
+        display: none;
+    }
+
+    .premium-analysis-content {
+        display: none;
+    }
+
+    .pivot-table {
+        width: auto;
+        margin: 0 auto;
+        border-collapse: separate; /* Required for sticky to work well with borders sometimes */
+        border-spacing: 0;
+    }
+
+    .pivot-table th,
+    .pivot-table td {
+        /* Keep your existing padding/alignment */
+        text-align: center;
+        vertical-align: middle;
+        white-space: nowrap;
+        padding: 8px 12px;
+        border: 1px solid #dee2e6; /* Explicit border for sticky cells */
+    }
+
+    /* Sticky First Column Header */
+    .pivot-table th:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 5; /* Higher than normal cells */
+        background-color: #2c3e50 !important; /* Match your header color */
+        color: white;
+        border-right: 2px solid #ddd; /* Visual separation */
+    }
+
+    .pivot-table td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 4; /* Above regular scrolling content */
+        background-color: #f2f2f2 !important; /* Ensure background is opaque so text doesn't show through */
+        font-weight: bold;
+        min-width: 120px;
+        max-width: 100%;
+        border-right: 2px solid #ddd; /* Visual separation */
+    }
+
+    .price-range-header,
+    .unit-model-header,
+    .premium-header {
+        position: sticky;
+        left: 0;
+        z-index: 6 !important; /* Highest priority */
+        background-color: #34495e !important;
+        color: white;
+        font-weight: bold;
+        min-width: 150px; /* Reduced slightly for mobile */
+    }
+
+    .grand-total-row td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 4;
+        background-color: #ecf0f1 !important; /* Match grand total row color */
+        border-right: 2px solid #bdc3c7;
+    }
+
+    .grand-total-row {
+        background-color: #ecf0f1;
+        font-weight: bold;
+        border-top: 2px solid #bdc3c7;
+    }
+
+    .progress {
+        height: 20px;
+        margin: 0;
+    }
+
+    .progress-bar {
+        font-size: 12px;
+        font-weight: bold;
+        line-height: 20px;
+    }
+
+    .percentage-cell {
+        position: relative;
+        padding: 0 !important;
+        min-width: 100px;
+    }
+
+    .percentage-text {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        font-weight: bold;
+        z-index: 2;
+        color: #2c3e50;
+    }
+
+    .bg-light {
+        color: #000000 !important;
+    }
+
+    .bg-light th {
+        color: #000000 !important;
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+    }
+
+    .toast {
+        background-color: white;
+        border: 1px solid rgba(0,0,0,.1);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,.15);
+        min-width: 300px;
+    }
+
+    .toast-success {
+        border-left: 4px solid #28a745;
+    }
+
+    .toast-warning {
+        border-left: 4px solid #ffc107;
+    }
+
+    .toast-danger {
+        border-left: 4px solid #dc3545;
+    }
+
+    .toast-header {
+        background-color: transparent;
+        border-bottom: 1px solid rgba(0,0,0,.05);
+    }
+
+    table td:first-child {
+        font-weight: bold;
+        background: #f2f2f2;
+        min-width: 120px;
+        max-width: 100%;
+    }
+
+    .analysis-type-buttons {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .analysis-type-btn, 
+    .premium-analysis-btn {
+        flex: 0 1 auto; /* Allow buttons to shrink/grow based on content, don't force equal width */
+        min-width: auto; /* Remove rigid minimum width */
+        font-size: 0.8rem; /* Smaller font */
+        padding: 0.35rem 0.75rem; /* Reduced padding */
+        white-space: nowrap;
+        border-radius: 4px; /* Slightly sharper corners for compact look */
+    }
+
+    .premium-analysis-buttons {
+        display: flex;
+        gap: 6px; /* Reduced gap */
+        margin-bottom: 0; /* Remove bottom margin to reduce height */
+        flex-wrap: wrap;
+        justify-content: flex-end; /* Align right on large screens */
+    }
+
+
+    /* Reduce Header Heights */
+    .card-header {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+
+    .card-header h5 {
+        font-size: 1rem; /* Smaller Title */
+        margin-bottom: 0;
+        white-space: nowrap;
+        margin-right: 10px;
+    }
+
+
+    table td:first-child {
+        text-align: center !important;
+    }
+
+    .download-all-btn {
+        background-color: rgb(226 116 10) !important;
+        border-color: rgb(226 116 10) !important;
+        color: white;
+    }
+
+    .download-all-btn:hover {
+        background-color: rgb(146 76 8);
+        border-color: rgb(146 76 8);
+        color: white;
+    }
+
+    .pivot-table-section {
+        margin-bottom: 2rem;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 1rem;
+        background-color: #f8f9fa;
+    }
+
+    .pivot-table-title {
+        background-color: #495057;
+        color: white;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+
+        .card-header .d-flex {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 10px;
+        }
+
+
+        .container-fluid {
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+        
+        .card-body {
+            padding: 0.75rem;
+        }
+        
+        .btn-lg {
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .form-select-lg {
+            padding: 0.75rem 2.25rem 0.75rem 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        .table-responsive {
+            font-size: 0.875rem;
+        }
+
+        .percentage-text {
+            font-size: 0.75rem;
+        }
+
+        .pivot-table th,
+        .pivot-table td {
+            padding: 6px 8px;
+            font-size: 0.8rem;
+        }
+
+        .price-range-header,
+        .unit-model-header,
+        .premium-header {
+            min-width: 150px;
+            font-size: 0.8rem;
+        }
+
+        .toast-container {
+            top: 10px;
+            right: 10px;
+            left: 10px;
+        }
+
+        .toast {
+            min-width: auto;
+            width: 100%;
+        }
+
+        .analysis-type-buttons, 
+        .premium-analysis-buttons {
+            width: 100%;
+            justify-content: flex-start; /* Align left on mobile */
+            gap: 5px;
+        }
+
+        .analysis-type-btn, 
+        .premium-analysis-btn {
+            font-size: 0.75rem; /* Even smaller on mobile */
+            padding: 0.25rem 0.5rem;
+            flex-grow: 1; /* Allow them to fill gaps evenly */
+            text-align: center;
+        }
+
+        .pivot-table-section {
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .d-md-flex {
+            flex-direction: column;
+        }
+        
+        .gap-2 {
+            gap: 0.5rem !important;
+        }
+
+        .pivot-table th,
+        .pivot-table td {
+            padding: 4px 6px;
+            font-size: 0.75rem;
+        }
+
+        .price-range-header,
+        .unit-model-header,
+        .premium-header {
+            min-width: 120px;
+            font-size: 0.75rem;
+        }
+
+        .premium-analysis-btn {
+            font-size: 0.8rem;
+            padding: 0.5rem 0.75rem;
+        }
+    }
+
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl {
+            max-width: 1536px;
+        }
+        .card-header.bg-success {
+            position: sticky;
+            top: 65px;
+            z-index: 100;
+        }
+    }
+
+    @media (min-width: 576px) {
+        .container, .container-sm {
+            max-width: 100%;
+        }
+    }
+
+</style>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container-fluid py-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h1 class="h3 mb-0 text-primary" style="color:rgb(226 116 10) !important;">
+                        <i class="fas fa-chart-line me-2"></i>Sales Performance Analysis
+                    </h1>
+                    <p class="text-muted mb-0">Analyze and track sales performance metrics</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter me-2"></i>Filters
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
+                        <!-- Company Selection -->
+                        <div class="col-md-6 col-lg-4">
+                            {% if not selected_company_id %}
+                                <!-- Show dropdown for non-managers -->
+                                <label for="companySelect" class="form-label fw-semibold">Company</label>
+                                <select id="companySelect" class="form-select form-select-lg">
+                                    <option value="">-- Select Company --</option>
+                                    {% for company in companies %}
+                                        <option value="{{ company.id }}">
+                                            {{ company.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            {% else %}
+                                <!-- Show text label for managers -->
+                                <div class="d-flex align-items-center">
+                                    <span class="fw-bold text-dark me-2">Company:</span>
+                                    <span class="text-muted">
+                                        {% for company in companies %}
+                                            {% if company.id == selected_company_id %}
+                                                {{ company.name }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </span>
+                                    <input type="hidden" id="companySelect" value="{{ selected_company_id }}">
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Projects Selection -->
+                        <div class="col-md-6 col-lg-4" id="projectSection" 
+                             style="{% if not selected_company_id %}display: none;{% endif %}">
+                            <label for="projectSelect" class="form-label fw-semibold">Project</label>
+                            <select id="projectSelect" class="form-select form-select-lg">
+                                <option value="">-- Select Project --</option>
+                                {% if selected_company_id %}
+                                    {% for project in initial_projects %}
+                                        <option value="{{ project.id }}">{{ project.name }}</option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="col-md-12 col-lg-4">
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="button" class="btn btn-outline-secondary btn-lg px-4" id="resetBtn">
+                                    <i class="fas fa-redo me-2"></i>Reset
+                                </button>
+                                <button type="button" class="btn download-all-btn btn-lg px-4" id="downloadAllBtn">
+                                    <i class="fas fa-download me-2"></i>Download All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div id="loadingSpinner" class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading sales performance data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Analysis Content Area -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div id="analysisContent" class="analysis-content">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-primary text-white py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-bar me-2"></i>Sales Performance
+                            </h5>
+                            <div class="analysis-type-buttons">
+                                <button type="button" class="btn btn-outline-light analysis-type-btn" data-type="price_range">
+                                    <i class="fas fa-money-bill-wave me-1"></i>Price Range
+                                </button>
+                                <button type="button" class="btn btn-outline-light analysis-type-btn" data-type="unit_model">
+                                    <i class="fas fa-home me-1"></i>Unit Model
+                                </button>
+                                <button type="button" class="btn btn-outline-light analysis-type-btn active" data-type="all">
+                                    <i class="fas fa-table me-1"></i>All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="pivotTableContainer">
+                            <div class="text-center py-4">
+                                <i class="fas fa-table fa-3x text-muted mb-3"></i>
+                                <h4 class="text-muted fs-5">Sales Performance Data</h4>
+                                <p class="text-muted small">Analysis will appear here when a project is selected</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Premium Analysis Content Area -->
+    <div class="row">
+        <div class="col-12">
+            <div id="premiumAnalysisContent" class="premium-analysis-content">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-success text-white py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-star me-2"></i>Premium Analysis
+                            </h5>
+                            <div class="premium-analysis-buttons">
+                                <button type="button" class="btn btn-outline-light premium-analysis-btn active" data-type="all">All</button>
+                                <button type="button" class="btn btn-outline-light premium-analysis-btn" data-type="main_view">Main View</button>
+                                <button type="button" class="btn btn-outline-light premium-analysis-btn" data-type="secondary_views">Secondary Views</button>
+                                <button type="button" class="btn btn-outline-light premium-analysis-btn" data-type="north_breeze">North Breeze</button>
+                                <button type="button" class="btn btn-outline-light premium-analysis-btn" data-type="corners">Corners</button>
+                                <button type="button" class="btn btn-outline-light premium-analysis-btn" data-type="accessibility">Accessibility</button>
+                                <button style="display: none;" type="button" class="btn btn-outline-light premium-analysis-btn" data-type="special_premiums">Special Premiums</button>
+                                <button style="display: none;" type="button" class="btn btn-outline-light premium-analysis-btn" data-type="special_discounts">Special Discounts</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="premiumPivotTableContainer">
+                            <div class="text-center py-4">
+                                <i class="fas fa-crown fa-3x text-muted mb-3"></i>
+                                <h4 class="text-muted fs-5">Premium Analysis Data</h4>
+                                <p class="text-muted small">Premium analysis will appear here when a project is selected</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const companySelect = document.getElementById('companySelect');
+        const projectSelect = document.getElementById('projectSelect');
+        const projectSection = document.getElementById('projectSection');
+        const resetBtn = document.getElementById('resetBtn');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const analysisContent = document.getElementById('analysisContent');
+        const premiumAnalysisContent = document.getElementById('premiumAnalysisContent');
+        const toastContainer = document.getElementById('toastContainer');
+        const analysisTypeButtons = document.querySelectorAll('.analysis-type-btn');
+        const premiumAnalysisButtons = document.querySelectorAll('.premium-analysis-btn');
+        
+        let currentAnalysisType = 'all';
+        let currentPremiumAnalysisType = 'all';
+        let currentProjectId = null;
+        let priceRangeTotalUnits = 0;
+        let allAnalysisData = {};
+        let allPremiumData = {};
+
+        // Main analysis type switching
+        analysisTypeButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                analysisTypeButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                currentAnalysisType = this.getAttribute('data-type');
+                
+                if (currentProjectId) {
+                    renderAnalysisTables();
+                    setTimeout(smoothScrollToTable, 300);
+                }
+            });
+        });
+
+        // Premium analysis type switching
+        premiumAnalysisButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                premiumAnalysisButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                currentPremiumAnalysisType = this.getAttribute('data-type');
+                
+                if (currentProjectId) {
+                    renderPremiumAnalysisTables();
+                    setTimeout(smoothScrollToPremiumTable, 300);
+                }
+            });
+        });
+
+        // For non-managers, load projects when company is selected
+        {% if not selected_company_id %}
+            if (companySelect) {
+                companySelect.addEventListener('change', function() {
+                    const companyId = this.value;
+                    
+                    if (companyId) {
+                        loadCompanyProjects(companyId);
+                        projectSection.style.display = 'block';
+                        hideAnalysis();
+                        hidePremiumAnalysis();
+                    } else {
+                        projectSection.style.display = 'none';
+                        projectSelect.innerHTML = '<option value="">-- Select Project --</option>';
+                        hideAnalysis();
+                        hidePremiumAnalysis();
+                    }
+                });
+            } else {
+                console.error('companySelect element not found!');
+            }
+        {% endif %}
+
+        // Load analysis when project is selected
+        projectSelect.addEventListener('change', function() {
+            const projectId = this.value;
+            currentProjectId = projectId;
+            
+            if (projectId) {
+                document.getElementById('resetBtn').style.display = 'block';
+                document.getElementById('downloadAllBtn').style.display = 'block'
+                loadAllSalesAnalysis(projectId);
+                loadAllPremiumAnalysis(projectId);
+                // setTimeout(smoothScrollToTable, 500);
+            } else {
+                document.getElementById('resetBtn').style.display = 'none';
+                document.getElementById('downloadAllBtn').style.display = 'none';
+                hideAnalysis();
+                hidePremiumAnalysis();
+            }
+        });
+
+        // Download All functionality
+        downloadAllBtn.addEventListener('click', function() {
+            if (!currentProjectId) {
+                showToast('warning', 'Please select a project first');
+                return;
+            }
+
+            downloadAllPivotTablesAsExcel();
+        });
+
+        function downloadAllPivotTablesAsExcel() {
+            try {
+                const workbook = XLSX.utils.book_new();
+                const projectName = projectSelect.options[projectSelect.selectedIndex].text;
+                const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                
+                // Add Price Range Analysis
+                if (allAnalysisData.price_range) {
+                    const priceRangeWS = convertPivotTableToWorksheet(
+                        allAnalysisData.price_range, 
+                        'Price Range Analysis', 
+                        'price_range'
+                    );
+                    XLSX.utils.book_append_sheet(workbook, priceRangeWS, 'Price Range');
+                }
+
+                // Add Unit Model Analysis
+                if (allAnalysisData.unit_model) {
+                    const unitModelWS = convertPivotTableToWorksheet(
+                        allAnalysisData.unit_model, 
+                        'Unit Model Analysis', 
+                        'unit_model'
+                    );
+                    XLSX.utils.book_append_sheet(workbook, unitModelWS, 'Unit Model');
+                }
+
+                // Add Premium Analysis Sheets
+                const premiumTypes = [
+                    { key: 'main_view', title: 'Main View' },
+                    { key: 'secondary_views', title: 'Secondary Views' },
+                    { key: 'north_breeze', title: 'North Breeze' },
+                    { key: 'corners', title: 'Corners' },
+                    { key: 'accessibility', title: 'Accessibility' },
+                    { key: 'special_premiums', title: 'Special Premiums' },
+                    { key: 'special_discounts', title: 'Special Discounts' }
+                ];
+
+                premiumTypes.forEach(type => {
+                    if (allPremiumData[type.key]) {
+                        const premiumWS = convertPremiumPivotTableToWorksheet(
+                            allPremiumData[type.key], 
+                            type.title
+                        );
+                        XLSX.utils.book_append_sheet(workbook, premiumWS, type.title.substring(0, 31)); // Sheet name max 31 chars
+                    }
+                });
+
+                // Generate and download the Excel file
+                const filename = `Sales_Analysis_${projectName.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.xlsx`;
+                XLSX.writeFile(workbook, filename);
+                showToast('success', 'All pivot tables downloaded successfully!');
+            } catch (error) {
+                console.error('Error downloading Excel file:', error);
+                showToast('danger', 'Error downloading Excel file. Please try again.');
+            }
+        }
+
+        function convertPivotTableToWorksheet(data, title, type) {
+            const worksheetData = [];
+            
+            // Add title row
+            worksheetData.push([title]);
+            worksheetData.push([]); // Empty row
+            
+            // Add headers
+            if (type === 'price_range') {
+                worksheetData.push([
+                    'Price Range', 'Total Units', 'Breakdown %', 
+                    'Unreleased Units', 'Unreleased %',
+                    'Released Units', 'Released %', 'Available', 'Sold/Booked',
+                    'Sales % (From Released)', 'Sales % (From Total)'
+                ]);
+                
+                // Add data rows
+                data.price_ranges.forEach(range => {
+                    const unreleased = (range.all || 0) - (range.released || 0);
+                    const unreleasedPercent = range.all > 0 ? (unreleased / range.all) * 100 : 0;
+                    const salesFromReleasedPercent = range.released > 0 ? (range.sold_booked / range.released) * 100 : 0;
+                    const salesFromTotalPercent = range.all > 0 ? (range.sold_booked / range.all) * 100 : 0;
+                    
+                    worksheetData.push([
+                        `${formatPriceEGP(range.from)} - ${formatPriceEGP(range.to)}`,
+                        range.all || 0,
+                        range.breakdown_percent > 0 ? range.breakdown_percent.toFixed(2) + '%' : '0%',
+                        unreleased || 0,
+                        unreleasedPercent > 0 ? unreleasedPercent.toFixed(2) + '%' : '0%',
+                        range.released || 0,
+                        range.released_percent > 0 ? range.released_percent.toFixed(2) + '%' : '0%',
+                        range.available || 0,
+                        range.sold_booked || 0,
+                        salesFromReleasedPercent > 0 ? salesFromReleasedPercent.toFixed(2) + '%' : '0%',
+                        salesFromTotalPercent > 0 ? salesFromTotalPercent.toFixed(2) + '%' : '0%'
+                    ]);
+                });
+            } else if (type === 'unit_model') {
+                worksheetData.push([
+                    'Unit Model', 'Total Units', 'Breakdown %', 
+                    'Unreleased Units', 'Unreleased %',
+                    'Released Units', 'Released %', 'Available', 'Sold/Booked',
+                    'Sales % (From Released)', 'Sales % (From Total)'
+                ]);
+                
+                // Add data rows
+                data.unit_models.forEach(model => {
+                    const unreleased = (model.all || 0) - (model.released || 0);
+                    const unreleasedPercent = model.all > 0 ? (unreleased / model.all) * 100 : 0;
+                    const salesFromReleasedPercent = model.released > 0 ? (model.sold_booked / model.released) * 100 : 0;
+                    const salesFromTotalPercent = model.all > 0 ? (model.sold_booked / model.all) * 100 : 0;
+                    
+                    worksheetData.push([
+                        model.unit_model || 'Not Specified',
+                        model.all || 0,
+                        model.breakdown_percent > 0 ? model.breakdown_percent.toFixed(2) + '%' : '0%',
+                        unreleased || 0,
+                        unreleasedPercent > 0 ? unreleasedPercent.toFixed(2) + '%' : '0%',
+                        model.released || 0,
+                        model.released_percent > 0 ? model.released_percent.toFixed(2) + '%' : '0%',
+                        model.available || 0,
+                        model.sold_booked || 0,
+                        salesFromReleasedPercent > 0 ? salesFromReleasedPercent.toFixed(2) + '%' : '0%',
+                        salesFromTotalPercent > 0 ? salesFromTotalPercent.toFixed(2) + '%' : '0%'
+                    ]);
+                });
+            }
+            
+            // Add grand total row
+            if (data.totals) {
+                const totalUnreleased = (data.totals.all || 0) - (data.totals.released || 0);
+                const totalUnreleasedPercent = data.totals.all > 0 ? (totalUnreleased / data.totals.all) * 100 : 0;
+                
+                worksheetData.push([]);
+                worksheetData.push([
+                    'GRAND TOTAL',
+                    data.totals.all || 0,
+                    '100%',
+                    totalUnreleased || 0,
+                    totalUnreleasedPercent > 0 ? totalUnreleasedPercent.toFixed(2) + '%' : '0%',
+                    data.totals.released || 0,
+                    data.totals.all > 0 ? ((data.totals.released / data.totals.all) * 100).toFixed(2) + '%' : '0%',
+                    data.totals.available || 0,
+                    data.totals.sold_booked || 0,
+                    data.totals.released > 0 ? ((data.totals.sold_booked / data.totals.released) * 100).toFixed(2) + '%' : '0%',
+                    data.totals.all > 0 ? ((data.totals.sold_booked / data.totals.all) * 100).toFixed(2) + '%' : '0%'
+                ]);
+            }
+            
+            // Add metadata
+            worksheetData.push([]);
+            worksheetData.push(['Generated on:', new Date().toLocaleString()]);
+            worksheetData.push(['Project:', projectSelect.options[projectSelect.selectedIndex].text]);
+            
+            return XLSX.utils.aoa_to_sheet(worksheetData);
+        }
+
+        function convertPremiumPivotTableToWorksheet(data, title) {
+            const worksheetData = [];
+            
+            // Add title row
+            worksheetData.push([title + ' Analysis']);
+            worksheetData.push([]); // Empty row
+            
+            // Add headers
+            worksheetData.push([
+                title, 'Total Units', 'Premium %', 'Breakdown %', 
+                'Unreleased Units', 'Unreleased %',
+                'Released Units', 'Released %', 'Available', 'Sold/Booked',
+                'Sales % (From Released)', 'Sales % (From Total)'
+            ]);
+            
+            // Add data rows
+            data.premium_groups.forEach(group => {
+                const unreleased = (group.all || 0) - (group.released || 0);
+                const unreleasedPercent = group.all > 0 ? (unreleased / group.all) * 100 : 0;
+                const salesFromReleasedPercent = group.released > 0 ? (group.sold_booked / group.released) * 100 : 0;
+                const salesFromTotalPercent = group.all > 0 ? (group.sold_booked / group.all) * 100 : 0;
+                const breakdownPercent = priceRangeTotalUnits > 0 ? (group.all / priceRangeTotalUnits) * 100 : 0;
+                
+                worksheetData.push([
+                    group.premium_value || 'Not Specified',
+                    group.all || 0,
+                    group.premium_percent > 0 ? group.premium_percent.toFixed(2) + '%' : '0%',
+                    breakdownPercent > 0 ? breakdownPercent.toFixed(2) + '%' : '0%',
+                    unreleased || 0,
+                    unreleasedPercent > 0 ? unreleasedPercent.toFixed(2) + '%' : '0%',
+                    group.released || 0,
+                    group.released_percent > 0 ? group.released_percent.toFixed(2) + '%' : '0%',
+                    group.available || 0,
+                    group.sold_booked || 0,
+                    salesFromReleasedPercent > 0 ? salesFromReleasedPercent.toFixed(2) + '%' : '0%',
+                    salesFromTotalPercent > 0 ? salesFromTotalPercent.toFixed(2) + '%' : '0%'
+                ]);
+            });
+            
+            // Add grand total row
+            if (data.totals) {
+                const totalUnreleased = (data.totals.all || 0) - (data.totals.released || 0);
+                const totalUnreleasedPercent = data.totals.all > 0 ? (totalUnreleased / data.totals.all) * 100 : 0;
+                const totalBreakdownPercent = priceRangeTotalUnits > 0 ? (data.totals.all / priceRangeTotalUnits) * 100 : 0;
+                const totalSalesFromReleasedPercent = data.totals.released > 0 ? (data.totals.sold_booked / data.totals.released) * 100 : 0;
+                const totalSalesFromTotalPercent = data.totals.all > 0 ? (data.totals.sold_booked / data.totals.all) * 100 : 0;
+                
+                worksheetData.push([]);
+                worksheetData.push([
+                    'GRAND TOTAL',
+                    data.totals.all || 0,
+                    '-',
+                    totalBreakdownPercent > 0 ? totalBreakdownPercent.toFixed(2) + '%' : '0%',
+                    totalUnreleased || 0,
+                    totalUnreleasedPercent > 0 ? totalUnreleasedPercent.toFixed(2) + '%' : '0%',
+                    data.totals.released || 0,
+                    data.totals.all > 0 ? ((data.totals.released / data.totals.all) * 100).toFixed(2) + '%' : '0%',
+                    data.totals.available || 0,
+                    data.totals.sold_booked || 0,
+                    totalSalesFromReleasedPercent > 0 ? totalSalesFromReleasedPercent.toFixed(2) + '%' : '0%',
+                    totalSalesFromTotalPercent > 0 ? totalSalesFromTotalPercent.toFixed(2) + '%' : '0%'
+                ]);
+            }
+            
+            // Add metadata
+            worksheetData.push([]);
+            worksheetData.push(['Generated on:', new Date().toLocaleString()]);
+            worksheetData.push(['Project:', projectSelect.options[projectSelect.selectedIndex].text]);
+            
+            return XLSX.utils.aoa_to_sheet(worksheetData);
+        }
+
+        function loadCompanyProjects(companyId) {
+            
+            projectSelect.innerHTML = '<option value="">Loading projects...</option>';
+            projectSelect.disabled = true;
+
+            const url = `{% url 'get_company_projects_for_sales' %}?company_id=${companyId}`;
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(projects => {
+                    projectSelect.innerHTML = '<option value="">-- Select Project --</option>';
+                    
+                    if (projects.length > 0) {
+                        projects.forEach(project => {
+                            const option = document.createElement('option');
+                            option.value = project.id;
+                            option.textContent = project.name;
+                            projectSelect.appendChild(option);
+                        });
+                        showToast('success', `Loaded ${projects.length} project(s) successfully`);
+                    } else {
+                        projectSelect.innerHTML = '<option value="">No projects found</option>';
+                        showToast('warning', 'No projects found for this company');
+                    }
+                    
+                    projectSelect.disabled = false;
+                })
+                .catch(error => {
+                    console.error('Error loading projects:', error);
+                    projectSelect.innerHTML = '<option value="">Error loading projects</option>';
+                    projectSelect.disabled = false;
+                    showToast('danger', 'Error loading projects. Please try again.');
+                });
+        }
+
+        function loadAllSalesAnalysis(projectId) {
+            let companyId;
+            if (companySelect.tagName === 'SELECT') {
+                companyId = companySelect.value;
+            } else if (companySelect.tagName === 'INPUT') {
+                companyId = companySelect.value;
+            }
+
+            showLoading();
+            hideAnalysis();
+
+            // Load both price range and unit model data
+            const priceRangeUrl = `{% url 'get_sales_analysis_data' %}?company_id=${companyId}&project_id=${projectId}`;
+            const unitModelUrl = `{% url 'get_sales_analysis_by_unit_model' %}?company_id=${companyId}&project_id=${projectId}`;
+
+            Promise.all([
+                fetch(priceRangeUrl).then(response => response.json()),
+                fetch(unitModelUrl).then(response => response.json())
+            ])
+            .then(([priceRangeData, unitModelData]) => {
+                
+                allAnalysisData = {
+                    price_range: priceRangeData,
+                    unit_model: unitModelData
+                };
+
+                // Store total units for premium analysis breakdown calculation
+                if (priceRangeData.totals && priceRangeData.totals.all) {
+                    priceRangeTotalUnits = priceRangeData.totals.all;
+                }
+                
+                renderAnalysisTables();
+                
+                hideLoading();
+                showAnalysis();
+                // setTimeout(smoothScrollToTable, 100);
+            })
+            .catch(error => {
+                console.error('Error loading sales analysis:', error);
+                hideLoading();
+                showToast('danger', 'Error loading sales analysis data. Please try again.');
+            });
+        }
+
+        function loadAllPremiumAnalysis(projectId) {
+            if (!currentProjectId) return;
+            
+            let companyId;
+            if (companySelect.tagName === 'SELECT') {
+                companyId = companySelect.value;
+            } else if (companySelect.tagName === 'INPUT') {
+                companyId = companySelect.value;
+            }
+
+            hidePremiumAnalysis();
+
+            const premiumTypes = [
+                'main_view', 'secondary_views', 'north_breeze', 
+                'corners', 'accessibility', 'special_premiums', 'special_discounts'
+            ];
+
+            const premiumPromises = premiumTypes.map(type => 
+                fetch(`{% url 'get_premium_analysis_data' %}?company_id=${companyId}&project_id=${projectId}&premium_type=${type}`)
+                    .then(response => response.json())
+            );
+
+            Promise.all(premiumPromises)
+                .then(results => {
+                    
+                    allPremiumData = {};
+                    premiumTypes.forEach((type, index) => {
+                        allPremiumData[type] = results[index];
+                    });
+                    
+                    renderPremiumAnalysisTables();
+                    showPremiumAnalysis();
+                    // setTimeout(smoothScrollToPremiumTable, 100);
+                })
+                .catch(error => {
+                    console.error('Error loading premium analysis:', error);
+                    showToast('danger', 'Error loading premium analysis data. Please try again.');
+                });
+        }
+
+        function renderAnalysisTables() {
+            const pivotTableContainer = document.getElementById('pivotTableContainer');
+            
+            if (!allAnalysisData.price_range || !allAnalysisData.unit_model) {
+                pivotTableContainer.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                        <h4 class="text-warning">No Data Available</h4>
+                        <p class="text-muted">No units found for the selected project</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let tableHTML = '';
+
+            if (currentAnalysisType === 'all' || currentAnalysisType === 'price_range') {
+                const data = allAnalysisData.price_range;
+                if (data && data.price_ranges && data.price_ranges.length > 0) {
+                    tableHTML += `
+                        <div class="pivot-table-section">
+                            <div class="pivot-table-title">Price Range Analysis</div>
+                            ${renderPivotTableByPriceRange(data)}
+                        </div>
+                    `;
+                }
+            }
+
+            if (currentAnalysisType === 'all' || currentAnalysisType === 'unit_model') {
+                const data = allAnalysisData.unit_model;
+                if (data && data.unit_models && data.unit_models.length > 0) {
+                    tableHTML += `
+                        <div class="pivot-table-section">
+                            <div class="pivot-table-title">Unit Model Analysis</div>
+                            ${renderPivotTableByUnitModel(data)}
+                        </div>
+                    `;
+                }
+            }
+
+            if (!tableHTML) {
+                tableHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                        <h4 class="text-warning">No Data Available</h4>
+                        <p class="text-muted">No units found for the selected project</p>
+                    </div>
+                `;
+            }
+
+            pivotTableContainer.innerHTML = tableHTML;
+        }
+
+        function renderPremiumAnalysisTables() {
+            const premiumPivotTableContainer = document.getElementById('premiumPivotTableContainer');
+            
+            let tableHTML = '';
+            let hasData = false;
+
+            const premiumTypes = [
+                { key: 'main_view', title: 'Main View' },
+                { key: 'secondary_views', title: 'Secondary Views' },
+                { key: 'north_breeze', title: 'North Breeze' },
+                { key: 'corners', title: 'Corners' },
+                { key: 'accessibility', title: 'Accessibility' },
+                { key: 'special_premiums', title: 'Special Premiums' },
+                { key: 'special_discounts', title: 'Special Discounts' }
+            ];
+
+            premiumTypes.forEach(type => {
+                if (currentPremiumAnalysisType === 'all' || currentPremiumAnalysisType === type.key) {
+                    const data = allPremiumData[type.key];
+                    if (data && data.premium_groups && data.premium_groups.length > 0) {
+                        tableHTML += `
+                            <div class="pivot-table-section">
+                                <div class="pivot-table-title">${type.title} Analysis</div>
+                                ${renderPremiumPivotTable(data, type.title)}
+                            </div>
+                        `;
+                        hasData = true;
+                    }
+                }
+            });
+
+            if (!hasData) {
+                tableHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                        <h4 class="text-warning">No Premium Data Available</h4>
+                        <p class="text-muted">No premium data found for the selected project and criteria</p>
+                    </div>
+                `;
+            }
+
+            premiumPivotTableContainer.innerHTML = tableHTML;
+        }
+
+        function renderPivotTableByPriceRange(data) {
+            if (!data || !data.price_ranges || data.price_ranges.length === 0) {
+                return `
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                        <h4 class="text-warning">No Price Range Data</h4>
+                        <p class="text-muted">No price range data available</p>
+                    </div>
+                `;
+            }
+
+            let tableHTML = `
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover pivot-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" class="price-range-header">Price Range</th>
+                                <th colspan="2" class="bg-light">Total Units</th>
+                                <th colspan="2" class="bg-light">Unreleased Units</th>
+                                <th colspan="2" class="bg-light">Released Units</th>
+                                <th colspan="2" class="bg-light">Current Status</th>
+                                <th colspan="2" class="bg-success text-white">Sales Performance</th>
+                            </tr>
+                            <tr>
+                                <!-- Total Units -->
+                                <th class="bg-light">All</th>
+                                <th class="bg-light">Breakdown</th>
+                                
+                                <!-- Unreleased Units -->
+                                <th class="bg-light">Unreleased</th>
+                                <th class="bg-light">Unreleased %</th>
+                                
+                                <!-- Released Units -->
+                                <th class="bg-light">Released</th>
+                                <th class="bg-light">Released %</th>
+                                
+                                <!-- Current Status -->
+                                <th class="bg-light">Available</th>
+                                <th class="bg-light">Sold/Booked</th>
+                                
+                                <!-- Sales Performance -->
+                                <th class="text-white" style="background-color: #b6b6b6;">Sales %<br><small>From Released</small></th>
+                                <th class="bg-success text-white">Sales %<br><small>From Total</small></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            // Add rows for each price range
+            data.price_ranges.forEach(range => {
+                const unreleased = (range.all || 0) - (range.released || 0);
+                const unreleasedPercent = range.all > 0 ? (unreleased / range.all) * 100 : 0;
+                const releasedPercent = range.all > 0 ? (range.released / range.all) * 100 : 0; // FIXED: Released / All
+                const salesFromReleasedPercent = range.released > 0 ? (range.sold_booked / range.released) * 100 : 0;
+                const salesFromTotalPercent = range.all > 0 ? (range.sold_booked / range.all) * 100 : 0;
+
+                tableHTML += `
+                    <tr>
+                        <td class="text-center fw-bold">${formatPriceEGP(range.from)} - ${formatPriceEGP(range.to)}</td>
+                        <td>${range.all || '-'}</td>
+                        <td>${range.breakdown_percent > 0 ? range.breakdown_percent.toFixed(1) + '%' : '-'}</td>
+                        <td>${unreleased || '-'}</td>
+                        <td>${unreleasedPercent > 0 ? unreleasedPercent.toFixed(1) + '%' : '-'}</td>
+                        <td>${range.released || '-'}</td>
+                        <td>${releasedPercent > 0 ? releasedPercent.toFixed(1) + '%' : '-'}</td> <!-- FIXED -->
+                        <td>${range.available || '-'}</td>
+                        <td>${range.sold_booked || '-'}</td>
+                        <td class="percentage-cell">
+                            <div class="percentage-text">${salesFromReleasedPercent > 0 ? salesFromReleasedPercent.toFixed(1) + '%' : '-'}</div>
+                            ${salesFromReleasedPercent > 0 ? `
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" 
+                                    style="width: ${salesFromReleasedPercent}%; background-color: #b6b6b6;" 
+                                    aria-valuenow="${salesFromReleasedPercent}" 
+                                    aria-valuemin="0" 
+                                    aria-valuemax="100">
+                                </div>
+                            </div>
+                            ` : ''}
+                        </td>
+                        <td class="percentage-cell">
+                            <div class="percentage-text">${salesFromTotalPercent > 0 ? salesFromTotalPercent.toFixed(1) + '%' : '-'}</div>
+                            ${salesFromTotalPercent > 0 ? `
+                            <div class="progress">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                    style="width: ${salesFromTotalPercent}%" 
+                                    aria-valuenow="${salesFromTotalPercent}" 
+                                    aria-valuemin="0" 
+                                    aria-valuemax="100">
+                                </div>
+                            </div>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // Add grand total row
+            const totalUnreleased = (data.totals.all || 0) - (data.totals.released || 0);
+            const totalUnreleasedPercent = data.totals.all > 0 ? (totalUnreleased / data.totals.all) * 100 : 0;
+
+            tableHTML += `
+                <tr class="grand-total-row">
+                    <td class="text-center fw-bold">GRAND TOTAL</td>
+                    <td>${data.totals.all || '-'}</td>
+                    <td>100%</td>
+                    <td>${totalUnreleased || '-'}</td>
+                    <td>${totalUnreleasedPercent > 0 ? totalUnreleasedPercent.toFixed(1) + '%' : '-'}</td>
+                    <td>${data.totals.released || '-'}</td>
+                    <td>${data.totals.all > 0 ? ((data.totals.released / data.totals.all) * 100).toFixed(1) + '%' : '-'}</td>
+                    <td>${data.totals.available || '-'}</td>
+                    <td>${data.totals.sold_booked || '-'}</td>
+                    <td class="percentage-cell">
+                        <div class="percentage-text">${data.totals.released > 0 ? ((data.totals.sold_booked / data.totals.released) * 100).toFixed(1) + '%' : '-'}</div>
+                        ${data.totals.released > 0 ? `
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" 
+                                style="width: ${(data.totals.sold_booked / data.totals.released) * 100}%; background-color: #b6b6b6;" 
+                                aria-valuenow="${(data.totals.sold_booked / data.totals.released) * 100}" 
+                                aria-valuemin="0" 
+                                aria-valuemax="100">
+                            </div>
+                        </div>
+                        ` : ''}
+                    </td>
+                    <td class="percentage-cell">
+                        <div class="percentage-text">${data.totals.all > 0 ? ((data.totals.sold_booked / data.totals.all) * 100).toFixed(1) + '%' : '-'}</div>
+                        ${data.totals.all > 0 ? `
+                        <div class="progress">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                style="width: ${(data.totals.sold_booked / data.totals.all) * 100}%" 
+                                aria-valuenow="${(data.totals.sold_booked / data.totals.all) * 100}" 
+                                aria-valuemin="0" 
+                                aria-valuemax="100">
+                            </div>
+                        </div>
+                        ` : ''}
+                    </td>
+                </tr>
+            </tbody>
+            </table>
+            </div>
+
+            <div class="mt-3" style="display:none;">
+                <p class="text-muted"><small>Analysis generated on ${new Date().toLocaleDateString()} for Project: ${projectSelect.options[projectSelect.selectedIndex].text} | Grouped by: Price Range</small></p>
+            </div>
+            `;
+
+            return tableHTML;
+        }
+
+        function renderPivotTableByUnitModel(data) {
+            if (!data || !data.unit_models || data.unit_models.length === 0) {
+                return `
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                        <h4 class="text-warning">No Unit Model Data</h4>
+                        <p class="text-muted">No unit model data available</p>
+                    </div>
+                `;
+            }
+
+            let tableHTML = `
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover pivot-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" class="unit-model-header">Unit Model</th>
+                                <th colspan="2" class="bg-light">Total Units</th>
+                                <th colspan="2" class="bg-light">Unreleased Units</th>
+                                <th colspan="2" class="bg-light">Released Units</th>
+                                <th colspan="2" class="bg-light">Current Status</th>
+                                <th colspan="2" class="bg-success text-white">Sales Performance</th>
+                            </tr>
+                            <tr>
+                                <!-- Total Units -->
+                                <th class="bg-light">All</th>
+                                <th class="bg-light">Breakdown</th>
+                                
+                                <!-- Unreleased Units -->
+                                <th class="bg-light">Unreleased</th>
+                                <th class="bg-light">Unreleased %</th>
+                                
+                                <!-- Released Units -->
+                                <th class="bg-light">Released</th>
+                                <th class="bg-light">Released %</th>
+                                
+                                <!-- Current Status -->
+                                <th class="bg-light">Available</th>
+                                <th class="bg-light">Sold/Booked</th>
+                                
+                                <!-- Sales Performance -->
+                                <th class="text-white" style="background-color: #b6b6b6;">Sales %<br><small>From Released</small></th>
+                                <th class="bg-success text-white">Sales %<br><small>From Total</small></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            // Add rows for each unit model
+            data.unit_models.forEach(model => {
+                const unreleased = (model.all || 0) - (model.released || 0);
+                const unreleasedPercent = model.all > 0 ? (unreleased / model.all) * 100 : 0;
+                const releasedPercent = model.all > 0 ? (model.released / model.all) * 100 : 0; // FIXED: Released / All
+                const salesFromReleasedPercent = model.released > 0 ? (model.sold_booked / model.released) * 100 : 0;
+                const salesFromTotalPercent = model.all > 0 ? (model.sold_booked / model.all) * 100 : 0;
+
+                tableHTML += `
+                    <tr>
+                        <td class="text-center fw-bold">${model.unit_model || 'Not Specified'}</td>
+                        <td>${model.all || '-'}</td>
+                        <td>${model.breakdown_percent > 0 ? model.breakdown_percent.toFixed(1) + '%' : '-'}</td>
+                        <td>${unreleased || '-'}</td>
+                        <td>${unreleasedPercent > 0 ? unreleasedPercent.toFixed(1) + '%' : '-'}</td>
+                        <td>${model.released || '-'}</td>
+                        <td>${releasedPercent > 0 ? releasedPercent.toFixed(1) + '%' : '-'}</td> <!-- FIXED -->
+                        <td>${model.available || '-'}</td>
+                        <td>${model.sold_booked || '-'}</td>
+                        <td class="percentage-cell">
+                            <div class="percentage-text">${salesFromReleasedPercent > 0 ? salesFromReleasedPercent.toFixed(1) + '%' : '-'}</div>
+                            ${salesFromReleasedPercent > 0 ? `
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" 
+                                    style="width: ${salesFromReleasedPercent}%; background-color: #b6b6b6;" 
+                                    aria-valuenow="${salesFromReleasedPercent}" 
+                                    aria-valuemin="0" 
+                                    aria-valuemax="100">
+                                </div>
+                            </div>
+                            ` : ''}
+                        </td>
+                        <td class="percentage-cell">
+                            <div class="percentage-text">${salesFromTotalPercent > 0 ? salesFromTotalPercent.toFixed(1) + '%' : '-'}</div>
+                            ${salesFromTotalPercent > 0 ? `
+                            <div class="progress">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                    style="width: ${salesFromTotalPercent}%" 
+                                    aria-valuenow="${salesFromTotalPercent}" 
+                                    aria-valuemin="0" 
+                                    aria-valuemax="100">
+                                </div>
+                            </div>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // Add grand total row
+            const totalUnreleased = (data.totals.all || 0) - (data.totals.released || 0);
+            const totalUnreleasedPercent = data.totals.all > 0 ? (totalUnreleased / data.totals.all) * 100 : 0;
+
+            tableHTML += `
+                            <tr class="grand-total-row">
+                                <td class="text-center fw-bold">GRAND TOTAL</td>
+                                <td>${data.totals.all || '-'}</td>
+                                <td>100%</td>
+                                <td>${totalUnreleased || '-'}</td>
+                                <td>${totalUnreleasedPercent > 0 ? totalUnreleasedPercent.toFixed(1) + '%' : '-'}</td>
+                                <td>${data.totals.released || '-'}</td>
+                                <td>${data.totals.all > 0 ? ((data.totals.released / data.totals.all) * 100).toFixed(1) + '%' : '-'}</td>
+                                <td>${data.totals.available || '-'}</td>
+                                <td>${data.totals.sold_booked || '-'}</td>
+                                <td class="percentage-cell">
+                                    <div class="percentage-text">${data.totals.released > 0 ? ((data.totals.sold_booked / data.totals.released) * 100).toFixed(1) + '%' : '-'}</div>
+                                    ${data.totals.released > 0 ? `
+                                    <div class="progress">
+                                        <div class="progress-bar" role="progressbar" 
+                                            style="width: ${(data.totals.sold_booked / data.totals.released) * 100}%; background-color: #b6b6b6;" 
+                                            aria-valuenow="${(data.totals.sold_booked / data.totals.released) * 100}" 
+                                            aria-valuemin="0" 
+                                            aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                </td>
+                                <td class="percentage-cell">
+                                    <div class="percentage-text">${data.totals.all > 0 ? ((data.totals.sold_booked / data.totals.all) * 100).toFixed(1) + '%' : '-'}</div>
+                                    ${data.totals.all > 0 ? `
+                                    <div class="progress">
+                                        <div class="progress-bar bg-success" role="progressbar" 
+                                            style="width: ${(data.totals.sold_booked / data.totals.all) * 100}%" 
+                                            aria-valuenow="${(data.totals.sold_booked / data.totals.all) * 100}" 
+                                            aria-valuemin="0" 
+                                            aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                </td>
+                            </tr>
+                        </tbody>
+                        </table>
+                        </div>
+
+                        <div class="mt-3"  style="display:none;">
+                            <p class="text-muted"><small>Analysis generated on ${new Date().toLocaleDateString()} for Project: ${projectSelect.options[projectSelect.selectedIndex].text} | Grouped by: Unit Model</small></p>
+                        </div>
+                        `;
+
+            return tableHTML;
+        }
+
+        function renderPremiumPivotTable(data, title) {
+            if (!data || !data.premium_groups || data.premium_groups.length === 0) {
+                return `
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                        <h4 class="text-warning">No ${title} Data Available</h4>
+                        <p class="text-muted">No ${title.toLowerCase()} data found for the selected project</p>
+                    </div>
+                `;
+            }
+
+            let tableHTML = `
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover pivot-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" class="premium-header">${title}</th>
+                                <th colspan="3" class="bg-light">Total Units</th>
+                                <th colspan="2" class="bg-light">Unreleased Units</th>
+                                <th colspan="2" class="bg-light">Released Units</th>
+                                <th colspan="2" class="bg-light">Current Status</th>
+                                <th colspan="2" class="bg-success text-white">Sales Performance</th>
+                            </tr>
+                            <tr>
+                                <!-- Total Units -->
+                                <th class="bg-light">All</th>
+                                <th class="bg-light">Premium</th>
+                                <th class="bg-light">Breakdown</th>
+                                
+                                <!-- Unreleased Units -->
+                                <th class="bg-light">Unreleased</th>
+                                <th class="bg-light">Unreleased %</th>
+                                
+                                <!-- Released Units -->
+                                <th class="bg-light">Released</th>
+                                <th class="bg-light">Released %</th>
+                                
+                                <!-- Current Status -->
+                                <th class="bg-light">Available</th>
+                                <th class="bg-light">Sold/Booked</th>
+                                
+                                <!-- Sales Performance -->
+                                <th class="text-white" style="background-color: #b6b6b6;">Sales %<br><small>From Released</small></th>
+                                <th class="bg-success text-white">Sales %<br><small>From Total</small></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            // Add rows for each premium group
+            data.premium_groups.forEach(group => {
+                const unreleased = (group.all || 0) - (group.released || 0);
+                const unreleasedPercent = group.all > 0 ? (unreleased / group.all) * 100 : 0;
+                const releasedPercent = group.all > 0 ? (group.released / group.all) * 100 : 0; // FIXED: Released / All
+                const salesFromReleasedPercent = group.released > 0 ? (group.sold_booked / group.released) * 100 : 0;
+                const salesFromTotalPercent = group.all > 0 ? (group.sold_booked / group.all) * 100 : 0;
+                const breakdownPercent = priceRangeTotalUnits > 0 ? (group.all / priceRangeTotalUnits) * 100 : 0;
+
+                tableHTML += `
+                    <tr>
+                        <td class="text-center fw-bold">${group.premium_value || 'Not Specified'}</td>
+                        <td>${group.all || '-'}</td>
+                        <td>${group.premium_percent > 0 ? group.premium_percent.toFixed(1) + '%' : '-'}</td>
+                        <td>${breakdownPercent > 0 ? breakdownPercent.toFixed(1) + '%' : '-'}</td>
+                        <td>${unreleased || '-'}</td>
+                        <td>${unreleasedPercent > 0 ? unreleasedPercent.toFixed(1) + '%' : '-'}</td>
+                        <td>${group.released || '-'}</td>
+                        <td>${releasedPercent > 0 ? releasedPercent.toFixed(1) + '%' : '-'}</td> <!-- FIXED -->
+                        <td>${group.available || '-'}</td>
+                        <td>${group.sold_booked || '-'}</td>
+                        <td class="percentage-cell">
+                            <div class="percentage-text">${salesFromReleasedPercent > 0 ? salesFromReleasedPercent.toFixed(1) + '%' : '-'}</div>
+                            ${salesFromReleasedPercent > 0 ? `
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" 
+                                    style="width: ${salesFromReleasedPercent}%; background-color: #b6b6b6;" 
+                                    aria-valuenow="${salesFromReleasedPercent}" 
+                                    aria-valuemin="0" 
+                                    aria-valuemax="100">
+                                </div>
+                            </div>
+                            ` : ''}
+                        </td>
+                        <td class="percentage-cell">
+                            <div class="percentage-text">${salesFromTotalPercent > 0 ? salesFromTotalPercent.toFixed(1) + '%' : '-'}</div>
+                            ${salesFromTotalPercent > 0 ? `
+                            <div class="progress">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                    style="width: ${salesFromTotalPercent}%" 
+                                    aria-valuenow="${salesFromTotalPercent}" 
+                                    aria-valuemin="0" 
+                                    aria-valuemax="100">
+                                </div>
+                            </div>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // Add grand total row
+            const totalUnreleased = (data.totals.all || 0) - (data.totals.released || 0);
+            const totalUnreleasedPercent = data.totals.all > 0 ? (totalUnreleased / data.totals.all) * 100 : 0;
+            const totalBreakdownPercent = priceRangeTotalUnits > 0 ? (data.totals.all / priceRangeTotalUnits) * 100 : 0;
+            const totalSalesFromReleasedPercent = data.totals.released > 0 ? (data.totals.sold_booked / data.totals.released) * 100 : 0;
+            const totalSalesFromTotalPercent = data.totals.all > 0 ? (data.totals.sold_booked / data.totals.all) * 100 : 0;
+
+            tableHTML += `
+                    <tr class="grand-total-row">
+                        <td class="text-center fw-bold">GRAND TOTAL</td>
+                        <td>${data.totals.all || '-'}</td>
+                        <td>-</td>
+                        <td>${totalBreakdownPercent > 0 ? totalBreakdownPercent.toFixed(1) + '%' : '-'}</td>
+                        <td>${totalUnreleased || '-'}</td>
+                        <td>${totalUnreleasedPercent > 0 ? totalUnreleasedPercent.toFixed(1) + '%' : '-'}</td>
+                        <td>${data.totals.released || '-'}</td>
+                        <td>${data.totals.all > 0 ? ((data.totals.released / data.totals.all) * 100).toFixed(1) + '%' : '-'}</td>
+                        <td>${data.totals.available || '-'}</td>
+                        <td>${data.totals.sold_booked || '-'}</td>
+                        <td class="percentage-cell">
+                            <div class="percentage-text">${totalSalesFromReleasedPercent > 0 ? totalSalesFromReleasedPercent.toFixed(1) + '%' : '-'}</div>
+                            ${totalSalesFromReleasedPercent > 0 ? `
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" 
+                                    style="width: ${totalSalesFromReleasedPercent}%; background-color: #b6b6b6;" 
+                                    aria-valuenow="${totalSalesFromReleasedPercent}" 
+                                    aria-valuemin="0" 
+                                    aria-valuemax="100">
+                                </div>
+                            </div>
+                            ` : ''}
+                        </td>
+                        <td class="percentage-cell">
+                            <div class="percentage-text">${totalSalesFromTotalPercent > 0 ? totalSalesFromTotalPercent.toFixed(1) + '%' : '-'}</div>
+                            ${totalSalesFromTotalPercent > 0 ? `
+                            <div class="progress">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                    style="width: ${totalSalesFromTotalPercent}%" 
+                                    aria-valuenow="${totalSalesFromTotalPercent}" 
+                                    aria-valuemin="0" 
+                                    aria-valuemax="100">
+                                </div>
+                            </div>
+                            ` : ''}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-3"  style="display:none;">
+            <p class="text-muted"><small>Analysis generated on ${new Date().toLocaleDateString()} for Project: ${projectSelect.options[projectSelect.selectedIndex].text} | Premium Type: ${title}</small></p>
+        </div>
+            `;
+
+            return tableHTML;
+        }
+
+        function formatPriceEGP(price) {
+            if (price >= 1000000) {
+                return (price / 1000000).toFixed(2) + 'M EGP';
+            } else if (price >= 1000) {
+                return (price / 1000).toFixed(2) + 'K EGP';
+            } else {
+                return price.toFixed(0) + ' EGP';
+            }
+        }
+
+        function showToast(type, message) {
+            const toastId = 'toast-' + Date.now();
+            const toastHTML = `
+                <div id="${toastId}" class="toast toast-${type}" role="alert">
+                    <div class="toast-header">
+                        <strong class="me-auto">
+                            ${type === 'success' ? '<i class="fas fa-check-circle text-success me-2"></i>' : ''}
+                            ${type === 'warning' ? '<i class="fas fa-exclamation-triangle text-warning me-2"></i>' : ''}
+                            ${type === 'danger' ? '<i class="fas fa-times-circle text-danger me-2"></i>' : ''}
+                            ${type.charAt(0).toUpperCase() + type.slice(1)}
+                        </strong>
+                        <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                    </div>
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+            
+            const toastElement = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastElement, {
+                autohide: true,
+                delay: 4000
+            });
+            
+            toast.show();
+            
+            toastElement.addEventListener('hidden.bs.toast', function() {
+                toastElement.remove();
+            });
+        }
+
+        function showLoading() {
+            loadingSpinner.style.display = 'block';
+        }
+
+        function hideLoading() {
+            loadingSpinner.style.display = 'none';
+        }
+
+        function showAnalysis() {
+            analysisContent.style.display = 'block';
+        }
+
+        function hideAnalysis() {
+            analysisContent.style.display = 'none';
+        }
+
+        function showPremiumAnalysis() {
+            premiumAnalysisContent.style.display = 'block';
+        }
+
+        function hidePremiumAnalysis() {
+            premiumAnalysisContent.style.display = 'none';
+        }
+
+        function smoothScrollToTable() {
+            const analysisContent = document.getElementById('analysisContent');
+            if (analysisContent) {
+                analysisContent.scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        }
+
+        function smoothScrollToPremiumTable() {
+            const premiumAnalysisContent = document.getElementById('premiumAnalysisContent');
+            if (premiumAnalysisContent) {
+                premiumAnalysisContent.scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        }
+
+        // Reset functionality
+        resetBtn.addEventListener('click', function() {
+            document.getElementById('resetBtn').style.display = 'none';
+            document.getElementById('downloadAllBtn').style.display = 'none';
+    
+            {% if not selected_company_id %}
+                if (companySelect && companySelect.tagName === 'SELECT') {
+                    companySelect.value = '';
+                }
+                projectSection.style.display = 'none';
+            {% endif %}
+            projectSelect.innerHTML = '<option value="">-- Select Project --</option>';
+            hideAnalysis();
+            hidePremiumAnalysis();
+            currentProjectId = null;
+            priceRangeTotalUnits = 0;
+            allAnalysisData = {};
+            allPremiumData = {};
+            
+            // Reset buttons to "All" view
+            analysisTypeButtons.forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.analysis-type-btn[data-type="all"]').classList.add('active');
+            currentAnalysisType = 'all';
+            
+            premiumAnalysisButtons.forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.premium-analysis-btn[data-type="all"]').classList.add('active');
+            currentPremiumAnalysisType = 'all';
+        });
+    });
+</script>
+
+{% endblock %}

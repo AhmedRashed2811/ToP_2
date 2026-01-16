@@ -1,0 +1,1056 @@
+{% extends 'ToP/base.html' %}
+{% block title %}Sales Dashboard{% endblock %}
+{% block content %}
+<style>
+    /* Custom Tooltip */
+    .custom-tooltip {
+        position: absolute;
+        background: #333;
+        color: #fff;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s;
+        z-index: 1000;
+        white-space: nowrap;
+        bottom: 120%;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    .kpi-card:hover .custom-tooltip {
+        opacity: 1;
+    }
+    /* Highlight Applied Filters */
+    .form-control-applied,
+    .form-select-applied {
+        border-color: #28a745 !important;
+        box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2);
+    }
+    .form-control:disabled {
+        background-color: #e9ecef;
+        opacity: 1;
+    }
+    table {
+        width: auto;
+        max-width: 900px;
+        border-collapse: collapse;
+        font-size: 14px;
+        background-color: white;
+        border-radius: 5px;
+        overflow: hidden;
+        border: 1px solid #d4d4d4;
+        margin-top: 0%; 
+    }
+    /* Center table headers */
+    table th {
+        text-align: center !important;
+    }
+    /* Responsive table section */
+    .table-section {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 20px;
+    }
+    .table-box {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+    @media (min-width: 768px) {
+        .table-box {
+            flex: 1 1 48%;
+            max-width: 48%;
+        }
+    }
+    /* Responsive chart row */
+    .chart-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 20px;
+    }
+    .chart-col {
+        flex: 1 1 100%;
+    }
+    @media (min-width: 768px) {
+        .chart-col {
+            flex: 1 1 32%;
+        }
+    }
+    
+    /* Print Styles */
+    @media print {
+        /* Hide buttons and navbar during print */
+        #dashboard-buttons,
+        nav.navbar,
+        .footer,
+        .hamburger,
+        .dropdown-toggle,
+        .custom-tooltip {
+            display: none !important;
+        }
+        
+        /* Make content full width for better printing */
+        body,
+        .container-fluid,
+        #dashboard-content {
+            width: 100%;
+            max-width: 100%;
+            padding: 0;
+            margin: 0 auto;
+        }
+        
+        table {
+            width: 100%;
+            font-size: 12px;
+            page-break-inside: auto;
+        }
+        
+        th, td {
+            white-space: nowrap;
+            word-wrap: normal;
+        }
+        
+        .chart-row,
+        .table-section {
+            display: block !important;
+            width: 100%;
+        }
+        
+        .chart-col,
+        .table-box {
+            width: 100%;
+            flex: 1 1 100%;
+            max-width: 100%;
+        }
+    }
+
+    /* Prevent chart canvases from receiving focus */
+    .chart-col canvas {
+        outline: none;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+
+    /* Ensure table headers don't cause scrolling when clicked */
+    table th {
+        cursor: pointer;
+        outline: none;
+    }
+
+    .sortable {
+        cursor: pointer;
+        display: inline-block;
+    }
+
+    /* Sorting icons */
+    th.sortable {
+        cursor: pointer;
+        position: relative;
+        user-select: none;
+    }
+
+    th.sortable .sort-icon {
+        font-size: 10px;
+        margin-left: 6px;
+        opacity: 0.6;
+    }
+
+    /* Row animation when sorting */
+    #approved-summary-table tbody tr {
+        transition: all 0.25s ease-in-out;
+        opacity: 1;
+    }
+
+    #approved-summary-table tbody tr.fade-out {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    #approved-summary-table tbody tr.fade-in {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+
+
+
+</style>
+
+<div class="pdf-wrapper">
+    <div id="dashboard-content" class="container-fluid">
+        <!-- Filters -->
+        <div class="d-flex flex-wrap gap-3 mb-4 justify-content-between align-items-end">
+            {% if not is_manager %}
+            <div style="flex: 1 1 200px;">
+                <label><strong>Company:</strong></label>
+                <select id="company-select" class="form-control" onchange="highlightFilter(this)">
+                    <option value="">Select</option>
+                    {% for company in companies %}
+                        <option value="{{ company.id }}">{{ company.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div style="flex: 1 1 200px;">
+                <label><strong>Project:</strong></label>
+                <select id="project-select" class="form-control" onchange="highlightFilter(this)">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div style="flex: 1 1 200px;">
+                <label><strong>Salesman:</strong></label>
+                <select id="salesman-select" class="form-control" onchange="highlightFilter(this)">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div style="flex: 1 1 200px;">
+                <label><strong>Start Date:</strong></label>
+                <input type="date" id="start-date" class="form-control" onchange="highlightFilter(this)">
+            </div>
+            <div style="flex: 1 1 200px;">
+                <label><strong>End Date:</strong></label>
+                <input type="date" id="end-date" class="form-control" onchange="highlightFilter(this)">
+            </div>
+        </div>
+        
+        <!-- KPI Cards -->
+        <div id="kpi-cards" class="row g-3 mb-4">
+            <div class="col-md-4 kpi-card">
+                <div class="card text-center p-3 shadow-sm bg-light position-relative">
+                    <h6>Total Sales</h6>
+                    <p id="total-sales" class="fw-bold display-6">--</p>
+                    <div class="custom-tooltip">Total sum of approved sales.</div>
+                </div>
+            </div>
+            <div class="col-md-4 kpi-card">
+                <div class="card text-center p-3 shadow-sm bg-light position-relative">
+                    <h6>Sales Requests</h6>
+                    <p id="request-count" class="fw-bold display-6">--</p>
+                    <div class="custom-tooltip">Number of approved and unapproved requests.</div>
+                </div>
+            </div>
+            <div class="col-md-4 kpi-card">
+                <div class="card text-center p-3 shadow-sm bg-light position-relative">
+                    <h6>Avg. Exceptional Discount</h6>
+                    <p id="avg-discount" class="fw-bold display-6">--</p>
+                    <div class="custom-tooltip">Average Exceptional discount percentage across all approved sales.</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Charts -->
+        <div id="charts-section" style="display: none;">
+            <div class="chart-row mt-4">
+                <div class="chart-col">
+                <canvas id="monthlyChart" height="150" tabindex="-1"></canvas>
+            </div>
+            <div class="chart-col">
+                <canvas id="topSalesmenChart" height="100" tabindex="-1"></canvas>
+            </div>
+            <div class="chart-col">
+                <canvas id="lineChart" height="150" tabindex="-1"></canvas>
+            </div>
+            </div>
+            
+            <div class="table-section mt-5">
+                <!-- Unapproved Table -->
+                <div class="table-box">
+                    <h6 class="text-center">Top Salesmen with Unapproved Sales Requests</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered" id="unapproved-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th onclick="sortUnapprovedTable('salesman')">Salesman<i class="fas fa-sort"></i></th>
+                                    <th onclick="sortUnapprovedTable('count')">Unapproved Requests<i class="fas fa-sort"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Approved Sales Summary Table -->
+                <div class="table-box" id="approved-summary-container">
+                    <h6 class="text-center">Salesmen with Approved Sales Summary</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered" id="approved-summary-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th onclick="sortApprovedTable('salesman')">Salesman<i class="fas fa-sort"></i></th>
+                                    <th onclick="sortApprovedTable('count')">Approved Requests<i class="fas fa-sort"></i></th>
+                                    <th onclick="sortApprovedTable('sum')">Total Price<i class="fas fa-sort"></i></th>
+                                    <th onclick="sortApprovedTable('percent')">% Approved<i class="fas fa-sort"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Buttons -->
+        <div class="text-center mt-3" id="dashboard-buttons">
+            <button onclick="downloadExcel()" class="btn btn-success me-2">Export to Excel</button>
+            <button onclick="downloadPDF()" class="btn btn-info">Export to PDF</button> 
+            <button onclick="resetFilters()" class="btn btn-outline-secondary">Reset Filters</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>  
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script> 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script> 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>  
+
+<script>
+// JavaScript variables to track user role
+const isManager = {{ is_manager|yesno:"true,false" }};
+const userCompanyId = {% if is_manager and user_company %}{{ user_company.id }}{% else %}null{% endif %};
+
+let allSalesData = [];
+let activeFilters = { 
+    company: {% if is_manager and user_company %}{{ user_company.id }}{% else %}null{% endif %}, 
+    project: null, 
+    salesman: null, 
+    start: null, 
+    end: null 
+};
+
+function highlightFilter(element) {
+    const val = element.value;
+    if (val) {
+        element.classList.add('form-control-applied', 'form-select-applied');
+    } else {
+        element.classList.remove('form-control-applied', 'form-select-applied');
+    }
+}
+
+function resetFilters() {
+    // For managers, don't reset company filter - reinitialize it instead
+    if (!isManager) {
+        activeFilters.company = null;
+        document.getElementById('company-select').value = '';
+    } else {
+        // For managers, reset to their default company
+        activeFilters.company = userCompanyId;
+    }
+    
+    activeFilters.project = null;
+    activeFilters.salesman = null;
+    activeFilters.start = null;
+    activeFilters.end = null;
+    
+    // Reset sorting
+    approvedSortField = null;
+    approvedSortAsc = true;
+    unapprovedSortField = null;
+    unapprovedSortAsc = true;
+    
+    document.getElementById('project-select').innerHTML = '<option value="">All</option>';
+    document.getElementById('salesman-select').innerHTML = '<option value="">All</option>';
+    document.getElementById('start-date').value = '';
+    document.getElementById('end-date').value = '';
+    
+    document.querySelectorAll('.form-control, .form-select').forEach(el => {
+        el.classList.remove('form-control-applied', 'form-select-applied');
+    });
+    
+    // Clear any chart selections
+    selectedMonths.clear();
+    selectedSalesmen.clear();
+    
+    // For managers, reload projects and salesmen for their company
+    if (isManager && userCompanyId) {
+        triggerCompanyChange();
+    } else {
+        renderFilteredDashboard();
+    }
+}
+
+// Initialize company selection for managers
+function initializeManagerCompany() {
+    console.log("Manager initialization:", isManager, userCompanyId);
+    if (isManager && userCompanyId) {
+        activeFilters.company = userCompanyId;
+        // Trigger company change to load projects and salesmen
+        triggerCompanyChange();
+    }
+}
+
+function triggerCompanyChange() {
+    const companyId = isManager ? userCompanyId : document.getElementById('company-select')?.value;
+    
+    // Clear dependent filters when company changes
+    activeFilters.project = null;
+    activeFilters.salesman = null;
+    document.getElementById('project-select').innerHTML = '<option value="">All</option>';
+    document.getElementById('salesman-select').innerHTML = '<option value="">All</option>';
+    
+    if (companyId) {
+        fetch("{% url 'api_get_projects_salesmen' %}?company_id=" + companyId)
+            .then(res => res.json())
+            .then(data => {
+                const projectSelect = document.getElementById('project-select');
+                const salesmanSelect = document.getElementById('salesman-select');
+                projectSelect.innerHTML = '<option value="">All</option>';
+                salesmanSelect.innerHTML = '<option value="">All</option>';
+                data.projects.forEach(p => projectSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+                data.salesmen.forEach(s => salesmanSelect.innerHTML += `<option value="${s.id}">${s.full_name}</option>`);
+                renderFilteredDashboard();
+            })
+            .catch(error => {
+                console.error('Error fetching projects and salesmen:', error);
+                renderFilteredDashboard();
+            });
+    } else {
+        renderFilteredDashboard();
+    }
+}
+
+function handleInteractiveFilter(event, data, type) {
+    if (!data || data.length === 0) return;
+    
+    const label = data[0].label || data[0].raw?.label;
+    if (!label) return;
+    
+    if (type === 'month') {
+        activeFilters.start = `${label}-01`;
+        activeFilters.end = `${label}-31`;
+        
+        // Update date inputs
+        document.getElementById('start-date').value = activeFilters.start;
+        document.getElementById('end-date').value = activeFilters.end;
+        
+        highlightFilter(document.getElementById('start-date'));
+        highlightFilter(document.getElementById('end-date'));
+    } else if (type === 'salesman') {
+        const salesman = label;
+        const match = allSalesData.find(d => d.sales_man__full_name === salesman);
+        
+        if (match) {
+            activeFilters.salesman = match.sales_man_id;
+            
+            // Update salesman select
+            const salesmanSelect = document.getElementById('salesman-select');
+            const options = salesmanSelect.options;
+            
+            for (let i = 0; i < options.length; i++) {
+                if (options[i].text === salesman) {
+                    salesmanSelect.selectedIndex = i;
+                    break;
+                }
+            }
+            
+            highlightFilter(salesmanSelect);
+        }
+    }
+    
+    renderFilteredDashboard();
+}
+
+function addChartClick(chart, type) {
+    chart.options.onClick = function (e, elements) {
+        if (elements.length > 0) {
+            handleInteractiveFilter(e, elements, type);
+        }
+    };
+}
+
+function applyFilters() {
+    const { company, project, salesman, start, end } = activeFilters;
+    let filtered = allSalesData;
+    
+    if (company) filtered = filtered.filter(s => s.company_id == company);
+    if (project) filtered = filtered.filter(s => s.project_id == project);
+    if (salesman) filtered = filtered.filter(s => s.sales_man_id == salesman);
+    
+    if (start && end) {
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        filtered = filtered.filter(s => s.date >= startDate && s.date <= endDate);
+    }
+    
+    return filtered;
+}
+
+function drawMonthlyChart(data) {
+    const ctx = document.getElementById("monthlyChart").getContext('2d');
+    if (window.monthlyChart instanceof Chart) window.monthlyChart.destroy();
+    
+    const grouped = {};
+    data.forEach(s => {
+        const key = s.date.toISOString().slice(0, 7);
+        grouped[key] = (grouped[key] || 0) + parseFloat(s.final_price || 0);
+    });
+    
+    const labels = Object.keys(grouped).sort();
+    const values = labels.map(k => grouped[k]);
+    
+    window.monthlyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{ 
+                label: 'Monthly Sales', 
+                data: values, 
+                backgroundColor: '#4e79a7', 
+                barThickness: 15 
+            }]
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: {
+                datalabels: {
+                    anchor: 'end',
+                    align: 'top',
+                    formatter: Math.round
+                }
+            }
+        }
+    });
+    
+    addChartClick(window.monthlyChart, 'month');
+}
+
+function drawTopSalesmenChart(data) {
+    const ctx = document.getElementById("topSalesmenChart").getContext('2d');
+    if (window.topSalesmenChart instanceof Chart) window.topSalesmenChart.destroy();
+    
+    const counts = {};
+    data.forEach(s => {
+        counts[s.sales_man__full_name] = (counts[s.sales_man__full_name] || 0) + parseFloat(s.final_price || 0);
+    });
+    
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    
+    // Hide chart if only 1 or no data point
+    const chartContainer = document.getElementById("topSalesmenChart").parentElement;
+    if (sorted.length === 0) {
+        chartContainer.style.display = "none";
+        return;
+    } else {
+        chartContainer.style.display = "block";
+    }
+    
+    const labels = sorted.map(([k]) => k);
+    const values = sorted.map(([, v]) => v);
+    
+    window.topSalesmenChart = new Chart(ctx, {
+        type: 'pie',
+        data: { 
+            labels, 
+            datasets: [{ 
+                data: values,
+                backgroundColor: [
+                    '#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f'
+                ]
+            }] 
+        },
+        options: { 
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            let value = context.parsed || 0;
+                            return `${label}: ${value.toLocaleString()} EGP`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    addChartClick(window.topSalesmenChart, 'salesman');
+}
+
+function drawLineChart(data) {
+    const ctx = document.getElementById("lineChart").getContext('2d');
+    if (window.lineChart instanceof Chart) window.lineChart.destroy();
+    
+    const daily = {};
+    data.forEach(s => {
+        const key = s.date.toISOString().split('T')[0];
+        daily[key] = (daily[key] || 0) + parseFloat(s.final_price || 0);
+    });
+    
+    const labels = Object.keys(daily).sort();
+    const values = labels.map(k => daily[k]);
+    
+    window.lineChart = new Chart(ctx, {
+        type: 'line',
+        data: { 
+            labels, 
+            datasets: [{ 
+                label: 'Sales Over Time', 
+                data: values,
+                borderColor: '#4e79a7',
+                backgroundColor: 'rgba(78, 121, 167, 0.2)',
+                tension: 0.3
+            }] 
+        },
+        options: { 
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            stacked: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.parsed.y.toLocaleString()} EGP`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString() + ' EGP';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateCards(data) {
+    if (!data || data.length === 0) {
+        document.getElementById("total-sales").textContent = '--';
+        document.getElementById("request-count").textContent = '--';
+        document.getElementById("avg-discount").textContent = '--';
+        return;
+    }
+    
+    const total = data.reduce((sum, s) => sum + parseFloat(s.final_price || 0), 0);
+    const discounts = data.filter(s => parseFloat(s.discount) > 0);
+    const avgDisc = discounts.length > 0
+        ? discounts.reduce((sum, s) => sum + parseFloat(s.discount), 0) / discounts.length
+        : 0;
+    
+    document.getElementById("total-sales").textContent = new Intl.NumberFormat('en-EG').format(Math.round(total / 1000) * 1000) + " EGP";
+    document.getElementById("request-count").textContent = data.length;
+    document.getElementById("avg-discount").textContent = avgDisc ? (avgDisc * 100).toFixed(2) + "%" : "--";
+}
+
+let unapprovedSortField = null;
+let unapprovedSortAsc = true;
+
+function sortUnapprovedTable(field) {
+    // Prevent any scrolling behavior
+    const currentScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+    
+    if (unapprovedSortField === field) {
+        unapprovedSortAsc = !unapprovedSortAsc;
+    } else {
+        unapprovedSortField = field;
+        unapprovedSortAsc = true;
+    }
+
+    renderFilteredDashboard();
+}
+
+function updateUnapprovedTable(data) {
+    const counts = {};
+    data.forEach(s => {
+        counts[s.sales_man__full_name] = (counts[s.sales_man__full_name] || 0) + 1;
+    });
+    
+    let rows = Object.entries(counts).map(([name, count]) => ({
+        salesman: name,
+        count: count
+    }));
+    
+    // Sorting
+    if (unapprovedSortField) {
+        rows.sort((a, b) => {
+            let valA = a[unapprovedSortField];
+            let valB = b[unapprovedSortField];
+            if (typeof valA === "string") return unapprovedSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            return unapprovedSortAsc ? valA - valB : valB - valA;
+        });
+    }
+    
+    const tbody = document.querySelector("#unapproved-table tbody");
+    tbody.innerHTML = "";
+    
+    rows.forEach(r => {
+        tbody.innerHTML += `<tr><td>${r.salesman}</td><td>${r.count}</td></tr>`;
+    });
+}
+
+function renderFilteredDashboard() {
+    // Sync filters from UI
+    activeFilters.project = document.getElementById('project-select').value;
+    activeFilters.salesman = document.getElementById('salesman-select').value;
+    activeFilters.start = document.getElementById('start-date').value;
+    activeFilters.end = document.getElementById('end-date').value;
+    
+    // For non-managers, sync company filter from UI
+    if (!isManager) {
+        activeFilters.company = document.getElementById('company-select').value;
+    }
+    
+    const filtered = applyFilters();
+    const chartsSection = document.getElementById('charts-section');
+    
+    // Check if we have data to display
+    const hasCompany = isManager ? true : activeFilters.company;
+    const hasData = filtered.length > 0;
+    
+    if (!hasCompany || !hasData) {
+        chartsSection.style.display = 'none';
+        updateCards(null);
+        
+        // Clear tables when no data
+        document.querySelector("#unapproved-table tbody").innerHTML = "";
+        document.querySelector("#approved-summary-table tbody").innerHTML = "";
+    } else {
+        chartsSection.style.display = 'block';
+    }
+    
+    const buttonsDiv = document.getElementById('dashboard-buttons');
+    if (!hasCompany) {
+        buttonsDiv.style.display = 'none';
+    } else {
+        buttonsDiv.style.display = 'block';
+    }
+    
+    // Only process and display data if we have a company selected and data exists
+    if (hasCompany && hasData) {
+        const approved = filtered.filter(s => s.is_approved);
+        const unapproved = filtered.filter(s => !s.is_approved);
+
+        if (approved.length === 0) {
+            updateCards(null);
+        } else {
+            updateCards(approved);
+            drawMonthlyChart(approved);
+            drawTopSalesmenChart(approved);
+            drawLineChart(approved);
+        }
+        
+        // Always show tables when we have data
+        const unapprovedTable = document.getElementById('unapproved-table').closest('div.table-responsive').parentElement;
+        unapprovedTable.style.display = 'block';
+        document.getElementById('approved-summary-container').style.display = 'block';
+        
+        updateUnapprovedTable(unapproved);
+        updateApprovedSummaryTable(approved);
+    } else {
+        // Clear charts if they exist
+        if (window.monthlyChart instanceof Chart) window.monthlyChart.destroy();
+        if (window.topSalesmenChart instanceof Chart) window.topSalesmenChart.destroy();
+        if (window.lineChart instanceof Chart) window.lineChart.destroy();
+    }
+
+    console.log("Filtered data length:", filtered.length);
+    console.log("Active filters:", activeFilters);
+}
+
+let approvedSortField = null;
+let approvedSortAsc = true;
+
+function updateApprovedSummaryTable(data) {
+    const totalRequests = {};
+    const approvedRequests = {};
+    const approvedSums = {};
+    
+    // Use filtered data for total requests calculation
+    const filteredData = applyFilters();
+    
+    filteredData.forEach(s => {
+        const name = s.sales_man__full_name;
+        totalRequests[name] = (totalRequests[name] || 0) + 1;
+    });
+    
+    data.forEach(s => {
+        const name = s.sales_man__full_name;
+        approvedRequests[name] = (approvedRequests[name] || 0) + 1;
+        approvedSums[name] = (approvedSums[name] || 0) + parseFloat(s.final_price || 0);
+    });
+    
+    let rows = Object.keys(approvedRequests).map(name => ({
+        salesman: name,
+        count: approvedRequests[name],
+        sum: approvedSums[name],
+        percent: totalRequests[name] ? ((approvedRequests[name] / totalRequests[name]) * 100).toFixed(1) : "0.0"
+    }));
+    
+    // Sorting
+    if (approvedSortField) {
+        rows.sort((a, b) => {
+            let valA = a[approvedSortField];
+            let valB = b[approvedSortField];
+            if (typeof valA === "string") return approvedSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            return approvedSortAsc ? valA - valB : valB - valA;
+        });
+    }
+    
+    const tbody = document.querySelector("#approved-summary-table tbody");
+    tbody.innerHTML = "";
+    
+    rows.forEach(r => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${r.salesman}</td>
+                <td>${r.count}</td>
+                <td>${new Intl.NumberFormat('en-EG').format(Math.ceil(r.sum / 1000) * 1000)} EGP</td>
+                <td>${r.percent}%</td>
+            </tr>
+        `;
+    });
+}
+
+function sortApprovedTable(field) {
+    // Prevent any scrolling behavior
+    const currentScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+    
+    if (approvedSortField === field) {
+        approvedSortAsc = !approvedSortAsc;
+    } else {
+        approvedSortField = field;
+        approvedSortAsc = true;
+    }
+
+    renderFilteredDashboard();
+}
+
+function downloadPDF() {
+    const dashboard = document.querySelector('#dashboard-content');
+    const buttons = document.getElementById('dashboard-buttons');
+    
+    // Hide buttons temporarily
+    buttons.style.display = 'none';
+    dashboard.scrollIntoView({ behavior: 'auto', block: 'start' });
+    
+    setTimeout(() => {
+        html2canvas(dashboard, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: false,
+            scrollX: 0,
+            scrollY: -window.scrollY
+        }).then(canvas => {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'pt',
+                format: 'a4'
+            });
+            
+            const imgData = canvas.toDataURL('image/jpeg', 1.0);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = pdfWidth;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            
+            let heightLeft = imgHeight;
+            let position = 0;
+            
+            while (heightLeft > 0) {
+                pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pdfHeight;
+                position -= pdfHeight;
+                if (heightLeft > 0) {
+                    pdf.addPage();
+                }
+            }
+            
+            const timestamp = new Date().toISOString().replace(/[-T:]/g, '_').split('.')[0];
+            pdf.save(`sales_dashboard_${timestamp}.pdf`);
+            
+            // Restore buttons after export
+            buttons.style.display = 'block';
+        }).catch(err => {
+            console.error("❌ html2canvas failed:", err);
+            alert("Failed to generate PDF. Try again or check console.");
+            buttons.style.display = 'block'; // Ensure buttons are restored on error too
+        });
+    }, 500);
+}
+
+function downloadExcel() {
+    const wb = XLSX.utils.book_new();
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}`;
+    const filename = `Sales_Dashboard_Report_${timestamp}.xlsx`;
+    
+    // Helper: Format number as thousands
+    function formatNumber(n) {
+        return isNaN(n) ? n : Number(n).toLocaleString();
+    }
+    
+    // Get selected company and project names
+    const companySelect = document.getElementById("company-select");
+    const projectSelect = document.getElementById("project-select");
+    const companyName = isManager ? "{{ user_company.name }}" : (companySelect?.options[companySelect?.selectedIndex]?.text || "All");
+    const projectName = projectSelect.options[projectSelect.selectedIndex]?.text || "All";
+    
+    // 1️⃣ Metadata Sheet (Company, Project, Timestamp)
+    const metaSheet = [
+        ["Report Generated On", now.toLocaleString()],
+        ["Selected Company", companyName],
+        ["Selected Project", projectName]
+    ];
+    const wsMeta = XLSX.utils.aoa_to_sheet(metaSheet);
+    XLSX.utils.book_append_sheet(wb, wsMeta, "Metadata");
+    
+    // 2️⃣ Export KPIs
+    const kpiData = [
+        ["KPI", "Value"],
+        ["Total Sales", document.getElementById("total-sales").textContent],
+        ["Sales Requests", document.getElementById("request-count").textContent],
+        ["Avg. Discount", document.getElementById("avg-discount").textContent]
+    ];
+    const wsKPI = XLSX.utils.aoa_to_sheet(kpiData);
+    XLSX.utils.book_append_sheet(wb, wsKPI, "KPIs");
+    
+    // 3️⃣ Approved Summary Table
+    const approvedTable = document.getElementById("approved-summary-table");
+    const wsApproved = XLSX.utils.table_to_sheet(approvedTable);
+    XLSX.utils.book_append_sheet(wb, wsApproved, "Approved Summary");
+    
+    // 4️⃣ Unapproved Sales Table
+    const unapprovedTable = document.getElementById("unapproved-table");
+    const wsUnapproved = XLSX.utils.table_to_sheet(unapprovedTable);
+    XLSX.utils.book_append_sheet(wb, wsUnapproved, "Unapproved Sales");
+    
+    // 5️⃣ Raw Sales Data
+    const filtered = applyFilters();
+    const rawData = [["Date", "Salesman", "Final Price", "Discount", "Approved"]];
+    filtered.forEach(row => {
+        rawData.push([
+            row.date.toISOString().slice(0, 10),
+            row.sales_man__full_name,
+            formatNumber(row.final_price),
+            `${(row.discount * 100).toFixed(2)}%`,
+            row.is_approved ? "Yes" : "No"
+        ]);
+    });
+    const wsRaw = XLSX.utils.aoa_to_sheet(rawData);
+    XLSX.utils.book_append_sheet(wb, wsRaw, "Raw Sales Data");
+    
+    // 💾 Download Excel file
+    XLSX.writeFile(wb, filename);
+}
+
+// Update the company select event listener (only for non-managers)
+{% if not is_manager %}
+    document.getElementById('company-select').addEventListener('change', function () {
+        activeFilters.company = this.value;
+        triggerCompanyChange();
+    });
+{% endif %}
+
+// Rest of your existing event listeners
+['project-select', 'salesman-select', 'start-date', 'end-date'].forEach(id => {
+    document.getElementById(id).addEventListener('change', function () {
+        activeFilters[id.replace('-', '')] = this.value;
+        highlightFilter(this);
+        renderFilteredDashboard();
+    });
+});
+
+window.onload = function () {
+    document.getElementById('dashboard-buttons').style.display = 'none';
+    
+    // Initialize manager company if applicable
+    initializeManagerCompany();
+    
+    fetch("{% url 'api_sales_data' %}")
+        .then(res => res.json())
+        .then(data => {
+            allSalesData = data.all_sales.map(s => ({ ...s, date: new Date(s.date) }));
+            renderFilteredDashboard();
+        })
+        .catch(error => {
+            console.error('Error fetching sales data:', error);
+            renderFilteredDashboard();
+        });
+};
+
+let selectedMonths = new Set();
+let selectedSalesmen = new Set();
+
+function handleInteractiveFilter(event, elements, type) {
+    console.log("Chart clicked. Type:", type);
+
+    if (!elements || elements.length === 0) return;
+
+    const chart = elements[0].element.$context.chart;
+    const index = elements[0].index;
+    const label = chart.data.labels[index];
+
+    console.log("Extracted label:", label);
+
+    if (!label) return;
+
+    if (type === 'month') {
+        const isValidMonth = /^\d{4}-\d{2}$/.test(label);
+        if (!isValidMonth) {
+            console.warn("Invalid month label:", label);
+            return;
+        }
+        selectedMonths.has(label) ? selectedMonths.delete(label) : selectedMonths.add(label);
+        applyDrillFilters();
+    } else if (type === 'salesman') {
+        selectedSalesmen.has(label) ? selectedSalesmen.delete(label) : selectedSalesmen.add(label);
+        applyDrillFilters();
+    }
+}
+
+function applyDrillFilters() {
+    const startDates = [...selectedMonths].map(m => new Date(`${m}-01`));
+    if (startDates.length > 0) {
+        const minDate = new Date(Math.min(...startDates));
+        const maxDate = new Date(Math.max(...startDates));
+        maxDate.setMonth(maxDate.getMonth() + 1);
+        activeFilters.start = minDate.toISOString().slice(0, 10);
+        activeFilters.end = maxDate.toISOString().slice(0, 10);
+    } else {
+        activeFilters.start = null;
+        activeFilters.end = null;
+    }
+
+    if (selectedSalesmen.size > 0) {
+        const found = allSalesData.find(d => d.sales_man__full_name === [...selectedSalesmen][0]);
+        if (found) activeFilters.salesman = found.sales_man_id;
+    } else {
+        activeFilters.salesman = null;
+    }
+
+    document.getElementById('start-date').value = activeFilters.start || '';
+    document.getElementById('end-date').value = activeFilters.end || '';
+    document.getElementById('salesman-select').value = activeFilters.salesman || '';
+
+    highlightFilter(document.getElementById('start-date'));
+    highlightFilter(document.getElementById('end-date'));
+    highlightFilter(document.getElementById('salesman-select'));
+
+    console.log("Applying filters:", activeFilters);
+
+    renderFilteredDashboard();
+}
+</script>
+{% endblock %}

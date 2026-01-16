@@ -1,0 +1,1465 @@
+{% extends base_template %}
+{% load static %}
+{% block title %}Market Projects Map{% endblock %}
+{% block content %}
+<style>
+  .company-logo {
+    height: 54px;
+    max-width: 180px;
+    border-radius: 10px;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.08);
+    object-fit: contain;
+  }
+  .main-container {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+  }
+  .filter-panel {
+    width: 150px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+  .filter-section {
+    margin-bottom: 15px;
+  }
+  .filter-section h4 {
+    margin-bottom: 6px;
+    color: #333;
+    font-size: 14px;
+  }
+  .results-panel {
+    flex: 1;
+  }
+  .map-container {
+    width: 100%;
+  }
+  select {
+    width: 100%;
+    padding: 6px;
+    font-size: 13px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+  }
+  #map {
+    height: 500px;
+    width: 100%;
+    border-radius: 8px;
+  }
+  .btn {
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .btn-secondary {
+    background-color: #6c757d;
+    color: white;
+    margin-top: 10px;
+    width: 100%;
+  }
+  /* Enhanced Popup Styles */
+  .project-popup {
+    min-width: 250px;
+    max-width: 300px;
+    font-size: 13px;   /* Slightly smaller base font size */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  .popup-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 10px;
+    margin: -10px -10px 15px -10px;
+    border-radius: 8px 8px 0 0;
+  }
+  .popup-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0 0 5px 0;
+  }
+  .popup-subtitle {
+    font-size: 12px;
+    opacity: 0.9;
+    margin: 0;
+  }
+  .popup-section {
+    margin-bottom: 10px;
+  }
+  .popup-section:last-child {
+    margin-bottom: 0;
+  }
+  .section-title {
+    font-size: 12px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #e9ecef;
+  }
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .info-item {
+    display: flex;
+    flex-direction: column;
+  }
+  .info-label {
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+  .info-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #333;
+  }
+  .info-value.highlight {
+    color: #007bff;
+  }
+  .info-value.success {
+    color: #28a745;
+  }
+  .info-value.warning {
+    color: #ffc107;
+  }
+  .tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 5px;
+  }
+  .tag {
+    background: #e9ecef;
+    color: #495057;
+    padding: 1px 6px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .tag.primary {
+    background: #007bff;
+    color: white;
+  }
+  .tag.success {
+    background: #28a745;
+    color: white;
+  }
+  .tag.info {
+    background: #17a2b8;
+    color: white;
+  }
+  .popup-footer {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #e9ecef;
+    font-size: 10px;
+    color: #666;
+    text-align: center;
+  }
+  .units-count {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  .units-count-number {
+    font-size: 20px;
+    font-weight: bold;
+    color: #007bff;
+  }
+  .units-count-label {
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  /* Tooltip hover effect */
+  .leaflet-popup-content {
+    margin: 10px;
+  }
+  .leaflet-popup-content-wrapper {
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  }
+
+  @media (min-width: 1200px) {
+    .container, .container-lg, .container-md, .container-sm, .container-xl {
+      max-width: 100%;
+    }
+  }
+  @media (max-width: 800px) {
+    .container, .container-sm {
+        max-width: 718px;
+    }
+  }
+  .header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .report-button {
+    background-color: #764ba2;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.3s;
+  }
+  .report-button:hover {
+    background-color: #667eea;
+    color: white;
+  }
+  .header-buttons {
+    display: flex;
+    gap: 10px;
+  }
+  .secondary-button {
+    background-color: #6c757d; /* Different color */
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.3s;
+  }
+  .secondary-button:hover {
+    background-color: #5a6268;
+    color: white;
+  }
+  @media (max-width: 768px) {
+    .header-container {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 15px;
+    }
+    .header-buttons {
+      width: 100%;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .report-button,
+    .secondary-button {
+      width: 100%;
+      text-align: center;
+      margin-left: 0 !important;
+    }
+    .main-container {
+      flex-direction: column;
+    }
+    .filter-panel {
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    #map {
+      height: 400px;
+    }
+    /* Adjust select2 dropdowns for mobile */
+    .select2-container {
+      width: 100% !important;
+    }
+    /* Make filter sections more compact */
+    .filter-section {
+      margin-bottom: 10px;
+    }
+    .filter-section h4 {
+      font-size: 13px;
+    }
+    /* Adjust popup for mobile */
+    .project-popup {
+      min-width: 200px;
+      max-width: 280px;
+      font-size: 12px;
+    }
+    .popup-title {
+      font-size: 14px;
+    }
+    .info-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 480px) {
+    #map {
+      height: 350px;
+    }
+    .popup-header {
+      padding: 8px;
+    }
+    .units-count-number {
+      font-size: 18px;
+    }
+  }
+  .third-button {
+    background-color: #10b981; /* Green color */
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .third-button:hover {
+      background-color: #0d9f6e;
+      color: white;
+  }
+  .main_container {
+    padding: 32px;
+  }
+  #locationFilter,
+  #locationFilter + .select2-container--default .select2-selection--multiple {
+      font-size: 14px !important;
+  }
+  .select2-container--default .select2-results > .select2-results__options {
+      font-size: 14px !important;
+  }
+  .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+      font-size: 14px !important;
+  }
+
+  .pin-container {
+    position: relative;
+    width: 50px;
+    height: 50px;
+  }
+  
+  .pin-label {
+    position: absolute;
+    top: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 4px 8px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    font-size: 10px;
+    font-weight: bold;
+    white-space: nowrap;
+    z-index: 10;
+    min-width: 60px;
+    text-align: center;
+  }
+  
+  .pin-top {
+    position: absolute;
+    top: 5px;
+    left: 20px;
+    width: 10px;
+    height: 10px;
+    background: #007bff;
+    border-radius: 50%;
+    z-index: 2;
+  }
+  
+  .pin-middle {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    width: 20px;
+    height: 20px;
+    background: #007bff;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    z-index: 1;
+  }
+  
+  .pin-bottom {
+    position: absolute;
+    top: 35px;
+    left: 24px;
+    width: 2px;
+    height: 10px;
+    background: #007bff;
+    z-index: 0;
+  }
+
+  /* Enhanced Popup Styles with Height Control and Mobile Responsiveness */
+  .project-popup {
+    min-width: 200px;
+    max-width: 90vw; /* Use viewport width for better mobile responsiveness */
+    max-height: 70vh; /* Limit maximum height to viewport height */
+    font-size: 13px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .popup-content {
+    overflow-y: auto; /* Make content scrollable */
+    max-height: calc(70vh - 120px); /* Reserve space for header/footer */
+    padding-right: 5px; /* Space for scrollbar */
+  }
+
+  /* Custom scrollbar for popup */
+  .popup-content::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .popup-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 2px;
+  }
+
+  .popup-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 2px;
+  }
+
+  .popup-content::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+
+  /* Ensure header and footer stay fixed */
+  .popup-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 10px;
+    margin: -10px -10px 15px -10px;
+    border-radius: 8px 8px 0 0;
+    flex-shrink: 0; /* Prevent header from shrinking */
+  }
+
+  .popup-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0 0 5px 0;
+    word-wrap: break-word;
+    line-height: 1.2;
+  }
+
+  .popup-subtitle {
+    font-size: 12px;
+    opacity: 0.9;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .popup-section {
+    margin-bottom: 12px;
+  }
+
+  .popup-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .section-title {
+    font-size: 12px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #e9ecef;
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .info-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .info-label {
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+
+  .info-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #333;
+    word-break: break-word;
+  }
+
+  .info-value.highlight {
+    color: #007bff;
+  }
+
+  .info-value.success {
+    color: #28a745;
+  }
+
+  .info-value.warning {
+    color: #ffc107;
+  }
+
+  .tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 5px;
+  }
+
+  .tag {
+    background: #e9ecef;
+    color: #495057;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+
+  .tag.primary {
+    background: #007bff;
+    color: white;
+  }
+
+  .tag.success {
+    background: #28a745;
+    color: white;
+  }
+
+  .tag.info {
+    background: #17a2b8;
+    color: white;
+  }
+
+  .popup-footer {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #e9ecef;
+    font-size: 10px;
+    color: #666;
+    text-align: center;
+    flex-shrink: 0; /* Prevent footer from shrinking */
+    line-height: 1.3;
+  }
+
+  .units-count {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+
+  .units-count-number {
+    font-size: 20px;
+    font-weight: bold;
+    color: #007bff;
+  }
+
+  .units-count-label {
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Mobile-specific popup improvements */
+  @media (max-width: 768px) {
+    .project-popup {
+      min-width: 180px;
+      max-width: 85vw;
+      max-height: 65vh;
+      font-size: 12px;
+    }
+    
+    .popup-content {
+      max-height: calc(65vh - 110px);
+    }
+    
+    .popup-header {
+      padding: 10px 8px;
+    }
+    
+    .popup-title {
+      font-size: 14px;
+    }
+    
+    .popup-subtitle {
+      font-size: 11px;
+    }
+    
+    .info-grid {
+      grid-template-columns: 1fr; /* Stack items vertically on mobile */
+      gap: 6px;
+    }
+    
+    .info-item {
+      margin-bottom: 4px;
+    }
+    
+    .info-label {
+      font-size: 10px;
+    }
+    
+    .info-value {
+      font-size: 10px;
+    }
+    
+    .units-count {
+      padding: 8px;
+    }
+    
+    .units-count-number {
+      font-size: 18px;
+    }
+    
+    .section-title {
+      font-size: 11px;
+    }
+    
+    .tags-container {
+      gap: 3px;
+    }
+    
+    .tag {
+      font-size: 9px;
+      padding: 1px 6px;
+    }
+    
+    .popup-footer {
+      font-size: 9px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .project-popup {
+      min-width: 160px;
+      max-width: 80vw;
+      max-height: 60vh;
+      font-size: 11px;
+    }
+    
+    .popup-content {
+      max-height: calc(60vh - 100px);
+    }
+    
+    .popup-title {
+      font-size: 13px;
+    }
+    
+    .popup-subtitle {
+      font-size: 10px;
+    }
+    
+    .units-count-number {
+      font-size: 16px;
+    }
+    
+    .units-count-label {
+      font-size: 10px;
+    }
+    
+    .popup-header {
+      padding: 8px 6px;
+    }
+  }
+
+  /* Leaflet popup adjustments for mobile */
+  @media (max-width: 768px) {
+    .leaflet-popup-content-wrapper {
+      max-width: 90vw !important;
+    }
+    
+    .leaflet-popup-tip {
+      max-width: 90vw !important;
+    }
+  }
+
+  /* Improve touch targets for mobile */
+  @media (max-width: 768px) {
+    .leaflet-popup-close-button {
+      width: 30px !important;
+      height: 30px !important;
+      font-size: 20px !important;
+      line-height: 30px !important;
+    }
+  }
+
+  /* Header Container Styles */
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f97316, #fb923c);
+  color: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.header-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 200px;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  transform: translate(50px, -50px);
+}
+
+.header-buttons {
+  display: flex;
+  gap: 15px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Base Button Styles */
+.btn {
+  padding: 12px 20px;
+  border-radius: 10px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+}
+
+/* Specific Button Styles */
+.report-button {
+  background: linear-gradient(135deg, #764ba2, #667eea);
+  color: white;
+}
+
+.report-button:hover {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.secondary-button {
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+  color: white;
+}
+
+.secondary-button:hover {
+  background: linear-gradient(135deg, #5a6268, #6c757d);
+  color: white;
+}
+
+.third-button {
+  background: linear-gradient(135deg, #10b981, #0d9f6e);
+  color: white;
+}
+
+.third-button:hover {
+  background: linear-gradient(135deg, #0d9f6e, #10b981);
+  color: white;
+}
+
+.forth-button {
+  background: linear-gradient(135deg, #ef4444, #f87171); /* red-500 → red-400 */
+  color: white;
+}
+
+.forth-button:hover {
+  background: linear-gradient(135deg, #f87171, #ef4444); /* reverse gradient on hover */
+  color: white;
+}
+
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .header-container {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    text-align: center;
+    padding: 25px 20px;
+  }
+
+  .dashboard-container {
+    padding: 15px;
+  }
+  
+  .header-buttons {
+    width: 100%;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 14px 20px;
+  }
+  
+  .header-container::before {
+    width: 150px;
+    height: 150px;
+    transform: translate(40px, -40px);
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    padding: 20px 15px;
+  }
+  
+  .btn {
+    font-size: 0.85rem;
+    padding: 12px 16px;
+  }
+}
+
+.dashboard-container {
+  padding: 20px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+
+
+</style>
+<div class="dashboard-container">
+  <div class="header-container">
+    <div style="display: flex; align-items: center; gap: 18px;">
+      <img src="{% static 'images/Screenshot 2025-12-15 170518.png' %}" alt="Your Company Logo"
+           class="company-logo"
+           style="height: 100px; max-width: 218px; border-radius: 10px; box-shadow: 0 1px 8px rgba(0,0,0,0.08);" />
+    </div>
+    <div class="header-buttons">
+        <a href="{% url 'market_research_report' %}" class="btn report-button">
+            <i class="fas fa-file-alt"></i>
+            Report View
+        </a>
+        <a href="{% url 'market_explorer' %}" class="btn secondary-button">
+            <i class="fas fa-map-marked-alt"></i>
+            Map View
+        </a>
+        <a href="{% url 'market_dashboard' %}" class="btn third-button">
+            <i class="fas fa-chart-bar"></i>
+            Market Analysis
+        </a>
+        <a href="{% url 'market_charts_view' %}?location=6th+of+October&asset_type=&unit_type=" class="btn forth-button">
+          <i class="fas fa-chart-line"></i>
+          Units Analysis
+        </a>
+      
+    </div>
+  </div>
+  <div class="main-container">
+    <!-- Filter Panel -->
+    <div class="filter-panel">
+      <h4>Filter</h4>
+      <div class="filter-section">
+        <h4>Location</h4>
+        <select id="locationFilter" multiple>
+          {% for location in locations %}
+            <option value="{{ location.id }}">{{ location.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-section">
+        <h4>Developer</h4>
+        <select id="developerFilter" multiple>
+          {% for developer in developers %}
+            <option value="{{ developer.id }}">{{ developer.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-section">
+        <h4>Finishing</h4>
+        <select id="finishingFilter" multiple>
+          {% for spec in finishing_specs %}
+            <option value="{{ spec }}">{{ spec }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-section">
+        <h4>Asset Type</h4>
+        <select id="assetTypeFilter" multiple>
+          {% for asset_type in asset_types %}
+            <option value="{{ asset_type }}">{{ asset_type }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button id="resetFilters" class="btn btn-secondary">Reset Filters</button>
+    </div>
+    <!-- Map Panel -->
+    <div class="results-panel">
+      <div class="map-container">
+        <div id="map"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- JS Libraries -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  $(document).ready(function () {
+    let lastRequestParams = null;
+    let currentRequest = null;
+    let markers = [];
+    let polygonLayers = {};
+    let hoveredTooltip = null;
+  
+    // --- Exact polygons: Replace with more accurate boundaries if needed ---
+    // 6th of October City border (approximate, from OSM and Google Maps visual check)
+    const sixOctGardensPolygonCoords = [
+      [29.94644 , 31.09877],
+      [29.95923 , 31.06993],
+      [29.95775 , 31.05997],
+      [29.97559 , 30.99371],
+      [29.94852 , 30.95148],
+      [29.91371 , 30.93534],
+      [29.87948 , 30.86084],
+      [29.83691 , 30.90135],
+      [29.89407 , 31.00401],
+      [29.87591 , 31.04109],
+      [29.85805 , 31.03697],
+      [29.84851 , 31.05997],
+    ];
+
+    const sixOctPolygonCoords = [
+      [30.036954149210995, 30.95747055848259],
+      [29.944044731000705, 30.809075170746542],
+      [29.879252770349698, 30.861725305446875],
+      [29.91519196915136, 30.936747853548315],
+      [29.952112997846946, 30.95427834288016],
+      [29.976047370082153, 30.99192299778054],
+      [29.97359454586479, 31.00379220477795],
+      [29.97999011343248, 31.006355298258597],
+    ];
+
+    const newSixOctPolygonCoords = [
+      [29.78304 , 30.85246],
+      [29.83666 , 30.89984],
+      [29.95988 , 30.79341],
+      [29.91882 , 30.71032],
+      [29.79972 , 30.76525],
+      [29.77112 , 30.79547],
+      [29.78900 , 30.79821],
+      [29.78721 , 30.81538],
+      [29.82951 , 30.81607],
+      [29.83011 , 30.85177],
+    ];
+
+
+    const zayedPolygonCoords = [
+      [30.00858 , 30.98196],
+      [30.00977 , 30.98402],
+      [30.00858 , 30.99089],
+      [30.04678 , 31.05200],
+      [30.08422 , 30.99003],
+      [30.08882 , 30.97098],
+      [30.08748 , 30.96359],
+      [30.07397 , 30.94351],
+      [30.07337 , 30.94008],
+      [30.07411 , 30.93390],
+      [30.06758 , 30.93184],
+      [30.06594 , 30.93252],
+    ];
+
+    const newZayedPolygonCoords = [
+      [30.07328376012259, 30.93302316069314],
+      [30.088715863862944, 30.873094104330875],
+      [30.092492174200956, 30.871706550735432],
+      [30.091452712151412, 30.853325400414512],
+      [30.013160031862355, 30.85148835295458],
+      [30.0273718564546, 30.9352810872753],
+      [30.04036150843812, 30.954505323018854],
+      [30.066513979733013, 30.932193709665157],
+    ];
+
+    const sphinxPolygonCoords = [
+      [30.06726 , 30.85131],
+      [30.08687 , 30.85062],
+      [30.08954 , 30.84959],
+      [30.09281 , 30.85302],
+      [30.09430 , 30.87156],
+      [30.12815 , 30.87397],
+      [30.19227 , 30.78127],
+      [30.22906 , 30.73973],
+      [30.23381 , 30.70814],
+      [30.19405 , 30.67827],
+      [30.18841 , 30.67690],
+      [30.17387 , 30.67656],
+      [30.16616 , 30.67209],
+      [30.13825 , 30.67312],
+      [30.11865 , 30.69715],
+      [30.10410 , 30.70642],
+      [30.07528 , 30.71775],
+      [30.06726 , 30.73114],
+      [30.06815 , 30.85165],
+      /*[30.08598 , 30.85062],
+      [30.08984 , 30.84959],
+      [30.09311 , 30.85268],
+      [30.09430 , 30.87191],*/
+    ];
+    
+    
+    // Ain Sokhna border (very approximate; Sokhna is a spread-out resort, so we use a rough rectangle)
+    const ainSokhnaPolygonCoords = [
+      [29.620400, 32.316600],
+      [29.610000, 32.360000],
+      [29.570000, 32.350000],
+      [29.570000, 32.316600],
+      [29.620400, 32.316600]
+    ];
+  
+    const AREAS = [
+      {
+        name: '6th of October',
+        polygon: sixOctPolygonCoords,
+        color: '#D32F2F',       // Strong red outline
+        fillColor: '#FFCDD2'    // Soft light-red fill
+      },
+      {
+        name: 'October Gardens',
+        polygon: sixOctGardensPolygonCoords,
+        color: '#1976D2',       // Deep blue outline
+        fillColor: '#BBDEFB'    // Light blue fill
+      },
+      {
+        name: 'New 6th of October',
+        polygon: newSixOctPolygonCoords,
+        color: '#388E3C',       // Forest green outline
+        fillColor: '#C8E6C9'    // Light green fill
+      },
+      {
+        name: 'El Sheikh Zayed',
+        polygon: zayedPolygonCoords,
+        color: '#8E24AA',       // Purple outline
+        fillColor: '#E1BEE7'    // Lavender fill
+      },
+      {
+        name: 'New Zayed',
+        polygon: newZayedPolygonCoords,
+        color: '#F57C00',       // Vibrant orange outline
+        fillColor: '#FFE0B2'    // Soft orange fill
+      },
+      {
+        name: 'Sphinx',
+        polygon: sphinxPolygonCoords,
+        color: '#0097A7',       // Cyan/teal outline
+        fillColor: '#B2EBF2'    // Light cyan fill
+      }
+    ];
+
+  
+    function debounce(func, wait, immediate) {
+      let timeout;
+      return function () {
+        const context = this, args = arguments;
+        const later = function () {
+          timeout = null;
+          if (!immediate) func.apply(context, args);
+        };
+        const callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) func.apply(context, args);
+      };
+    }
+    
+  
+    function initializeSelect2() {
+      $('select').select2({
+        placeholder: "Select...",
+        allowClear: true,
+        closeOnSelect: false
+      }).on('select2:select select2:unselect', function (e) {
+        if (e.params.originalEvent) {
+          handleFilterChange();
+        }
+      });
+    }
+  
+    let map = L.map('map').setView([30.0444, 31.2357], 9);
+  
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+      maxZoom: 19
+    }).addTo(map);
+  
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/light_only_labels/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      maxZoom: 19,
+      pane: 'overlayPane'
+    }).addTo(map);
+  
+    // --- Draw polygons and add hover/select behavior ---
+    AREAS.forEach(area => {
+      const layer = L.polygon(area.polygon, {
+        color: area.color,
+        fillColor: area.fillColor,
+        fillOpacity: 0.3,
+        weight: 2
+      }).addTo(map);
+  
+      polygonLayers[area.name] = layer;
+  
+      // Mouseover: show a tooltip with the name
+      layer.on('mouseover', function(e) {
+        if (!layer._selected) {
+          hoveredTooltip = L.tooltip({
+            permanent: false,
+            direction: 'top',
+            className: 'area-tooltip'
+          })
+            .setLatLng(getPolygonCenter(area.polygon))
+            .setContent(`<b>${area.name}</b>`)
+            .addTo(map);
+        }
+      });
+      // Mouseout: hide the tooltip
+      layer.on('mouseout', function(e) {
+        if (hoveredTooltip) {
+          map.removeLayer(hoveredTooltip);
+          hoveredTooltip = null;
+        }
+      });
+  
+      // Click: select and filter
+      layer.on('click', function() {
+        // Remove tooltip if open
+        if (hoveredTooltip) {
+          map.removeLayer(hoveredTooltip);
+          hoveredTooltip = null;
+        }
+        // Reset selection
+        Object.values(polygonLayers).forEach(l => {
+          l.setStyle({ fillOpacity: 0.3, weight: 2 });
+          l._selected = false;
+        });
+        // Highlight this one
+        layer.setStyle({ fillOpacity: 0.5, weight: 3 });
+        layer._selected = true;
+        map.fitBounds(layer.getBounds());
+        fetchFilteredProjects({ clicked_location_name: area.name });
+      });
+    });
+  
+    // Utility: get a center point of polygon for tooltip
+    function getPolygonCenter(polygon) {
+      let lats = polygon.map(c => c[0]), lngs = polygon.map(c => c[1]);
+      return [
+        (Math.min(...lats) + Math.max(...lats)) / 2,
+        (Math.min(...lngs) + Math.max(...lngs)) / 2
+      ];
+    }
+  
+    function getFilterState() {
+      return {
+        locations: $('#locationFilter').val() || [],
+        developers: $('#developerFilter').val() || [],
+        finishingSpecs: $('#finishingFilter').val() || [],
+        assetTypes: $('#assetTypeFilter').val() || []
+      };
+    }
+  
+    function requestsAreEqual(a, b) {
+      return JSON.stringify(a) === JSON.stringify(b);
+    }
+  
+    const handleFilterChange = debounce(function () {
+      const currentParams = getFilterState();
+      if (lastRequestParams && requestsAreEqual(currentParams, lastRequestParams)) return;
+      lastRequestParams = currentParams;
+      fetchFilteredProjects();
+      // Reset polygon highlights when filter changes
+      Object.values(polygonLayers).forEach(l => {
+        l.setStyle({ fillOpacity: 0.3, weight: 2 });
+        l._selected = false;
+      });
+    }, 500);
+  
+    function createEnhancedPopup(project) {
+      const popup = document.createElement('div');
+      popup.className = 'project-popup';
+      
+      // Create a mobile-friendly title (truncate if too long)
+      const projectTitle = project.name.length > 30 ? 
+        project.name.substring(0, 30) + '...' : project.name;
+      
+      popup.innerHTML = `
+        <div class="popup-header">
+          <div class="popup-title">${projectTitle}</div>
+          <div class="popup-subtitle">${project.developer} • ${project.location}</div>
+        </div>
+        <div class="popup-content">
+          ${project.unit_count > 0 ? `
+            <div class="units-count">
+              <div class="units-count-number">${project.unit_count}</div>
+              <div class="units-count-label">Units</div>
+            </div>
+          ` : ''}
+          
+          ${(project.price_range !== 'N/A' && project.price_range) || 
+            (project.avg_price !== 'N/A' && project.avg_price) || 
+            (project.psm_range !== 'N/A' && project.psm_range) || 
+            (project.avg_down_payment !== 'N/A' && project.avg_down_payment) ? `
+            <div class="popup-section">
+              <div class="section-title">💰 Pricing</div>
+              <div class="info-grid">
+                ${project.price_range !== 'N/A' && project.price_range ? `
+                  <div class="info-item">
+                    <div class="info-label">Price Range</div>
+                    <div class="info-value highlight">${project.price_range}</div>
+                  </div>
+                ` : ''}
+                ${project.avg_price !== 'N/A' && project.avg_price ? `
+                  <div class="info-item">
+                    <div class="info-label">Avg Price</div>
+                    <div class="info-value">${project.avg_price}</div>
+                  </div>
+                ` : ''}
+                ${project.psm_range !== 'N/A' && project.psm_range ? `
+                  <div class="info-item">
+                    <div class="info-label">PSM Range</div>
+                    <div class="info-value">${project.psm_range}</div>
+                  </div>
+                ` : ''}
+                ${project.avg_down_payment !== 'N/A' && project.avg_down_payment ? `
+                  <div class="info-item">
+                    <div class="info-label">Down Payment</div>
+                    <div class="info-value success">${project.avg_down_payment}</div>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          ` : ''}
+          
+          ${(project.bua_range !== 'N/A' && project.bua_range) || 
+            (project.avg_bua !== 'N/A' && project.avg_bua) ? `
+            <div class="popup-section">
+              <div class="section-title">📐 Area</div>
+              <div class="info-grid">
+                ${project.bua_range !== 'N/A' && project.bua_range ? `
+                  <div class="info-item">
+                    <div class="info-label">BUA Range</div>
+                    <div class="info-value">${project.bua_range}</div>
+                  </div>
+                ` : ''}
+                ${project.avg_bua !== 'N/A' && project.avg_bua ? `
+                  <div class="info-item">
+                    <div class="info-label">Avg BUA</div>
+                    <div class="info-value">${project.avg_bua}</div>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          ` : ''}
+          
+          ${project.unit_types && project.unit_types.length > 0 && project.unit_types.some(type => type !== 'N/A') ? `
+            <div class="popup-section">
+              <div class="section-title">🏠 Unit Types</div>
+              <div class="tags-container">
+                ${project.unit_types.filter(type => type !== 'N/A').slice(0, 4).map(type => `<span class="tag primary">${type}</span>`).join('')}
+                ${project.unit_types.filter(type => type !== 'N/A').length > 4 ? '<span class="tag primary">+' + (project.unit_types.filter(type => type !== 'N/A').length - 4) + '</span>' : ''}
+              </div>
+            </div>
+          ` : ''}
+          
+          ${project.asset_types && project.asset_types.length > 0 && project.asset_types.some(type => type !== 'N/A') ? `
+            <div class="popup-section">
+              <div class="section-title">🏢 Asset Types</div>
+              <div class="tags-container">
+                ${project.asset_types.filter(type => type !== 'N/A').slice(0, 3).map(type => `<span class="tag info">${type}</span>`).join('')}
+                ${project.asset_types.filter(type => type !== 'N/A').length > 3 ? '<span class="tag info">+' + (project.asset_types.filter(type => type !== 'N/A').length - 3) + '</span>' : ''}
+              </div>
+            </div>
+          ` : ''}
+          
+          ${project.finishing_specs && project.finishing_specs.length > 0 && project.finishing_specs.some(spec => spec !== 'N/A') ? `
+            <div class="popup-section">
+              <div class="section-title">✨ Finishing</div>
+              <div class="tags-container">
+                ${project.finishing_specs.filter(spec => spec !== 'N/A').slice(0, 3).map(spec => `<span class="tag success">${spec}</span>`).join('')}
+                ${project.finishing_specs.filter(spec => spec !== 'N/A').length > 3 ? '<span class="tag success">+' + (project.finishing_specs.filter(spec => spec !== 'N/A').length - 3) + '</span>' : ''}
+              </div>
+            </div>
+          ` : ''}
+          
+          ${(project.payment_years && project.payment_years.length > 0 && project.payment_years.some(year => year !== 'N/A')) || 
+            (project.delivery_dates && project.delivery_dates.length > 0 && project.delivery_dates.some(date => date !== 'N/A')) || 
+            (project.maintenance !== 'N/A' && project.maintenance) || 
+            (project.cash_discount !== 'N/A' && project.cash_discount) ? `
+            <div class="popup-section">
+              <div class="section-title">📋 Details</div>
+              <div class="info-grid">
+                ${project.payment_years && project.payment_years.length > 0 && project.payment_years.some(year => year !== 'N/A') ? `
+                  <div class="info-item">
+                    <div class="info-label">Payment Years</div>
+                    <div class="info-value">${project.payment_years.filter(year => year !== 'N/A').slice(0, 2).join(', ')}${project.payment_years.filter(year => year !== 'N/A').length > 2 ? '...' : ''}</div>
+                  </div>
+                ` : ''}
+                ${project.delivery_dates && project.delivery_dates.length > 0 && project.delivery_dates.some(date => date !== 'N/A') ? `
+                  <div class="info-item">
+                    <div class="info-label">Delivery</div>
+                    <div class="info-value">${project.delivery_dates.filter(date => date !== 'N/A').slice(0, 2).join(', ')}${project.delivery_dates.filter(date => date !== 'N/A').length > 2 ? '...' : ''}</div>
+                  </div>
+                ` : ''}
+                ${project.maintenance !== 'N/A' && project.maintenance ? `
+                  <div class="info-item">
+                    <div class="info-label">Maintenance</div>
+                    <div class="info-value">${project.maintenance}</div>
+                  </div>
+                ` : ''}
+                ${project.cash_discount !== 'N/A' && project.cash_discount ? `
+                  <div class="info-item">
+                    <div class="info-label">Cash Discount</div>
+                    <div class="info-value warning">${project.cash_discount}</div>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+        <div class="popup-footer">
+          ${project.last_updated !== 'N/A' && project.last_updated ? `
+            Updated: ${project.last_updated}
+            ${project.months_from_update !== 'N/A' && project.months_from_update ? `(${project.months_from_update}m)` : ''}
+          ` : ''}
+          ${project.source_of_info !== 'N/A' && project.source_of_info ? `
+            <br>Source: ${project.source_of_info}
+          ` : ''}
+        </div>
+      `;
+      return popup.outerHTML;
+    }
+  
+    function fetchFilteredProjects(additionalParams = {}) {
+      if (currentRequest) currentRequest.abort();
+      markers.forEach(marker => map.removeLayer(marker));
+      markers = [];
+      const standardParams = getFilterState();
+      const paramsToSend = { ...standardParams, ...additionalParams };
+      let ajaxData = {};
+      if (paramsToSend.locations && paramsToSend.locations.length) ajaxData['locations[]'] = paramsToSend.locations;
+      if (paramsToSend.developers && paramsToSend.developers.length) ajaxData['developers[]'] = paramsToSend.developers;
+      if (paramsToSend.finishingSpecs && paramsToSend.finishingSpecs.length) ajaxData['finishing_specs[]'] = paramsToSend.finishingSpecs;
+      if (paramsToSend.assetTypes && paramsToSend.assetTypes.length) ajaxData['asset_types[]'] = paramsToSend.assetTypes;
+      if (paramsToSend.clicked_location_name) ajaxData['clicked_location_name'] = paramsToSend.clicked_location_name;
+      
+      
+      const filter_projects_url = "{% url 'filter_projects' %}";
+
+      currentRequest = $.ajax({
+        url: filter_projects_url,
+        method: 'GET',
+        data: ajaxData,
+        success: function (response) {
+          updateMapMarkers(response.projects);
+          currentRequest = null;
+        },
+        error: function (xhr, status, error) {
+          if (status !== 'abort') console.error('Fetch error:', status, error);
+          currentRequest = null;
+        }
+      });
+    }
+  
+    function updateMapMarkers(projects) {
+      if (!projects || projects.length === 0) return;
+      
+      markers.forEach(marker => map.removeLayer(marker));
+      markers = [];
+      
+      projects.forEach(project => {
+        if (project.latitude && project.longitude) {
+          const customIcon = L.divIcon({
+            className: 'custom-pin',
+            html: `
+              <div class="pin-container">
+                <div class="pin-label">${project.name.split(' ').slice(0, 2).join(' ')}</div>
+                <div class="pin-top"></div>
+                <div class="pin-middle"></div>
+                <div class="pin-bottom"></div>
+              </div>`,
+            iconSize: [50, 50],
+            iconAnchor: [25, 50],
+            popupAnchor: [0, -45]
+          });
+          
+          const marker = L.marker([project.latitude, project.longitude], {
+            icon: customIcon
+          }).addTo(map);
+          
+          const popupContent = createEnhancedPopup(project);
+          marker.bindPopup(popupContent, {
+            maxWidth: 300,
+            className: 'enhanced-popup'
+          });
+          
+          markers.push(marker);
+        }
+      });
+      
+      if (markers.length > 0) {
+        const group = new L.featureGroup(markers);
+        map.fitBounds(group.getBounds().pad(0.1));
+      }
+    }
+  
+    $('#resetFilters').click(function () {
+      $('select').val(null).trigger('change');
+      // Reset highlights
+      Object.values(polygonLayers).forEach(l => {
+        l.setStyle({ fillOpacity: 0.3, weight: 2 });
+        l._selected = false;
+      });
+      map.setView([30.0444, 31.2357], 7);
+      markers.forEach(marker => map.removeLayer(marker));
+      markers = [];
+      lastRequestParams = null;
+    });
+  
+    initializeSelect2();
+    // Wait for interaction before loading data
+  });
+</script>
+  
+{% endblock %}

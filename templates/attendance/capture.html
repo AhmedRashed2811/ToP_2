@@ -1,0 +1,197 @@
+{% extends 'attendance/base.html' %}
+
+{% block title %}Record Attendance{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    /* User specific font preference */
+    body { font-family: "Times New Roman", Times, serif; }
+
+    /* Custom Styles for Mobile Optimization */
+    .video-wrapper {
+        position: relative;
+        width: 100%;
+        /* 4:3 Aspect Ratio standard for webcams/selfie cams to prevent black bars */
+        padding-top: 133.33%; 
+        background-color: #000;
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+    }
+
+    .video-wrapper video {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover; /* Ensures video fills the area on all screens */
+        transform: scaleX(-1); /* Mirror effect for natural selfie feel */
+    }
+
+    /* Adjust aspect ratio for desktop to be less tall */
+    @media (min-width: 768px) {
+        .video-wrapper {
+            padding-top: 75%; /* 4:3 ratio on desktop */
+        }
+    }
+
+    .btn-action {
+        transition: transform 0.2s;
+        font-family: sans-serif; /* Buttons usually look better with sans-serif, remove if strictly Times New Roman needed */
+        font-weight: 600;
+    }
+
+    .btn-action:active {
+        transform: scale(0.95);
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+        <div class="col-12 col-md-8 col-lg-5">
+            <div class="card border-0 shadow-lg rounded-4">
+                <div class="card-body p-4 text-center">
+                    <h3 class="mb-4 fw-bold">Daily Attendance</h3>
+                    
+                    <div class="video-wrapper mb-4">
+                        <video id="video" autoplay playsinline muted></video>
+                    </div>
+
+                    <div class="d-grid gap-3 d-flex justify-content-center">
+                        <button class="btn btn-success btn-lg px-4 flex-grow-1 btn-action rounded-pill" onclick="handleAttendance('IN')">
+                            <i class="bi bi-box-arrow-in-right"></i> Check In
+                        </button>
+                        <button class="btn btn-danger btn-lg px-4 flex-grow-1 btn-action rounded-pill" onclick="handleAttendance('OUT')">
+                            <i class="bi bi-box-arrow-left"></i> Check Out
+                        </button>
+                    </div>
+                    
+                    <p class="text-muted mt-3 small">
+                        <i class="bi bi-geo-alt-fill"></i> Location access required
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<canvas id="canvas" class="d-none"></canvas>
+
+<script>
+    const video = document.getElementById('video');
+
+    // 1. Initialize Camera
+    // 'facingMode: user' ensures the front camera is used on mobile
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+        .then(stream => {
+            video.srcObject = stream;
+        })
+        .catch(err => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Camera Error',
+                text: 'Could not access camera: ' + err.message,
+                confirmButtonColor: '#d33'
+            });
+        });
+
+    function handleAttendance(type) {
+        // Check Geolocation Support
+        if (!navigator.geolocation) {
+            Swal.fire('Error', 'Geolocation is not supported by your browser.', 'error');
+            return;
+        }
+
+        // 2. Show Loading State (SweetAlert)
+        Swal.fire({
+            title: 'Processing...',
+            text: 'Acquiring location and capturing photo.',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        // 3. Get Location
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                // Success Callback: Capture Image & Send Data
+                submitAttendance(type, pos);
+            }, 
+            (err) => {
+                // Error Callback
+                let errorMsg = "Unable to retrieve location.";
+                if (err.code === 1) errorMsg = "Location permission denied. Please allow access.";
+                else if (err.code === 2) errorMsg = "Location unavailable.";
+                else if (err.code === 3) errorMsg = "Location request timed out.";
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Location Error',
+                    text: errorMsg,
+                    confirmButtonColor: '#f39c12'
+                });
+            }, 
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    }
+
+    function submitAttendance(type, pos) {
+        const canvas = document.getElementById('canvas');
+        
+        // Match canvas size to video stream resolution
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Draw the image
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+
+        // Convert to Base64 string
+        const imageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+
+        const payload = {
+            action: type,
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            image: imageBase64
+        };
+
+        // 4. Send to Backend
+        fetch("{% url 'attendance_capture_view' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: type === 'IN' ? 'Checked In!' : 'Checked Out!',
+                    text: data.message,
+                    timer: 3000,
+                    showConfirmButton: false
+                });
+            } else {
+                throw new Error(data.message || 'Unknown server error');
+            }
+        })
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Submission Failed',
+                text: error.message,
+                confirmButtonColor: '#d33'
+            });
+        });
+    }
+</script>
+{% endblock %}

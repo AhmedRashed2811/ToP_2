@@ -1,0 +1,509 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+
+{% block title %}Unit Mapping (Admin){% endblock %}
+
+{% block content %}
+<script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+
+<style>
+    /* ... (Keep your general layout styles) ... */
+    table { margin-top: 0%; }
+    table td:first-child { font-weight: bold; background: #f2f2f2; min-width: 147px; max-width: 168px; }
+    .unit-mapping-container { max-width: 1200px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; }
+    .project-selection { background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    
+    .masterplan-container {
+        position: relative; background: #f0f0f0; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden; display: flex; justify-content: center; align-items: center;
+        height: 700px; width: 100%; cursor: grab; touch-action: none;
+    }
+    .masterplan-container:active { cursor: grabbing; }
+
+    .zoom-controls { position: absolute; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
+    .zoom-btn { width: 40px; height: 40px; background: #921b1fff; border: 1px solid #ccc; border-radius: 4px; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    .zoom-btn:hover { background: #f8f8f8; }
+
+    #masterplan-wrapper { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; transform-origin: center center; }
+    .masterplan-image-wrapper { position: relative; display: flex; justify-content: center; align-items: center; }
+    .masterplan-image { max-width: 100%; height: auto; display: block; cursor: crosshair; object-fit: contain; }
+    
+    /* --- FIXED MARKER STYLES --- */
+    .unit-marker {
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        background: #6c757d; 
+        border: 2px solid #fff;
+        border-radius: 50% 50% 50% 0;
+        cursor: pointer;
+        z-index: 10;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        transition: background 0.2s ease;
+        transform-origin: 0% 100%;
+        transform: translate(0%, -100%) rotate(-45deg); 
+    }
+    
+    .unit-marker span {
+        transform: rotate(45deg); 
+        color: white;
+        font-size: 9px;
+        font-weight: bold;
+        white-space: nowrap;
+        margin-bottom: 0; 
+        margin-left: 0;
+    }
+    
+    .unit-marker.building { background: #045eefff !important; }
+    .unit-marker.available { background: #28a745 !important; }
+    .unit-marker.unavailable { background: #dc3545 !important; }
+    .unit-marker.blocked { background: #ffc107 !important; }
+    .unit-marker.blocked span { color: #333 !important; }
+
+    /* Tooltips & Other Styles */
+    .unit-tooltip { position: absolute; background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); z-index: 1000; min-width: 280px; width: max-content; max-width: 350px; text-align: left; }
+    .unit-tooltip.wide-tooltip { min-width: 300px; width: max-content; max-width: 96%; }
+    .tooltip-header { font-weight: bold; margin-bottom: 10px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+    .tooltip-close { cursor: pointer; font-size: 22px; color: #999; line-height: 1; }
+    .tooltip-close:hover { color: #dc3545; }
+    .tooltip-field { margin-bottom: 5px; display: flex; justify-content: space-between; }
+    .tooltip-field label { font-weight: bold; margin-right: 10px; color: #666; min-width: 120px; }
+    .building-units-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px; }
+    .building-units-table th, .building-units-table td { padding: 6px; border: 1px solid #eee; vertical-align: middle; }
+    .building-units-table th { background-color: #f8f9fa; font-weight: bold; color: #555; position: sticky; top: 0; }
+    .building-scroll-area { max-height: 250px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #eee; }
+    .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
+    .btn-sm { padding: 4px 8px; font-size: 12px; }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .delete-child-btn { background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 4px 8px; font-size: 11px; }
+
+    .unit-form { background: #f8f9fa; padding: 20px; border-radius: 8px; z-index: 2000; box-shadow: 0 5px 15px rgba(0,0,0,0.3); width: 320px; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1px solid #ccc; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+    .form-control { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    .no-masterplan, .loading { text-align: center; padding: 40px; color: #666; }
+
+    @media (max-width: 767.98px) {
+        .unit-mapping-container { padding: 10px; }
+        .project-selection { padding: 15px; margin-bottom: 15px; }
+        .masterplan-container { height: 60vh; background: #e9e9e9; }
+        .unit-marker { width: 22px; height: 22px; } 
+        .unit-tooltip { position: fixed; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%); min-width: 90vw; max-width: 90vw; z-index: 9999; }
+        .unit-tooltip.wide-tooltip { top: 5vh !important; transform: translateX(-50%); max-height: 90vh; overflow-y: auto; }
+        .tooltip-field { flex-direction: column; margin-bottom: 8px; }
+        .building-units-table { display: block; overflow-x: auto; white-space: nowrap; }
+    }
+</style>
+
+<div class="unit-mapping-container">
+    <h1>Unit Mapping (Admin)</h1>
+    
+    <div class="project-selection">
+        <div class="form-group">
+            <label for="project-select">Select Project:</label>
+            <select id="project-select" class="form-control">
+                <option value="">-- Select a Project --</option>
+                {% for project in projects %}
+                    <option value="{{ project.id }}">{{ project.name }} - {{ project.company.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    
+    <div class="masterplan-container" id="masterplan-container">
+        <div class="zoom-controls">
+            <button class="zoom-btn" id="zoom-in" title="Zoom In">+</button>
+            <button class="zoom-btn" id="zoom-out" title="Zoom Out">-</button>
+            <button class="zoom-btn" id="zoom-reset" title="Reset">↻</button>
+        </div>
+
+        <div id="masterplan-content" style="width: 100%; height: 100%;">
+            <div class="no-masterplan" id="no-masterplan">
+                <p>Please select a project to load its masterplan</p>
+            </div>
+            <div class="loading" id="loading" style="display: none;">
+                <p>Loading masterplan...</p>
+            </div>
+            <div id="masterplan-wrapper" style="display: none;"></div>
+        </div>
+    </div>
+</div>
+
+<template id="tooltip-template-single">
+    <div class="unit-tooltip">
+        <div class="tooltip-header"><span data-field="unit_code"></span><span class="tooltip-close" title="Close">&times;</span></div>
+        <div class="tooltip-field"><label>Price:</label><span data-field="price"></span></div>
+        <div class="tooltip-field"><label>Gross Area:</label><span data-field="sellable_area"></span></div>
+        <div class="tooltip-field"><label>Land Area:</label><span data-field="land_area"></span></div>
+        <div style="margin-top: 10px; text-align: center; border-top: 1px solid #eee; padding-top: 10px;">
+            <button class="btn btn-danger btn-sm delete-unit">Delete Pin</button>
+        </div>
+    </div>
+</template>
+
+<template id="tooltip-template-building">
+    <div class="unit-tooltip wide-tooltip">
+        <div class="tooltip-header"><span data-field="building_name"></span><span class="tooltip-close" title="Close">&times;</span></div>
+        <div class="building-scroll-area">
+            <table class="building-units-table">
+                <thead><tr><th>Unit</th><th>Floor</th><th>Price</th><th>Area</th><th>Action</th></tr></thead>
+                <tbody class="units-list-body"></tbody>
+            </table>
+        </div>
+        <div style="margin-top: 10px; text-align: center; border-top: 1px solid #eee; padding-top: 10px;">
+            <button class="btn btn-danger btn-sm delete-unit">Delete Entire Stack</button>
+        </div>
+    </div>
+</template>
+
+<script>
+    function getCookie(name) {
+        let c = null; if (document.cookie && document.cookie !== '') { const s = document.cookie.split(';'); for (let i = 0; i < s.length; i++) { const k = s[i].trim(); if (k.substring(0, name.length + 1) === (name + '=')) { c = decodeURIComponent(k.substring(name.length + 1)); break; } } } return c;
+    }
+    const csrftoken = getCookie('csrftoken');
+    const urls = {
+        getProjectMasterplan: "{% url 'get_project_masterplan' 0 %}".replace('/0/', '/'),
+        saveUnitPosition: "{% url 'save_unit_position' %}",
+        deleteUnitPosition: "{% url 'delete_unit_position' 0 %}".replace('/0/', '/'),
+        deleteChildUnit: "{% url 'delete_child_unit' 0 %}".replace('/0/', '/'),
+        getUnitDetails: "{% url 'get_unit_details_for_masterplan' 'unit_code' %}".replace('/unit_code/', '/')
+    };
+
+    function formatPrice(value) { if (!value || value === '-' || value === 'N/A') return 'N/A'; let num = parseFloat(value); return isNaN(num) ? value : Math.floor(num).toLocaleString('en-US'); }
+    function isMobileDevice() { return window.innerWidth <= 767.98; }
+    function getPinLabel(unitCode) {
+        if (!unitCode) return '';
+        let cleanCode = unitCode.split('_')[0];
+        let parts = cleanCode.split('-');
+        let lastPart = parts[parts.length - 1];
+        return /^\d+$/.test(lastPart) ? parseInt(lastPart, 10) : lastPart;
+    }
+
+    $(document).ready(function() {
+        let currentProjectId = null;
+        let currentTooltip = null;
+        let currentBackdrop = null;
+        let panzoomInstance = null;
+        
+        // --- Global Keydown Listener for ESC Key ---
+        $(document).on('keydown', function(e) {
+            if (e.key === "Escape" || e.which === 27) {
+                if (currentTooltip) closeTooltip();
+                $('.unit-form').remove();
+                if (currentBackdrop) { 
+                    currentBackdrop.remove(); 
+                    currentBackdrop = null; 
+                }
+            }
+        });
+
+        $('#project-select').change(function() {
+            const projectId = $(this).val();
+            if (currentTooltip) closeTooltip();
+            if (projectId) loadMasterplan(projectId);
+            else showNoMasterplan();
+        });
+        
+        function loadMasterplan(projectId) {
+            currentProjectId = projectId;
+            showLoading();
+            if (panzoomInstance) { panzoomInstance.dispose(); panzoomInstance = null; }
+
+            $.ajax({
+                url: urls.getProjectMasterplan + projectId + '/',
+                type: 'GET',
+                success: function(response) {
+                    if (response.has_masterplan) displayMasterplan(response.image_url, response.unit_positions);
+                    else showNoMasterplan('No masterplan uploaded for this project');
+                },
+                error: function() { showNoMasterplan('Error loading masterplan'); }
+            });
+        }
+        
+        function displayMasterplan(imageUrl, unitPositions) {
+            const wrapper = $('#masterplan-wrapper');
+            wrapper.empty();
+            wrapper.attr('style', 'display: none;');
+
+            const imageWrapper = $('<div class="masterplan-image-wrapper"></div>');
+            const img = $(`<img src="${imageUrl}" class="masterplan-image" alt="Masterplan">`);
+            imageWrapper.append(img);
+            wrapper.append(imageWrapper);
+            wrapper.show();
+            
+            img.on('load', function() {
+                unitPositions.forEach(function(position) { addUnitMarker(position, imageWrapper); });
+                hideLoading();
+
+                const elem = document.getElementById('masterplan-wrapper');
+                panzoomInstance = Panzoom(elem, {
+                    maxScale: 6,
+                    minScale: 1,
+                    contain: null, 
+                    startScale: 1,
+                    animate: true,
+                    cursor: 'crosshair',
+                    zoomOnDoubleClick: false // DISABLE DEFAULT ZOOM ON DOUBLE CLICK
+                });
+                
+                setTimeout(() => { panzoomInstance.reset(); }, 50);
+
+                // --- KEY FIX: Drag Detection via Panzoom Events ---
+                let isPanning = false;
+
+                // Listen to Panzoom events to update the flag
+                elem.addEventListener('panstart', () => {
+                    isPanning = true;
+                });
+
+                elem.addEventListener('panend', () => {
+                    // We use a small timeout because the 'click' event fires 
+                    // immediately after 'mouseup' (panend). We need to ensure
+                    // the click handler sees 'isPanning = true'.
+                    setTimeout(() => {
+                        isPanning = false;
+                    }, 200);
+                });
+
+                // Zoom handling
+                elem.addEventListener('panzoomchange', (event) => {
+                    const scale = event.detail.scale;
+                    let markerScale = 1 / scale; 
+                    if (markerScale < 0.3) markerScale = 0.3; 
+                    $('.unit-marker').css('transform', `translate(0%, -100%) rotate(-45deg) scale(${markerScale})`);
+                });
+
+                $('#zoom-in').off('click').on('click', panzoomInstance.zoomIn);
+                $('#zoom-out').off('click').on('click', panzoomInstance.zoomOut);
+                $('#zoom-reset').off('click').on('click', panzoomInstance.reset);
+                elem.parentElement.addEventListener('wheel', panzoomInstance.zoomWithWheel);
+
+                // --- 1. MOUSE Double Click Handler ---
+                img.on('dblclick', function(e) {
+                    if (isPanning) return;
+
+                    const rect = this.getBoundingClientRect();
+                    const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+                    const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+                    if (isFinite(xPercent) && isFinite(yPercent)) {
+                        showUnitForm(xPercent, yPercent, imageWrapper);
+                    }
+                });
+
+                // --- 2. TOUCH Double Tap Handler ---
+                let lastTap = 0;
+                img.on('touchend', function(e) {
+                    if (isPanning) return; // Ignore if this tap was part of a pan
+
+                    const currentTime = new Date().getTime();
+                    const tapLength = currentTime - lastTap;
+                    
+                    // Detect double tap (taps within 300ms)
+                    if (tapLength < 300 && tapLength > 0) {
+                        e.preventDefault(); // Stop default zoom
+                        
+                        // Extract touch coordinates (must use originalEvent for touch)
+                        const touch = e.originalEvent.changedTouches[0];
+                        const rect = this.getBoundingClientRect();
+                        const xPercent = ((touch.clientX - rect.left) / rect.width) * 100;
+                        const yPercent = ((touch.clientY - rect.top) / rect.height) * 100;
+                        
+                        if (isFinite(xPercent) && isFinite(yPercent)) {
+                            showUnitForm(xPercent, yPercent, imageWrapper);
+                        }
+                        lastTap = 0; // Reset
+                    } else {
+                        lastTap = currentTime;
+                    }
+                });
+            });
+
+            img.on('error', function() { showNoMasterplan('Error loading masterplan image'); });
+        }
+
+        function addUnitMarker(position, container) {
+            const xPercent = parseFloat(position.x_percent);
+            const yPercent = parseFloat(position.y_percent);
+            if (isNaN(xPercent) || isNaN(yPercent)) return;
+            
+            let markerClass = 'unit-marker';
+            if (position.unit_type === 'building') markerClass += ' building';
+            else {
+                if (position.unit_status === 'Available') markerClass += ' available';
+                else if(position.unit_status === 'Blocked Development') markerClass += ' blocked';
+                else markerClass += ' unavailable';
+            }
+            
+            const label = getPinLabel(position.unit_code);
+            const marker = $(`<div class="${markerClass}" 
+                            data-position-id="${position.id}"
+                            data-unit-code="${position.unit_code}"
+                            title="${position.unit_code}"><span>${label}</span></div>`);
+            
+            marker.css({ left: xPercent + '%', top: yPercent + '%' });
+            
+            marker.on('click touchend', function(e) {
+                e.stopPropagation(); 
+                if(e.type === 'touchend') e.preventDefault();
+                showUnitTooltip(position, marker);
+            });
+            container.append(marker);
+        }
+        
+        function showUnitForm(xPercent, yPercent, container) {
+            $('.unit-form').remove();
+            if (currentTooltip) closeTooltip();
+            
+            currentBackdrop = $('<div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1999;"></div>')
+                .appendTo('body')
+                .on('click', function() { $('.unit-form').remove(); $(this).remove(); });
+
+            const form = $(`
+                <div class="unit-form">
+                    <h4 style="margin-top:0; margin-bottom:15px; text-align:center;">Add Position</h4>
+                    <div class="form-group">
+                        <label>Type:</label>
+                        <select class="form-control unit-type-select">
+                            <option value="single">Single Unit</option>
+                            <option value="building">Building (Stack)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label id="main-label-text">Unit Code:</label>
+                        <input type="text" class="form-control main-code" placeholder="e.g. A-101">
+                        <small id="help-text" style="display:none; color: #666; font-size: 0.85em; margin-top:5px; line-height:1.2; display:block;">Enter <b>ONE</b> reference unit code.</small>
+                    </div>
+                    <div style="margin-top:20px; text-align:center;">
+                        <button class="btn btn-success save-unit">Save</button>
+                        <button class="btn btn-danger cancel-unit">Cancel</button>
+                    </div>
+                </div>
+            `);
+            
+            $('body').append(form);
+            
+            $('#help-text').hide(); 
+            form.find('.unit-type-select').change(function() {
+                if ($(this).val() === 'building') { $('#main-label-text').text('Reference Unit Code:'); $('#help-text').show(); } 
+                else { $('#main-label-text').text('Unit Code:'); $('#help-text').hide(); }
+            });
+            
+            setTimeout(() => form.find('.main-code').focus(), 100);
+            
+            function triggerSave() {
+                const type = form.find('.unit-type-select').val();
+                const rawCode = form.find('.main-code').val();
+                const mainCode = rawCode ? rawCode.trim() : '';
+                saveUnitPosition(xPercent, yPercent, type, mainCode, form);
+            }
+
+            form.find('.save-unit').click(triggerSave);
+            form.find('.main-code').on('keypress', function(e) {
+                if(e.which === 13) { e.preventDefault(); triggerSave(); } 
+            });
+            
+            form.find('.cancel-unit').click(function() {
+                form.remove();
+                if (currentBackdrop) { currentBackdrop.remove(); currentBackdrop = null; }
+            });
+        }
+        
+        function saveUnitPosition(xPercent, yPercent, type, mainCode, form) {
+            if (!mainCode) { alert('Please enter a Code'); return; }
+            const xFixed = parseFloat(xPercent).toFixed(3);
+            const yFixed = parseFloat(yPercent).toFixed(3);
+            
+            $.ajax({
+                url: urls.saveUnitPosition,
+                type: 'POST',
+                headers: {'X-CSRFToken': csrftoken},
+                data: { project_id: currentProjectId, unit_code: mainCode, unit_type: type, x_percent: xFixed, y_percent: yFixed },
+                success: function(response) {
+                    if (response.success) {
+                        form.remove();
+                        if (currentBackdrop) { currentBackdrop.remove(); currentBackdrop = null; }
+                        const wrapper = $('.masterplan-image-wrapper');
+                        const newPosition = { id: response.position_id, unit_code: response.unit_code, unit_type: response.unit_type, x_percent: response.x_percent, y_percent: response.y_percent, unit_status: response.unit_status };
+                        addUnitMarker(newPosition, wrapper);
+                    }
+                },
+                error: function(xhr) {
+                    const error = xhr.responseJSON.error || 'Error saving unit position';
+                    alert(error);
+                }
+            });
+        }
+        
+        function showUnitTooltip(position, marker) {
+            closeTooltip();
+            $.ajax({
+                url: urls.getUnitDetails + position.unit_code + '/',
+                type: 'GET',
+                success: function(response) {
+                    let tooltipContent;
+                    if (response.type === 'building') {
+                        const template = document.getElementById('tooltip-template-building');
+                        tooltipContent = $(template.innerHTML);
+                        tooltipContent.find('[data-field="building_name"]').text(response.building_name);
+                        const tbody = tooltipContent.find('.units-list-body');
+                        if (response.data.length === 0) tbody.append('<tr><td colspan="5">No units details found</td></tr>');
+                        else {
+                            response.data.forEach(u => {
+                                const formattedPrice = formatPrice(u.interest_free_unit_price);
+                                tbody.append(`<tr><td>${u.unit_code}</td><td>${u.floor||'-'}</td><td>${formattedPrice}</td><td>${u.sellable_area}</td><td><button class="delete-child-btn" data-child-id="${u.child_id}">X</button></td></tr>`);
+                            });
+                        }
+                    } else {
+                        const template = document.getElementById('tooltip-template-single');
+                        tooltipContent = $(template.innerHTML);
+                        const u = response.data;
+                        tooltipContent.find('[data-field="unit_code"]').text(u.unit_code);
+                        tooltipContent.find('[data-field="price"]').text(formatPrice(u.interest_free_unit_price));
+                        tooltipContent.find('[data-field="sellable_area"]').text(u.sellable_area || '-');
+                        tooltipContent.find('[data-field="land_area"]').text(u.land_area || '-');
+                    }
+                    
+                    $('body').append(tooltipContent);
+                    currentTooltip = tooltipContent;
+                    
+                    if (isMobileDevice()) {
+                        currentBackdrop = $('<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;"></div>').insertBefore(tooltipContent).on('click', closeTooltip);
+                    } else {
+                        const rect = marker[0].getBoundingClientRect();
+                        let left = rect.left + window.scrollX - (tooltipContent.outerWidth()/2) + (rect.width/2);
+                        let top = rect.top + window.scrollY - tooltipContent.outerHeight() - 10;
+                        if(left < 10) left = 10;
+                        if(left + tooltipContent.outerWidth() > window.innerWidth) left = window.innerWidth - tooltipContent.outerWidth() - 10;
+                        if(top < 10) top = rect.bottom + 10;
+                        tooltipContent.css({ position: 'absolute', top: top+'px', left: left+'px', 'z-index': '9999' });
+                    }
+
+                    tooltipContent.find('.tooltip-close').on('click', function(e) { e.stopPropagation(); closeTooltip(); });
+                    tooltipContent.on('click', '.delete-child-btn', function(e) {
+                          e.stopPropagation();
+                          const btn = $(this);
+                          $.ajax({ url: urls.deleteChildUnit + btn.attr('data-child-id') + '/', type: 'DELETE', headers: {'X-CSRFToken': csrftoken}, success: function(r) { if(r.success) btn.closest('tr').remove(); } });
+                    });
+                    tooltipContent.find('.delete-unit').on('click', function() {
+                        deleteUnitPosition(position.id, closeTooltip);
+                    });
+                },
+                error: function() { alert('Error loading details'); }
+            });
+        }
+
+        function deleteUnitPosition(positionId, callback) {
+            $.ajax({ url: urls.deleteUnitPosition + positionId + '/', type: 'DELETE', headers: {'X-CSRFToken': csrftoken}, success: function(response) { if (response.success) { if (typeof callback === 'function') callback(); $(`.unit-marker[data-position-id="${positionId}"]`).remove(); } } });
+        }
+        
+        function closeTooltip() { if (currentTooltip) { currentTooltip.remove(); currentTooltip = null; } if (currentBackdrop) { currentBackdrop.remove(); currentBackdrop = null; } }
+        function showLoading() { $('#no-masterplan, #masterplan-wrapper').hide(); $('#loading').show(); }
+        function hideLoading() { $('#loading').hide(); }
+        function showNoMasterplan(msg='Please select a project') { $('#no-masterplan').html(`<p>${msg}</p>`).show(); $('#masterplan-wrapper, #loading').hide(); }
+    });
+</script>
+{% endblock %}

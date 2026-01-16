@@ -1,0 +1,981 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}Sales Requests{% endblock %}
+
+{% block content %}
+<style>
+    /* --- General Desktop Styles --- */
+    .extend-btn{ height: 35px; }
+    
+    .container { margin-top: 20px; padding: 20px; }
+    
+    /* Default Table Style (Desktop) */
+    table {
+        width: 100%; /* Changed from 90% fixed margin to fluid */
+        margin: 20px 0;
+        border-collapse: collapse;
+    }
+
+    table td:first-child {
+        font-weight: bold;
+        background: #f2f2f2;
+        min-width: 80px;
+        max-width: 100%;
+    }
+
+    @media (min-width: 576px) {
+        .container, .container-sm {
+        max-width: 100%;
+    }
+}
+
+    th, td {
+        padding: 12px;
+        text-align: center;
+        border: 1px solid #ccc;
+    }
+
+    th {
+        background-color: #f2f2f2;
+        font-size: 16px;
+        cursor: pointer;
+    }
+
+    tr:hover { background-color: #f9f9f9; }
+
+    h2 { text-align: center; margin-top: 40px; }
+
+    /* Buttons */
+    .approve-btn { background-color: #007bff; margin-left: 5px; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;}
+    .approve-btn:hover { background-color: #0056b3; }
+
+    .delete-btn { background-color: #dc3545; margin-left: 5px; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;}
+    .delete-btn:hover { background-color: #b02a37; }
+
+    .success-btn{ background-color:#28a745; margin-left: 5px; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;}
+    .success-btn:hover { background-color:#1e7b33; }
+
+    .submit-button { font-size: 13px; }
+
+    .copy-unit { cursor: pointer; color: #007bff; text-decoration: underline; }
+    .copy-unit:hover { color: #0056b3; }
+
+    /* Toast */
+    .custom-toast {
+        position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+        background-color: #28a745; color: white; padding: 10px 20px;
+        border-radius: 8px; font-size: 14px; opacity: 0;
+        transition: all 0.3s ease; z-index: 9999; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .custom-toast.show { opacity: 1; bottom: 50px; }
+
+    /* Search */
+    .search-container {
+        display: flex; justify-content: center; margin-top: 20px; margin-bottom: 10px; gap: 10px;
+    }
+    .search-container input {
+        padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 16px;
+    }
+
+    /* --- MOBILE CARD VIEW CSS (The Magic Part) --- */
+    @media (max-width: 1000px) {
+        
+        /* 1. Reset standard table display to block layout */
+        table, thead, tbody, th, td, tr {
+            display: block;
+        }
+
+        /* 2. Hide the table header (but keep it accessible for screen readers if needed) */
+        thead tr {
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+        }
+
+        /* 3. Style the Table Row as a "Card" */
+        tr {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 10px; /* Rounded corners like the image */
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            padding: 10px;
+        }
+
+        /* 4. Style the Table Data (The rows inside the card) */
+        td {
+            border: none;
+            border-bottom: 1px solid #eee;
+            position: relative;
+            padding-left: 50%; /* Make space for the label */
+            padding-top: 10px;
+            padding-bottom: 10px;
+            text-align: right; /* Values align to the right */
+            min-height: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        td:last-child {
+            border-bottom: 0; /* Remove border from last item (Action) */
+            justify-content: flex-end; /* Align buttons to right/center */
+            padding-left: 0;
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        /* 5. Inject the Label using data-label attribute */
+        td::before {
+            position: absolute;
+            top: 50%; /* Center vertically */
+            left: 10px; /* Anchor to left */
+            transform: translateY(-50%);
+            width: 45%;
+            padding-right: 10px;
+            white-space: nowrap;
+            content: attr(data-label); /* Gets text from HTML */
+            font-weight: bold;
+            text-align: left;
+            color: #555;
+        }
+
+        /* Specific Tweaks for inputs on mobile */
+        .search-container input {
+            width: 30%;
+            font-size: 12px;
+        }
+        
+        /* Ensure container doesn't overflow horizontally */
+        .table-scroll-container {
+            width: 100%;
+            overflow-x: hidden; /* Disable horizontal scroll */
+        }
+        
+        #requestsTable {
+            min-width: auto; /* Remove the forced width */
+            margin: 0;
+        }
+        
+        /* Hide specific columns if empty or not needed on mobile to save space? 
+           Optional: td:nth-of-type(3) { display: none; } 
+        */
+    }
+
+    /* Support Button Styles */
+    #customerSupportBtn {
+        position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px;
+        border-radius: 50%; cursor: pointer; z-index: 9999;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); transition: transform 0.3s ease;
+        background: transparent; padding: 0;
+    }
+    #customerSupportBtn:hover { transform: scale(1.05); }
+    
+    #supportModal {
+        display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%;
+        overflow: auto; background-color: rgba(0, 0, 0, 0.5);
+    }
+    .support-modal-content {
+        background-color: #fff; margin: 10% auto; padding: 30px; border-radius: 10px;
+        max-width: 400px; text-align: center; position: relative;
+    }
+    .support-button {
+        margin: 10px auto; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;
+        display: block; width: 100%; transition: all 0.2s ease;
+    }
+    .whatsapp-btn { background-color: #25D366; color: white; }
+    .email-btn { background-color: #007bff; color: white; }
+    .close-modal { position: absolute; top: 10px; right: 15px; cursor: pointer; font-size: 20px; font-weight: bold; }
+    #emailFormContainer { display: none; margin-top: 15px; }
+    #emailMessage { width: 100%; padding: 8px; margin-top: 8px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #ccc; height: 100px; }
+
+
+    /* Simple CSS Spinner */
+    .spinner {
+        margin: 0 auto;
+        width: 30px;
+        height: 30px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #007bff; /* Blue color */
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @keyframes highlightNew {
+        0% { background-color: #ffeb3b; }
+        100% { background-color: transparent; }
+    }
+</style>
+
+<script>
+    const isImpersonating = {{ is_impersonating|yesno:"true,false" }};
+</script>
+
+{% with user_groups=request.user.groups.all|join:"," %}
+    {% if "Client" in user_groups or "Controller" in user_groups %}
+        <img id="customerSupportBtn" src="{% static 'images/customer-service.png' %}" alt="Customer Support" onclick="document.getElementById('supportModal').style.display = 'block';"/>
+
+        <div id="supportModal">
+            <div class="support-modal-content">
+                <span class="close-modal" onclick="closeSupportModal()">&times;</span>
+                <button class="support-button whatsapp-btn" onclick="openWhatsApp()">Chat on WhatsApp</button>
+                <button class="support-button email-btn" onclick="toggleEmailForm()">Send Email</button>
+                <div id="emailFormContainer">
+                <form id="supportEmailForm" method="POST" action="{% url 'send_support_email' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="sender_email" value="{{ request.user.email }}">
+                    <textarea name="message" id="emailMessage" placeholder="Type your message here..."></textarea>
+                    <div class="support-button email-btn" onclick="document.getElementById('supportEmailForm').submit();" style="text-align: center; user-select: none;">Send</div>
+                </form>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const supportModal = document.getElementById("supportModal");
+            const emailForm = document.getElementById("emailFormContainer");
+            function closeSupportModal() { supportModal.style.display = "none"; emailForm.style.display = "none"; }
+            function toggleEmailForm() { emailForm.style.display = emailForm.style.display === "block" ? "none" : "block"; }
+            function openWhatsApp() { const phoneNumber = '201080321565'; window.open(`https://wa.me/${phoneNumber}`, '_blank'); }
+            window.onclick = function (event) { if (event.target === supportModal) { closeSupportModal(); } };
+        </script>
+    {% endif %} 
+{% endwith %} 
+
+{% if messages %}
+    {% for message in messages %}
+        <p style="color: {% if message.tags == 'success' %}green{% else %}red{% endif %};margin-left: 15%;">{{ message }}</p>
+    {% endfor %}
+{% endif %}
+
+<h2>All Sales Requests</h2>
+
+<div class="search-container">
+    <input type="text" id="searchProjectName" placeholder="Project" />
+    <input type="text" id="searchSalesMan" placeholder="Sales Man" />
+    <input type="text" id="searchUnitCode" placeholder="Unit Code" />
+</div>
+
+<div id="extendModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+    <div style="background:#f9f9f9; padding:30px; border-radius:12px; width:320px; max-width:90%; box-shadow:0 8px 24px rgba(0,0,0,0.2); font-family:sans-serif; text-align:center; position:relative; border:1px solid #ddd;">
+      <button onclick="closeExtendModal()" style="position:absolute; top:10px; right:10px; background:none; border:none; font-size:18px; font-weight:bold; cursor:pointer;">&times;</button>
+      <h4 style="margin-top:0; color:#333; font-size:20px; margin-bottom:20px;">Select Extension</h4>
+      <label for="extendHours" style="display:block; margin-bottom:5px; font-weight:bold; color:#555;">Hours:</label>
+      <select id="extendHours" style="width:100%; padding:8px 12px; margin-bottom:15px; border-radius:6px; border:1px solid #ccc; font-size:14px; background:white;"></select>
+      <label for="extendMinutes" style="display:block; margin-bottom:5px; font-weight:bold; color:#555;">Minutes:</label>
+      <select id="extendMinutes" style="width:100%; padding:8px 12px; margin-bottom:20px; border-radius:6px; border:1px solid #ccc; font-size:14px; background:white;"></select>
+      <div style="display:flex; justify-content:space-between; gap:10px;">
+        <button onclick="closeExtendModal()" style="flex:1; padding:10px; background:#f44336; color:white; border:none; border-radius:6px; font-size:14px; cursor:pointer;">Cancel</button>
+        <button onclick="confirmExtension()" style="flex:1; padding:10px; background:#4CAF50; color:white; border:none; border-radius:6px; font-size:14px; cursor:pointer;">Apply</button>
+      </div>
+      <input type="hidden" id="targetRequestId">
+    </div>
+</div>
+
+<div id="confirmModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+    <div style="background:#fff; padding:25px; border-radius:10px; width:350px; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,0.2);">
+        
+        <h5 id="confirmMessage" style="margin-top:0; font-size:18px; color:#333;">Are you sure?</h5>
+        
+        <div id="confirmBtnsContainer" style="margin-top:20px; display:flex; justify-content:space-between; gap:10px;">
+            <button id="confirmNoBtn" style="flex:1; padding:10px; background:#f44336; color:white; border:none; border-radius:6px; cursor:pointer;">No</button>
+            <button id="confirmYesBtn" style="flex:1; padding:10px; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer;">Yes</button>
+        </div>
+
+        <div id="confirmLoading" style="display:none; margin-top:20px;">
+            <div class="spinner"></div>
+            <p style="margin-top:10px; color:#666; font-size:14px;">Processing...</p>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    let confirmCallback = null;
+
+    function showConfirm(message, callback) {
+        document.getElementById("confirmMessage").textContent = message;
+        
+        // Reset State: Show buttons, hide loader
+        document.getElementById("confirmBtnsContainer").style.display = "flex";
+        document.getElementById("confirmLoading").style.display = "none";
+        
+        document.getElementById("confirmModal").style.display = "flex";
+        confirmCallback = callback;
+    }
+
+    // YES Button
+    document.getElementById("confirmYesBtn").addEventListener("click", () => {
+        if (confirmCallback) {
+            // We pass 'true' but we DO NOT close the modal here anymore
+            // The calling function (approveRequest) will handle the UI
+            confirmCallback(true);
+        }
+    });
+
+    // NO Button
+    document.getElementById("confirmNoBtn").addEventListener("click", () => {
+        if (confirmCallback) confirmCallback(false);
+        document.getElementById("confirmModal").style.display = "none";
+    });
+</script>
+
+<div class="table-scroll-container">
+    <table id="requestsTable">
+        <thead>
+            <tr>
+                <th>Project Name</th>
+                <th>Sales Man</th>
+                <th>Lead ID</th>
+                {% if major_project_config.show_lead_name %}
+                    <th>Lead Name</th>
+                {% endif %}
+
+                {% if major_project_config.show_lead_phone_number %}
+                    <th>Phone Number</th>
+                {% endif %}
+                <th>Unit Code</th>
+                <th>Discount</th>
+                <th id="dateHeader">Date ⬍</th>
+                <th>Timer</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        
+        <tbody id="requestsBody">
+            {% for request in sales_requests %}
+            <tr>
+                <td data-label="Project Name" class="sales-man">{{ request.project.name }}</td>
+                <td data-label="Sales Man" class="sales-man">{{ request.sales_man.full_name }}</td>
+                <td data-label="Lead ID" class="copy-unit" onclick="copyToClipboard('{{ request.client_id }}')">{{ request.client_id }}</td>
+                
+                {% if major_project_config.show_lead_name %}
+                    <td data-label="Lead Name" class="sales-man">{{ request.client_name }}</td>
+                {% endif %}
+
+                {% if major_project_config.show_lead_phone_number %}
+                    <td data-label="Phone" class="copy-unit" onclick="copyToClipboard('{{ request.client_phone_number  }}')">{{ request.client_phone_number }}</td>
+                {% endif %}
+
+                <td data-label="Unit Code">
+                    {% if request.unit.unit_code %}
+                        <span class="copy-unit" onclick="copyToClipboard('{{ request.unit.unit_code }}')">{{ request.unit.unit_code }}</span>
+                    {% endif %}
+                </td>
+
+                <td data-label="Discount" class="discount">
+                    {{ request.discount|default:"" }}
+                </td>
+
+                <td data-label="Date" data-date="{{ request.date.isoformat }}">
+                    {{ request.date|date:"Y-m-d H:i" }}
+                </td> 
+
+                <td data-label="Timer" class="countdown-cell">
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; width: 100%;">
+                        <span class="countdown" 
+                            data-target="{{ request.expiration_date.isoformat }}" 
+                            data-request-id="{{ request.id }}">
+                        </span>
+                        <button class="extend-btn" style="background-color: chocolate; color: white; border:none; border-radius:4px; padding: 4px 10px;">Extend</button>
+                    </div>
+                </td>
+                
+                <td data-label="Action">
+                    <div style="display: flex; flex-direction: row; gap: 6px; align-items: center; justify-content: flex-end; width: 100%;">
+                        <form method="get" action="{% url 'download_sales_pdf' %}" style="margin: 0;">
+                            <input type="hidden" name="unit_code" value="{{ request.id }}">
+                            <button type="submit" class="submit-button approve-btn" style="background-color:#555;">PDF</button>
+                        </form>
+                    
+                        <button class="submit-button success-btn" onclick="giveDiscount({{ request.id }}, this)">Discount</button>
+                        <button class="submit-button delete-btn" onclick='deleteRequest({{ request.id }}, this, "true")'>Unblock</button>                    
+                        <button class="submit-button approve-btn" onclick="approveRequest({{ request.id }}, this)">Approve</button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" style="text-align:center;">No requests found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div id="discountModal" class="modal" style="display:none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+    <div style="background: white; padding: 20px; border-radius: 10px; max-width: 300px; width: 90%; text-align: center; position: relative;">
+        <span onclick="closeDiscountModal()" style="position: absolute; top: 10px; right: 15px; cursor: pointer; font-size: 18px;">&times;</span>
+        <h4>Enter Discount %</h4>
+        <input type="number" id="discountInput" placeholder="..." min="0" max="100" style="width: 50%; padding: 5px; margin: 12px 0;">%
+        <br>
+        <button class="submit-button success-btn" onclick="submitDiscount()">Apply</button>
+    </div>
+</div>
+
+
+<script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
+
+<script>
+    // --- Discount JS ---
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll("td.discount").forEach(cell => {
+            let value = cell.textContent.trim();
+            if (!value) return;
+            let num = parseFloat(value);
+            if (!isNaN(num)) {
+                if (num < 1) num = num * 100;
+                cell.textContent = num.toFixed(2) + "%";
+            }
+        });
+    });
+
+    let currentRequestId = null;
+    function giveDiscount(requestId, button) {
+        currentRequestId = requestId;
+        document.getElementById("discountModal").style.display = "flex";
+    }
+    function closeDiscountModal() {
+        document.getElementById("discountModal").style.display = "none";
+        document.getElementById("discountInput").value = "";
+    }
+    function submitDiscount() {
+        if (isImpersonating) { alert("Access Denied to the Admin"); return; }
+        const discountValue = document.getElementById("discountInput").value;
+        if (!discountValue || isNaN(discountValue) || discountValue <= 0 || discountValue > 100) {
+            showToast("Please enter a valid discount percentage (1–100)", "error"); return;
+        }
+        closeDiscountModal();
+        showConfirm(`Are you sure you want to apply a ${discountValue}% discount?`, (confirmed) => {
+            if (!confirmed) return;
+            fetch("{% url 'apply_discount' %}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+                body: JSON.stringify({ request_id: currentRequestId, discount_percentage: parseFloat(discountValue) })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "success") {
+                    showToast(data.message || "Discount applied");
+                    // Refresh page or update DOM here
+                    location.reload(); 
+                } else { showToast(data.message || "Failed", "error"); }
+            })
+            .catch(err => { console.error(err); showToast("Error"); });
+        });
+    }
+
+    // --- Extension and Timer JS ---
+    function getExtensionMap() { return JSON.parse(localStorage.getItem("extensionMap") || "{}"); }
+    function saveExtensionMap(map) { localStorage.setItem("extensionMap", JSON.stringify(map)); }
+
+
+    function updateCountdowns(){
+        const now = new Date();
+        
+        document.querySelectorAll(".countdown").forEach(cell => {
+            // ✅ Prevent calling delete multiple times on the same expired item
+            if (cell.getAttribute("data-processing-expiry") === "true") return;
+
+            const targetDate = cell.getAttribute("data-target");
+            const requestId = cell.getAttribute("data-request-id");
+            if(!targetDate) return;
+
+            const expiryTime = new Date(targetDate);
+            const remaining = expiryTime - now;
+
+            // ✅ CHANGED: Logic for automatic deletion upon expiration
+            if (remaining <= 0) {
+                // Mark as processing to stop loop
+                cell.setAttribute("data-processing-expiry", "true");
+                
+                cell.textContent = "Unblocking...";
+                cell.style.color = "red";
+                cell.style.fontWeight = "bold";
+
+                // Find the row
+                const row = cell.closest("tr");
+                
+                // Animate Out
+                if (row) {
+                    row.style.transition = "all 0.8s ease";
+                    row.style.opacity = "0";
+                    row.style.transform = "translateX(50px)";
+                }
+
+                // Trigger deleteRequest function (simulating an Unblock click without confirmation)
+                // We pass 'cell' as the button parameter so deleteRequest can find the row to remove() on success
+                deleteRequest(requestId, cell, "false");
+                return;
+            }
+            
+            // Visual styling for active timers
+            cell.style.color = "#333"; 
+
+            const hours = Math.floor((remaining / (1000 * 60 * 60)) % 24);
+            const minutes = Math.floor((remaining / (1000 * 60)) % 60);
+            const seconds = Math.floor((remaining / 1000) % 60);
+            cell.textContent = `${hours.toString().padStart(2, '0')}h ${minutes.toString().padStart(2, '0')}m ${seconds.toString().padStart(2, '0')}s`;
+        });
+    }
+
+    // --- 3. EFFICIENT SYNCING (The "Real-time" fix) ---
+    // Polls the server every 5 seconds for just the time data
+    function fetchUpdates() {
+        fetch("{% url 'get_timer_status' %}", {
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // 'data' is { request_id: "2023-10-27T10:00:00", ... }
+            document.querySelectorAll(".countdown").forEach(cell => {
+                const rid = cell.getAttribute("data-request-id");
+                
+                // If the server has data for this ID
+                if (data[rid]) {
+                    const currentTarget = cell.getAttribute("data-target");
+                    const newTarget = data[rid];
+
+                    // Only update DOM if time actually changed (prevents flickering)
+                    if (currentTarget !== newTarget) {
+                        console.log(`Syncing Timer for ID ${rid}`);
+                        cell.setAttribute("data-target", newTarget);
+                        
+                        // Optional: Flash yellow to show user it updated
+                        cell.style.backgroundColor = "#fff3cd";
+                        setTimeout(() => cell.style.backgroundColor = "transparent", 1000);
+                    }
+                }
+            });
+        })
+        .catch(err => console.error("Sync error (minor):", err));
+    }
+
+    // --- 4. EXTENSION MODAL LOGIC ---
+    function populateTimeDropdowns() {
+        const h = document.getElementById("extendHours");
+        const m = document.getElementById("extendMinutes");
+        h.innerHTML = ""; m.innerHTML = "";
+        
+        // Populate Hours (0 to 5)
+        for (let i = 0; i <= 5; i++) { 
+            let opt = document.createElement("option"); 
+            opt.value = i; opt.textContent = i + " hr"; h.appendChild(opt); 
+        }
+        // Populate Minutes (Steps of 15)
+        for (let i = 0; i < 60; i += 15) { 
+            let opt = document.createElement("option"); 
+            opt.value = i; opt.textContent = i.toString().padStart(2,"0") + " min"; m.appendChild(opt); 
+        }
+    }
+
+    function closeExtendModal() { document.getElementById("extendModal").style.display = "none"; }
+
+    function confirmExtension() {
+        if (typeof isImpersonating !== 'undefined' && isImpersonating) { alert("Access Denied"); return; }
+        
+        const requestId = document.getElementById("targetRequestId").value;
+        const h = parseInt(document.getElementById("extendHours").value)||0;
+        const m = parseInt(document.getElementById("extendMinutes").value)||0;
+        const totalMinutes = (h * 60) + m;
+
+        if(totalMinutes === 0) {
+            showToast("Please select time", "error");
+            return;
+        }
+        
+        const applyBtn = document.querySelector('#extendModal button[onclick="confirmExtension()"]');
+        const originalText = applyBtn.innerText;
+        applyBtn.disabled = true;
+        applyBtn.innerText = "Checking...";
+
+        fetch("{% url 'extend_sales_request' %}", {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json", 
+                "X-CSRFToken": getCookie("csrftoken") 
+            },
+            body: JSON.stringify({ request_id: requestId, minutes: totalMinutes })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "success") {
+                showToast("Timer Extended");
+                closeExtendModal();
+                
+                // Update LOCAL DOM immediately for instant feedback
+                const cell = document.querySelector(`.countdown[data-request-id="${requestId}"]`);
+                if(cell) {
+                    cell.setAttribute("data-target", data.new_expiry);
+                }
+                // (No location.reload() needed anymore!)
+            } else {
+                // This handles the "Max 24h limit" error
+                showToast(data.message, "error");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast("Server Error", "error");
+        })
+        .finally(() => {
+            applyBtn.disabled = false;
+            applyBtn.innerText = originalText;
+        });
+    }
+
+    // --- 5. INITIALIZATION & EVENTS ---
+    document.addEventListener("click", function(e){
+        if(e.target && e.target.classList.contains("extend-btn")){
+            const cell = e.target.closest("td").querySelector(".countdown");
+            const rid = cell.getAttribute("data-request-id");
+            document.getElementById("targetRequestId").value = rid;
+            document.getElementById("extendModal").style.display = "flex";
+        }
+    });
+
+    // Run countdown update every 1 second
+    setInterval(updateCountdowns, 1000);
+    
+    // Run Server Sync every 10 minutes
+    setInterval(fetchUpdates, 600000);
+
+    window.onload = () => { 
+        updateCountdowns(); 
+        populateTimeDropdowns(); 
+    };
+
+
+
+    // --- Helpers ---
+    // const isERP = {{ erp|yesno:"true,false" }};
+    // if (isERP) { document.getElementById("controller-menu").style.display = 'none'; }
+
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => { showToast(`Copied: ${text}`); });
+    }
+
+    function showToast(message, type = "success") {
+        const toast = document.createElement('div');
+        toast.className = 'custom-toast';
+        toast.innerText = message;
+        toast.style.backgroundColor = type === "error" ? "#dc3545" : "#28a745";
+        document.body.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 100);
+        setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 2000);
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+            const cookies = document.cookie.split(";");
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === name + "=") {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // --- Request Actions ---
+    function approveRequest(requestId, button) {
+        if (typeof isImpersonating !== 'undefined' && isImpersonating) { 
+            alert("Access Denied"); return; 
+        }
+
+        showConfirm("Approve this sales request?", (confirmed) => {
+            if (!confirmed) return;
+
+            // 1. UI: Hide Buttons, Show Loader
+            document.getElementById("confirmBtnsContainer").style.display = "none";
+            document.getElementById("confirmLoading").style.display = "block";
+
+            // 2. Perform Request
+            fetch("{% url 'approve_sales_request' %}", {
+                method: "POST", 
+                headers: { 
+                    "Content-Type": "application/json", 
+                    "X-CSRFToken": getCookie("csrftoken") 
+                },
+                body: JSON.stringify({ request_id: requestId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "success") { 
+                    button.closest("tr").remove(); 
+                    showToast(data.message); 
+                } else { 
+                    showToast(data.message, "error"); 
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showToast("An error occurred", "error");
+            })
+            .finally(() => {
+                // 3. Close the modal when EVERYTHING is done (success or error)
+                document.getElementById("confirmModal").style.display = "none";
+            });
+        });
+    }
+
+    function deleteRequest(requestId, button, confirmation) {
+        if (typeof isImpersonating !== 'undefined' && isImpersonating) { 
+            alert("Access Denied"); return; 
+        }
+
+        const executeDelete = () => {
+            // 1. UI: Hide Buttons, Show Loader (Only if modal is open)
+            if (confirmation === "true") {
+                document.getElementById("confirmBtnsContainer").style.display = "none";
+                document.getElementById("confirmLoading").style.display = "block";
+            }
+
+            // 2. Perform Request
+            fetch("{% url 'delete_sales_request' %}", {
+                method: "POST", 
+                headers: { 
+                    "Content-Type": "application/json", 
+                    "X-CSRFToken": getCookie("csrftoken") 
+                },
+                body: JSON.stringify({ request_id: requestId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "success") { 
+                    button.closest("tr").remove(); 
+                    showToast(data.message); 
+                } else { 
+                    showToast(data.message, "error"); 
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showToast("An error occurred", "error");
+            })
+            .finally(() => {
+                // 3. Close the modal when EVERYTHING is done
+                if (confirmation === "true") {
+                    document.getElementById("confirmModal").style.display = "none";
+                }
+            });
+        };
+
+        if (confirmation === "true") {
+            showConfirm("Unblock unit and delete request?", (confirmed) => {
+                if (confirmed) {
+                    executeDelete();
+                }
+            });
+        } else {
+            // Fallback for direct deletion (if ever needed without modal)
+            executeDelete();
+        }
+    }
+
+    // --- Search Filters ---
+    document.getElementById("searchSalesMan").addEventListener("input", filterTable);
+    document.getElementById("searchUnitCode").addEventListener("input", filterTable);
+    document.getElementById("searchProjectName").addEventListener("input", filterTable);
+
+    function filterTable() {
+        const sales = document.getElementById("searchSalesMan").value.toLowerCase();
+        const unit = document.getElementById("searchUnitCode").value.toLowerCase();
+        const project = document.getElementById("searchProjectName").value.toLowerCase();
+        
+        document.querySelectorAll("#requestsBody tr").forEach(row => {
+            const pText = row.querySelector("td:nth-child(1)")?.textContent.toLowerCase() || "";
+            const sText = row.querySelector("td:nth-child(2)")?.textContent.toLowerCase() || "";
+            // Adjust nth-child based on visibility of lead columns in logic, usually Unit is further down
+            // For robustness, finding by content or class is safer, but basic text matching works:
+            const allText = row.textContent.toLowerCase(); 
+            
+            const match = allText.includes(sales) && allText.includes(unit) && allText.includes(project);
+            row.style.display = match ? "" : "none";
+        });
+    }
+
+    // --- Date Sort ---
+    let dateSortAsc = true;
+    document.getElementById("dateHeader").addEventListener("click", function () {
+        const tbody = document.getElementById("requestsBody");
+        const rows = Array.from(tbody.querySelectorAll("tr")).sort((a, b) => {
+            const dateA = new Date(a.querySelector("td[data-date]").dataset.date);
+            const dateB = new Date(b.querySelector("td[data-date]").dataset.date);
+            return dateSortAsc ? dateA - dateB : dateB - dateA;
+        });
+        dateSortAsc = !dateSortAsc;
+        rows.forEach(row => tbody.appendChild(row));
+    });
+
+    // --- 6. PUSHER REAL-TIME UPDATES (No Server Config Required) ---
+    
+    // Initialize Pusher with your Key and Cluster
+    // Pusher.logToConsole = true; // Uncomment to see debug logs in browser console
+
+
+    let companyId = null;
+
+    {% if request.user.companycontroller %}
+        companyId = "{{ request.user.companycontroller.company.id }}";
+    {% elif request.user.companyuser %}
+        companyId = "{{ request.user.companyuser.company.id }}";
+    {% endif %}
+
+
+    if (companyId) {
+        // 2. Initialize Pusher
+        const pusher = new Pusher('c73fae7eaf62ece310af', {
+            cluster: 'eu'
+        });
+
+        // 3. Subscribe dynamically to THIS company's channel
+        const channelName = `company_${companyId}`;
+        const channel = pusher.subscribe(channelName);
+
+        console.log(`Subscribed to Pusher channel: ${channelName}`);
+
+        // 4. Bind to the event
+        channel.bind('my-event', function(data) {
+            showToast("New Sales Request Received!", "success");
+            addNewRowToTable(data);
+        });
+    } else {
+        console.warn("User is not associated with a company. Pusher updates disabled.");
+    }
+
+    // --- 1. ROBUST "Add Row" FUNCTION ---
+    function addNewRowToTable(req) {
+        console.log("Processing New Row:", req); // Debugging
+
+        const tbody = document.getElementById("requestsBody");
+
+        // Clear "No requests" message if it exists
+        if (tbody.rows.length === 1 && tbody.rows[0].innerText.includes("No requests found")) {
+            tbody.innerHTML = "";
+        }
+
+        // Determine visible columns based on Table Headers
+        const headers = Array.from(document.querySelectorAll("#requestsTable thead th")).map(th => th.innerText.trim());
+        const showLeadName = headers.includes("Lead Name");
+        const showPhone = headers.includes("Phone Number");
+
+        // Safe Data Handling (Prevent nulls)
+        const safeData = {
+            project: req.project_name || "",
+            sales_man: req.sales_man || "",
+            client_id: req.client_id || "",
+            client_name: req.client_name || "",
+            phone: req.client_phone_number || "",
+            unit: req.unit_code || "",
+            discount: req.discount ? parseFloat(req.discount).toFixed(2) + '%' : '',
+            date: req.date || "",
+            date_display: req.date_display || "",
+            expiry: req.expiration_date || "",
+            id: req.id
+        };
+
+        const tr = document.createElement("tr");
+
+        // --- SAFE HTML CONSTRUCTION ---
+        // We use data-copy attributes instead of putting values inside onclick('')
+        let html = `
+            <td data-label="Project Name" class="sales-man">${safeData.project}</td>
+            <td data-label="Sales Man" class="sales-man">${safeData.sales_man}</td>
+            
+            <td data-label="Lead ID" class="copy-unit" 
+                data-copy="${safeData.client_id}" onclick="copyFromData(this)">
+                ${safeData.client_id}
+            </td>
+        `;
+
+        {% if major_project_config.show_lead_name %}
+            html += `<td data-label="Lead Name" class="sales-man">${safeData.client_name}</td>`;
+
+        {% endif %}
+
+        {% if major_project_config.show_lead_phone_number %}
+            html += `
+            <td data-label="Phone" class="copy-unit" 
+                data-copy="${safeData.phone}" onclick="copyFromData(this)">
+                ${safeData.phone}
+            </td>`;
+        {% endif %}
+
+        html += `
+            <td data-label="Unit Code">
+                <span class="copy-unit" data-copy="${safeData.unit}" onclick="copyFromData(this)">
+                    ${safeData.unit}
+                </span>
+            </td>
+
+            <td data-label="Discount" class="discount">
+                ${safeData.discount}
+            </td>
+
+            <td data-label="Date" data-date="${safeData.date}">
+                ${safeData.date_display}
+            </td> 
+
+            <td data-label="Timer" class="countdown-cell">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; width: 100%;">
+                    <span class="countdown" 
+                        data-target="${safeData.expiry}" 
+                        data-request-id="${safeData.id}"
+                        style="background-color: #fff3cd; transition: background 1s;">
+                        Calculating...
+                    </span>
+                    <button class="extend-btn" style="background-color: chocolate; color: white; border:none; border-radius:4px; padding: 4px 10px;">Extend</button>
+                </div>
+            </td>
+            
+            <td data-label="Action">
+                <div style="display: flex; flex-direction: row; gap: 6px; align-items: center; justify-content: flex-end; width: 100%;">
+                    <form method="get" action="{% url 'download_sales_pdf' %}" style="margin: 0;">
+                        <input type="hidden" name="unit_code" value="${safeData.id}">
+                        <button type="submit" class="submit-button approve-btn" style="background-color:#555;">PDF</button>
+                    </form>
+                
+                    <button class="submit-button success-btn" onclick="giveDiscount(${safeData.id}, this)">Discount</button>
+                    <button class="submit-button delete-btn" onclick='deleteRequest(${safeData.id}, this, "true")'>Unblock</button>
+                    <button class="submit-button approve-btn" onclick="approveRequest(${safeData.id}, this)">Approve</button>
+                </div>
+            </td>
+        `;
+
+        tr.innerHTML = html;
+        tr.style.animation = "highlightNew 2s ease"; 
+        tbody.prepend(tr);
+
+        updateCountdowns();
+    }
+
+    // --- 2. NEW HELPER FOR SAFE COPYING ---
+    // This reads the value from the data-copy attribute, preventing quote syntax errors
+    function copyFromData(element) {
+        const text = element.getAttribute("data-copy");
+        if(text) copyToClipboard(text);
+    }
+
+
+
+    
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+{% endblock %}

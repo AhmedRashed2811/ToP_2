@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Admin Panel{% endblock %}</title>
+    
+    <!-- Modern Font: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+      :root {
+        /* Modern Color Palette */
+        --primary: #4361ee;
+        --primary-hover: #3a56d4;
+        --primary-light: #eef2ff;
+        
+        --bg-body: #f8f9fa;
+        --bg-surface: #ffffff;
+        
+        --sidebar-bg: #111827; /* Dark Slate */
+        --sidebar-text: #9ca3af;
+        --sidebar-text-active: #ffffff;
+        --sidebar-hover: #1f2937;
+        
+        --text-main: #1f2937;
+        --text-secondary: #6b7280;
+        --border-color: #e5e7eb;
+        
+        --danger: #ef4444;
+        --success: #10b981;
+        
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --radius: 0.75rem;
+      }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        font-family: 'Outfit', sans-serif;
+        background-color: var(--bg-body);
+        color: var(--text-main);
+        display: flex;
+        min-height: 100vh;
+        font-size: 0.95rem;
+      }
+
+      /* Sidebar Styling */
+      .sidebar {
+        width: 280px;
+        background-color: var(--sidebar-bg);
+        color: var(--sidebar-text);
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        height: 100vh;
+        z-index: 1000;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 4px 0 24px rgba(0,0,0,0.1);
+      }
+
+      .sidebar-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      
+      .brand-logo {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: white;
+        letter-spacing: -0.025em;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      /* Sidebar Search */
+      .sidebar-search {
+        padding: 1rem 1.5rem 0.5rem;
+      }
+      
+      .sidebar-search input {
+        width: 100%;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 0.6rem 1rem;
+        border-radius: 0.5rem;
+        color: white;
+        font-size: 0.875rem;
+        outline: none;
+        transition: all 0.2s;
+      }
+      
+      .sidebar-search input:focus {
+        background: rgba(255,255,255,0.1);
+        border-color: var(--primary);
+      }
+
+      .sidebar-nav {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem 0.75rem;
+      }
+      
+      /* Scrollbar for sidebar */
+      .sidebar-nav::-webkit-scrollbar { width: 4px; }
+      .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+      .nav-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.25rem;
+        color: var(--sidebar-text);
+        text-decoration: none;
+        border-radius: 0.5rem;
+        transition: all 0.2s;
+        font-weight: 500;
+        text-transform: capitalize;
+      }
+
+      .nav-item:hover {
+        background-color: var(--sidebar-hover);
+        color: white;
+      }
+
+      .nav-item.active {
+        background-color: var(--primary);
+        color: white;
+        box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+      }
+
+      /* Main Content Layout */
+      .main-content {
+        flex: 1;
+        margin-left: 280px;
+        display: flex;
+        flex-direction: column;
+        transition: margin-left 0.3s ease;
+        width: 100%;
+      }
+
+      /* Topbar */
+      .topbar {
+        background-color: var(--bg-surface);
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 2rem;
+        border-bottom: 1px solid var(--border-color);
+        position: sticky;
+        top: 0;
+        z-index: 900;
+      }
+
+      .user-menu {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+      }
+      
+      .user-pill {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: var(--bg-body);
+        padding: 0.4rem 1rem;
+        border-radius: 2rem;
+        border: 1px solid var(--border-color);
+      }
+
+      .user-avatar {
+        width: 32px;
+        height: 32px;
+        background: var(--primary);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.875rem;
+      }
+
+      .logout-btn {
+        color: var(--danger);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.875rem;
+        transition: opacity 0.2s;
+      }
+      
+      .logout-btn:hover { opacity: 0.8; }
+
+      .toggle-sidebar-btn { display: none; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-main); }
+
+      /* Global Page Styles */
+      .page-content {
+        padding: 2rem;
+        max-width: 1600px;
+        margin: 0 auto;
+        width: 100%;
+      }
+
+      .page-header {
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+
+      .page-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-main);
+        letter-spacing: -0.03em;
+      }
+
+      /* Alerts */
+      .alert {
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border-radius: var(--radius);
+        border-left: 4px solid;
+        font-weight: 500;
+      }
+      .alert-success { background: #ecfdf5; border-color: var(--success); color: #065f46; }
+      .alert-error { background: #fef2f2; border-color: var(--danger); color: #991b1b; }
+      .alert-info { background: #eff6ff; border-color: var(--primary); color: #1e40af; }
+
+      /* Responsive */
+      @media (max-width: 1024px) {
+        .sidebar { transform: translateX(-100%); }
+        .sidebar.open { transform: translateX(0); }
+        .main-content { margin-left: 0; }
+        .toggle-sidebar-btn { display: block; }
+        .overlay {
+          display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(0,0,0,0.5); z-index: 950; backdrop-filter: blur(2px);
+        }
+        .overlay.active { display: block; }
+      }
+    </style>
+    {% block extra_css %}{% endblock %}
+  </head>
+  <body>
+    <div class="overlay" id="sidebarOverlay"></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo">
+           <span style="color:var(--primary)">◆</span> ToP Admin
+        </div>
+        <button class="toggle-sidebar-btn" style="color: white; margin-left: auto;" onclick="toggleSidebar()">✕</button>
+      </div>
+
+      <!-- New Sidebar Search -->
+      <div class="sidebar-search">
+        <input type="text" id="menuSearch" onkeyup="filterMenu()" placeholder="Search models...">
+      </div>
+
+      <nav class="sidebar-nav" id="sidebarMenu">
+        <!-- Return to Website Button -->
+        <a href="{% url 'home' %}" class="nav-item" style="color: #60a5fa; font-weight: 600;">
+          <span style="margin-right: 0.5rem;">←</span> Return to Website
+        </a>
+        <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 0.5rem 0;"></div>
+
+        <a href="{% url 'dashboard_home' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard_home' %}active{% endif %}">
+          Dashboard Home
+        </a>
+        <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 0.5rem 0;"></div>
+        
+        <!-- Models List -->
+        {% for model_name in all_models %}
+        <a href="{% url 'dynamic_model_list' model_name=model_name %}" class="nav-item model-link {% if current_model == model_name %}active{% endif %}">
+          {{ model_name|title }}
+        </a>
+        {% endfor %}
+      </nav>
+    </aside>
+
+    <div class="main-content">
+      <header class="topbar">
+        <button class="toggle-sidebar-btn" onclick="toggleSidebar()">☰</button>
+        <div style="font-weight: 600; color: var(--text-secondary);">
+           {% now "l, F jS" %}
+        </div>
+        <div class="user-menu">
+          <div class="user-pill">
+            <div class="user-avatar">
+              {{ request.user.email|slice:":1"|upper }}
+            </div>
+            <span style="font-weight: 500; font-size: 0.9rem;">
+                {{ request.user.full_name|default:request.user.email }}
+            </span>
+          </div>
+          <a href="{% url 'logout' %}" class="logout-btn">Log out</a>
+        </div>
+      </header>
+
+      <main class="page-content">
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+        
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+
+    <script>
+      function toggleSidebar() {
+        document.getElementById("sidebar").classList.toggle("open");
+        document.getElementById("sidebarOverlay").classList.toggle("active");
+      }
+      document.getElementById("sidebarOverlay").addEventListener("click", toggleSidebar);
+
+      // Function to Search sidebar items
+      function filterMenu() {
+        var input, filter, menu, links, i, txtValue;
+        input = document.getElementById("menuSearch");
+        filter = input.value.toUpperCase();
+        menu = document.getElementById("sidebarMenu");
+        links = menu.getElementsByClassName("model-link");
+        
+        for (i = 0; i < links.length; i++) {
+          txtValue = links[i].textContent || links[i].innerText;
+          if (txtValue.toUpperCase().indexOf(filter) > -1) {
+            links[i].style.display = "";
+          } else {
+            links[i].style.display = "none";
+          }
+        }
+      }
+
+      // Auto-sort sidebar alphabetically on load
+      document.addEventListener("DOMContentLoaded", function() {
+          var list = document.getElementById("sidebarMenu");
+          var items = Array.prototype.slice.call(list.getElementsByClassName("model-link"));
+          
+          items.sort(function(a, b) {
+              return a.textContent.localeCompare(b.textContent);
+          });
+          
+          // Re-append items in sorted order (after the static links)
+          items.forEach(function(item) {
+              list.appendChild(item);
+          });
+      });
+    </script>
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>

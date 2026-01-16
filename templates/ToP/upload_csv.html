@@ -1,0 +1,140 @@
+{% extends 'ToP/base.html' %}
+
+{% block title %}Upload CSV{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 40px auto; text-align: center; font-family: sans-serif;">
+    <h1>Upload Units Data File (CSV)</h1>
+
+    <div id="messageContainer"></div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p style="color: {% if message.tags == 'success' %}green{% else %}red{% endif %};">
+                {{ message }}
+            </p>
+        {% endfor %}
+    {% endif %}
+
+    <form id="uploadForm" style="border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+        {% csrf_token %}
+
+        <div style="margin-bottom: 20px;">
+            <label for="company"><strong>Select Company:</strong></label><br>
+            <select name="company_id" required style="padding: 8px; width: 100%; max-width: 300px; margin-top: 10px;">
+                <option value="">-- Select a Company --</option>
+                {% for company in companies %}
+                    <option value="{{ company.id }}">{{ company.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label><input type="radio" name="upload_mode" value="replace_all"> Replace All Records</label>
+            <label style="margin-left: 20px;"><input type="radio" name="upload_mode" value="insert_new" checked> Insert/Update Records</label>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <input type="file" name="csv_file" id="csv_file" required>
+        </div>
+
+        <div id="progressWrapper" style="display: none; margin: 20px 0;">
+            <div style="width: 100%; background-color: #f3f3f3; border-radius: 10px; height: 20px; overflow: hidden; border: 1px solid #ccc;">
+                <div id="progressBar" style="width: 0%; height: 100%; background-color: #4caf50; transition: width 0.3s;"></div>
+            </div>
+            <p id="statusText" style="margin-top: 5px; font-weight: bold; color: #555;">Initializing...</p>
+        </div>
+
+        <button type="submit" id="uploadBtn" style="padding: 10px 25px; background-color: rgb(156, 156, 156); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 18px;">
+            Upload CSV
+        </button>
+    </form>
+</div>
+
+<script>
+document.getElementById("uploadForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    const form = e.target;
+    const mode = form.querySelector('input[name="upload_mode"]:checked').value;
+    const progressWrapper = document.getElementById("progressWrapper");
+    const progressBar = document.getElementById("progressBar");
+    const statusText = document.getElementById("statusText");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const messageContainer = document.getElementById("messageContainer");
+
+    // Clear previous messages
+    messageContainer.innerHTML = '';
+
+    if (mode === "replace_all") {
+        if (!confirm("⚠️ Are you sure you want to replace ALL records? This action is critical.")) return;
+        if (!confirm("⚠️ Final Confirmation: Irreversible action. Continue?")) return;
+    }
+
+    const formData = new FormData(form);
+    
+    // UI Reset
+    progressWrapper.style.display = "block";
+    uploadBtn.disabled = true;
+    uploadBtn.style.backgroundColor = "#ccc";
+    statusText.innerText = "Uploading File to Server...";
+    progressBar.style.width = "0%";
+
+    // 1. Send File via AJAX
+    fetch("{% url 'upload_csv' %}", {
+        method: "POST",
+        body: formData,
+        headers: {
+            "X-Requested-With": "XMLHttpRequest"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        // 2. File Uploaded. Start Polling for Processing Progress
+        const taskId = data.task_id;
+        startPolling(taskId);
+    })
+    .catch(error => {
+        alert("Upload Failed: " + error.message);
+        uploadBtn.disabled = false;
+        progressWrapper.style.display = "none";
+    });
+
+    function startPolling(taskId) {
+        statusText.innerText = "Processing Data (0%)...";
+        
+        const pollInterval = setInterval(() => {
+            fetch(`{% url 'get_upload_progress' %}?task_id=${taskId}`)
+            .then(response => response.json())
+            .then(data => {
+                
+                if (data.status === 'processing') {
+                    const percent = data.progress;
+                    progressBar.style.width = percent + "%";
+                    statusText.innerText = `Processing Data (${percent}%)...`;
+                } 
+                else if (data.status === 'completed') {
+                    clearInterval(pollInterval);
+                    progressBar.style.width = "100%";
+                    statusText.innerText = "Done!";
+                    setTimeout(() => window.location.reload(), 1000); // Reload on success
+                } 
+                else if (data.status === 'error') {
+                    clearInterval(pollInterval);
+                    alert("Error during processing: " + data.error);
+                    uploadBtn.disabled = false;
+                    uploadBtn.style.backgroundColor = "rgb(156, 156, 156)";
+                }
+            })
+            .catch(err => {
+                console.error("Polling error", err);
+            });
+        }, 1000); // Poll every 1 second
+    }
+});
+</script>
+{% endblock %}

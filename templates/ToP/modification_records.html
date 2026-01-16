@@ -1,0 +1,314 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+{% block title %}Modification Records{% endblock %}
+
+{% block content %}
+<style>
+
+    .container {
+        margin-top: 20px;
+        padding: 20px;
+    }
+    table {
+        width: 90%;
+        margin: 40px auto;
+        border-collapse: collapse;
+    }
+
+    
+
+    @media (max-width: 768px) {
+        table {
+            width: 100%;
+            margin: 40px auto;
+            border-collapse: collapse;
+            margin-left: 0%;
+        }
+    }
+    
+
+    th, td {
+        padding: 12px;
+        text-align: center;
+        border: 1px solid #ccc;
+    }
+
+    th {
+        background-color: #f2f2f2;
+        font-size: 16px;
+        cursor: pointer;
+    }
+
+    tr:hover {
+        background-color: #f9f9f9;
+    }
+
+    h2 {
+        text-align: center;
+        margin-top: 40px;
+    }
+
+    .approve-btn {
+        background-color: #007bff;
+        margin-left: 10px;
+    }
+
+    .approve-btn:hover {
+        background-color: #0056b3;
+    }
+
+    .delete-btn {
+        background-color: #dc3545;
+        margin-left: 10px;
+    }
+
+    .delete-btn:hover {
+        background-color: #b02a37;
+    }
+
+    .copy-unit {
+        cursor: pointer;
+        color: #007bff;
+        text-decoration: underline;
+    }
+
+    .copy-unit:hover {
+        color: #0056b3;
+    }
+
+    .custom-toast {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        opacity: 0;
+        transition: all 0.3s ease;
+        z-index: 9999;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .custom-toast.show {
+        opacity: 1;
+        bottom: 50px;
+    }
+
+    .search-container {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+        margin-bottom: 10px;
+        gap: 10px;
+    }
+
+    .search-container input {
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        font-size: 16px;
+    }
+
+    /* Media Query for Mobile Phones */
+    @media (max-width: 450px) {
+        #recordsTable{
+            margin-left: -3%;
+        }
+    }
+
+    .table-scroll-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+    }
+    
+    @media (max-width: 450px) {
+        .table-scroll-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+        }
+    
+        #recordsTable {
+            min-width: 600px;  /* force scroll for tighter columns */
+            margin-left: 0%;
+            table-layout: fixed;  /* required for fixed column widths */
+        }
+    
+        #recordsTable th,
+        #recordsTable td {
+            padding: 6px;
+            font-size: 12px;
+            word-wrap: break-word;
+        }
+    
+        #recordsTable th:nth-child(1),
+        #recordsTable td:nth-child(1) {
+            width: 120px;  /* Sales Man */
+        }
+    
+        #recordsTable th:nth-child(2),
+        #recordsTable td:nth-child(2) {
+            width: 90px;  /* Client ID */
+        }
+    
+        #recordsTable th:nth-child(3),
+        #recordsTable td:nth-child(3) {
+            width: 100px;  /* Unit Code */
+        }
+    
+        #recordsTable th:nth-child(4),
+        #recordsTable td:nth-child(4) {
+            width: 120px;  /* Date */
+        }
+    
+        #recordsTable th:nth-child(5),
+        #recordsTable td:nth-child(5) {
+            width: 140px;  /* Action buttons */
+        }
+    
+        .submit-button {
+            font-size: 11px;
+            padding: 4px 8px;
+        }
+    }
+    
+    .filters {
+        display: flex;
+        flex-direction: column; /* stack vertically */
+        align-items: flex-start; /* align labels and selects to the left */
+        gap: 12px; /* space between filter blocks */
+        margin: 20px auto;
+        width: fit-content;
+    }
+
+    .filters label {
+        font-weight: bold;
+        margin-bottom: 4px;
+    }
+
+    .filters select {
+        padding: 8px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        font-size: 14px;
+        min-width: 200px;
+    }
+
+    .type-CREATE {
+        background-color: #e6f9ec; /* light green */
+    }
+    .type-UPDATE {
+        background-color: #e6f0ff; /* light blue */
+    }
+    .type-DELETE {
+        background-color: #ffe6e6; /* light red */
+    }
+    .type-REPLACE {
+        background-color: #fff4e6; /* light orange */
+    }
+    
+</style>
+
+<h2>Modification Records</h2>
+
+
+
+<div class="filters">
+    <div>
+        <label for="typeFilter">Filter by Type:</label>
+        <select id="typeFilter">
+            <option value="">All</option>
+            {% for t in types %}
+                <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div>
+        <label for="userFilter">Filter by User:</label>
+        <select id="userFilter">
+            <option value="">All</option>
+            {% for user in unique_users %}
+                <option value="{{ user }}">{{ user }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="table-scroll-container">
+    <table id="recordsTable">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Timestamp</th>
+            </tr>
+        </thead>
+        <tbody id="requestsBody">
+            {% for record in records %}
+           
+            <tr class="type-{{ record.type|upper }}">
+                <td class="sales-man">{{ record.user.full_name }}</td>
+                <td class="type">{{ record.type }}</td>
+                <td>{{ record.description }}</td>
+                <td class="timestamp">{{ record.timestamp|date:"c" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">No records found.</td></tr>
+            {% endfor %}
+        </tbody>
+        
+    </table>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Convert all UTC ISO timestamp cells to local time
+        const timestamps = document.querySelectorAll(".timestamp");
+        timestamps.forEach(cell => {
+            const utcTime = new Date(cell.textContent);
+            if (!isNaN(utcTime)) {
+                cell.textContent = utcTime.toLocaleString();
+            }
+        });
+    });
+    </script> 
+    
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const typeFilter = document.getElementById("typeFilter");
+        const userFilter = document.getElementById("userFilter");
+        const rows = document.querySelectorAll("#recordsTable tbody tr");
+
+        function filterTable() {
+            const type = typeFilter.value;
+            const user = userFilter.value;
+
+            rows.forEach(row => {
+                const rowType = row.querySelector(".type").textContent.trim();
+                const rowUser = row.querySelector(".sales-man").textContent.trim();
+
+                const typeMatch = !type || rowType === type;
+                const userMatch = !user || rowUser === user;
+
+                row.style.display = (typeMatch && userMatch) ? "" : "none";
+            });
+        }
+
+        typeFilter.addEventListener("change", filterTable);
+        userFilter.addEventListener("change", filterTable);
+    });
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

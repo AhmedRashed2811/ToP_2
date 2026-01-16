@@ -1,0 +1,1045 @@
+{% extends base_template %}
+{% load static %}
+{% block title %}Market Research Report{% endblock %}
+{% block content %}
+
+<head>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+
+<style>
+  .table-container {
+    overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    font-size: 14px;
+  }
+
+  th, td {
+    padding: 10px;
+    text-align: center;
+    vertical-align: middle;
+    border: 1px solid #ddd;
+  }
+
+  th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+  }
+
+  tr:hover {
+    background-color: #f9f9f9;
+  }
+
+  .left-border {
+    border-left: 2px solid #ccc;
+  }
+
+  .download-btn {
+    padding: 8px 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 15px;
+  }
+
+  .download-btn:hover {
+    background-color: #45a049;
+  }
+
+  .filter-input {
+    width: 100%;
+    padding: 4px;
+    box-sizing: border-box;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  .filter-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+  }
+
+  .filter-group {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .filter-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 14px;
+  }
+
+  .filter-group select,
+  .filter-group input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+
+  @media (min-width: 1200px) {
+    .container, .container-lg, .container-md, .container-sm, .container-xl {
+        max-width: 100%;
+    }
+  }
+
+  @media (max-width: 800px) {
+    .container, .container-sm {
+        max-width: 100%;
+    }
+  }
+
+
+  /* New styles for project separator */
+  .project-separator {
+    background-color: white;
+    font-weight: bold;
+  }
+  
+  .project-separator td {
+    padding: 8px;
+    text-align: left !important;
+  }
+
+  .filter-dropdown {
+    display: none;
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    list-style-type: none;
+    padding: 5px;
+    margin: 0;
+    width: 200px; /* Default width */
+  }
+
+  .filter-dropdown li {
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+
+  .filter-dropdown li:hover {
+    background-color: #f0f0f0;
+  }
+
+  body {
+    overflow: visible !important;
+  }
+
+  .download-btn.clear-btn {
+    background-color: #f44336;
+    margin-left: 10px;
+  }
+
+  .download-btn.clear-btn:hover {
+    background-color: #d32f2f;
+  }
+
+  .header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .explorer-button {
+    background-color: #667eea;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.3s;
+  }
+
+  .explorer-button:hover {
+    background-color: #5a67d8;
+    color: white;
+  }
+
+  .header-buttons {
+    display: flex;
+    gap: 10px;
+  }
+
+  .secondary-button {
+    background-color: #6c757d;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.3s;
+  }
+
+  .secondary-button:hover {
+    background-color: #5a6268;
+    color: white;
+  }
+
+  .report-button {
+    background-color: #764ba2;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.3s;
+  }
+
+  .report-button:hover {
+    background-color: #667eea;
+    color: white;
+  }
+
+  .third-button {
+    background-color: #10b981;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .third-button:hover {
+    background-color: #0d9f6e;
+    color: white;
+  }
+
+  /* Styles for search input inside dropdown */
+  .dropdown-search-container {
+    padding: 5px;
+    border-bottom: 1px solid #eee;
+  }
+
+  .dropdown-search-input {
+    width: 100%;
+    padding: 4px;
+    box-sizing: border-box;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+  }
+
+
+  /* Header Container Styles */
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f97316, #fb923c);
+  color: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.header-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 200px;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  transform: translate(50px, -50px);
+}
+
+.header-buttons {
+  display: flex;
+  gap: 15px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Base Button Styles */
+.btn {
+  padding: 12px 20px;
+  border-radius: 10px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+}
+
+/* Specific Button Styles */
+.report-button {
+  background: linear-gradient(135deg, #764ba2, #667eea);
+  color: white;
+}
+
+.report-button:hover {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.secondary-button {
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+  color: white;
+}
+
+.secondary-button:hover {
+  background: linear-gradient(135deg, #5a6268, #6c757d);
+  color: white;
+}
+
+.third-button {
+  background: linear-gradient(135deg, #10b981, #0d9f6e);
+  color: white;
+}
+
+.third-button:hover {
+  background: linear-gradient(135deg, #0d9f6e, #10b981);
+  color: white;
+}
+
+.forth-button {
+  background: linear-gradient(135deg, #ef4444, #f87171); /* red-500 → red-400 */
+  color: white;
+}
+
+.forth-button:hover {
+  background: linear-gradient(135deg, #f87171, #ef4444); /* reverse gradient on hover */
+  color: white;
+}
+
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .header-container {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    text-align: center;
+    padding: 25px 20px;
+  }
+
+  .dashboard-container {
+    padding: 15px;
+  }
+  
+  .header-buttons {
+    width: 100%;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 14px 20px;
+  }
+  
+  .header-container::before {
+    width: 150px;
+    height: 150px;
+    transform: translate(40px, -40px);
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    padding: 20px 15px;
+  }
+  
+  .btn {
+    font-size: 0.85rem;
+    padding: 12px 16px;
+  }
+}
+
+.dashboard-container {
+  padding: 20px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+</style>
+
+<div class="dashboard-container">
+  <div class="header-container">
+    <div style="display: flex; align-items: center; gap: 18px;">
+      <img src="{% static 'images/Screenshot 2025-12-15 170518.png' %}" alt="Your Company Logo"
+           class="company-logo"
+           style="height: 100px; max-width: 218px; border-radius: 10px; box-shadow: 0 1px 8px rgba(0,0,0,0.08);" />
+    </div>
+    <div class="header-buttons">
+        <a href="{% url 'market_research_report' %}" class="btn report-button">
+            <i class="fas fa-file-alt"></i>
+            Report View
+        </a>
+        <a href="{% url 'market_explorer' %}" class="btn secondary-button">
+            <i class="fas fa-map-marked-alt"></i>
+            Map View
+        </a>
+        <a href="{% url 'market_dashboard' %}" class="btn third-button">
+            <i class="fas fa-chart-bar"></i>
+            Market Analysis
+        </a>
+        <a href="{% url 'market_charts_view' %}?location=6th+of+October&asset_type=&unit_type=" class="btn forth-button">
+          <i class="fas fa-chart-line"></i>
+          Units Analysis
+        </a>
+      
+    </div>
+  </div>
+  
+  <div class="filter-container">
+    <div class="filter-group">
+      <label for="dateFilter">Date of Update (Months)</label>
+      <select id="dateFilter" class="filter-select">
+        <option value="">All Months</option>
+        <option value="1">January</option>
+        <option value="2">February</option>
+        <option value="3">March</option>
+        <option value="4">April</option>
+        <option value="5">May</option>
+        <option value="6">June</option>
+        <option value="7">July</option>
+        <option value="8">August</option>
+        <option value="9">September</option>
+        <option value="10">October</option>
+        <option value="11">November</option>
+        <option value="12">December</option>
+      </select>
+    </div>
+    
+    <div class="filter-group">
+      <label for="updatedByFilter">Updated By</label>
+      <select id="updatedByFilter" class="filter-select">
+        <option value="">All</option>
+        <!-- Options will be populated by JavaScript -->
+      </select>
+    </div>
+    
+    <div class="filter-group">
+      <label for="sourceFilter">Source of Info</label>
+      <select id="sourceFilter" class="filter-select">
+        <option value="">All</option>
+        <!-- Options will be populated by JavaScript -->
+      </select>
+    </div>
+    
+    <div class="filter-group">
+      <label for="monthsFromUpdateFilter">Months from Update</label>
+      <select id="monthsFromUpdateFilter" class="filter-select">
+        <option value="">All</option>
+        <!-- Options will be populated by JavaScript -->
+      </select>
+    </div>
+  </div>
+  
+  <button class="download-btn" onclick="downloadTable()">Download Excel</button>
+  <button class="download-btn clear-btn" onclick="clearFilters()">Clear Filters</button>
+
+  <div class="table-container">
+    <div id="pivotTableContainer"></div>
+  </div>
+  <div id="dropdown-root"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+
+<script>
+  let marketData = [];
+  let allData = []; // Store all data before filtering
+  const headers = [
+      "Location", "Developer", "Project", "Asset Type", "Unit Type",
+      "Finishing Specs", "DP % Range", "Payment Years", "Delivery Date",
+      "Min BUA (m²)", "Avg BUA (m²)", "Max BUA (m²)",
+      "Min Unit Price", "Avg Unit Price", "Max Unit Price"
+  ];
+  
+  function formatNumber(num) {
+    if (num === null || num === undefined) return '-';
+    const numValue = typeof num === 'string' ? parseFloat(num.replace(/,/g, '')) : num;
+    if (isNaN(numValue)) return '-';
+    
+    // For whole numbers only
+    return numValue.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    fetchMarketData();
+  });
+
+  function fetchMarketData() {
+    const url = "{% url 'get_market_data' %}";
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        allData = data.units || [];
+        marketData = [...allData]; // Create a copy for filtering
+        buildFlatTable();
+        // Note: Removed addFilterInputs() as column filtering is now in dropdowns
+        populateDropdownFilters(); // Populate the dropdown filters
+      })
+      .catch(error => {
+        console.error('Error fetching market data:', error);
+        document.getElementById("pivotTableContainer").innerHTML = "<p>Error loading market data.</p>";
+      });
+  }
+
+  function populateDropdownFilters() {
+    // Get unique values for each filter
+    const dateUpdateValues = [...new Set(allData
+        .map(item => item.date_of_update ? new Date(item.date_of_update).toISOString().split('T')[0] : null)
+        .filter(date => date !== null)
+    )].sort();
+
+    const updatedByValues = [...new Set(allData
+        .map(item => item.updated_by || 'Unknown')
+        .filter(val => val !== null && val !== undefined)
+    )].sort();
+
+    const sourceValues = [...new Set(allData
+        .map(item => item.source_of_info || 'Unknown')
+        .filter(val => val !== null && val !== undefined)
+    )].sort();
+
+    const monthsFromUpdateValues = [...new Set(allData
+        .map(item => item.months_from_update)
+        .filter(val => val !== null && val !== undefined)
+    )].sort((a, b) => a - b);
+
+    // Populate Date of Update filter (shows YYYY-MM-DD format)
+    const dateFilter = document.getElementById('dateFilter');
+    dateFilter.innerHTML = '<option value="">All Dates</option>';
+    dateUpdateValues.forEach(date => {
+        const option = document.createElement('option');
+        option.value = date;
+        option.textContent = date;
+        dateFilter.appendChild(option);
+    });
+
+    // Populate Updated By filter
+    const updatedByFilter = document.getElementById('updatedByFilter');
+    updatedByFilter.innerHTML = '<option value="">All</option>';
+    updatedByValues.forEach(value => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        updatedByFilter.appendChild(option);
+    });
+
+    // Populate Source of Info filter
+    const sourceFilter = document.getElementById('sourceFilter');
+    sourceFilter.innerHTML = '<option value="">All</option>';
+    sourceValues.forEach(value => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        sourceFilter.appendChild(option);
+    });
+
+    // Populate Months from Update filter
+    const monthsFromUpdateFilter = document.getElementById('monthsFromUpdateFilter');
+    monthsFromUpdateFilter.innerHTML = '<option value="">All</option>';
+    monthsFromUpdateValues.forEach(value => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        monthsFromUpdateFilter.appendChild(option);
+    });
+
+    // Add event listeners to dropdown filters
+    document.querySelectorAll('.filter-select').forEach(select => {
+        select.addEventListener('change', applyFilters);
+    });
+  }
+
+  function applyFilters() {
+    const dateFilter = document.getElementById('dateFilter').value;
+    const updatedByFilter = document.getElementById('updatedByFilter').value;
+    const sourceFilter = document.getElementById('sourceFilter').value;
+    const monthsFromUpdateFilter = document.getElementById('monthsFromUpdateFilter').value;
+
+    marketData = allData.filter(item => {
+        // Filter by exact date of update (YYYY-MM-DD format)
+        if (dateFilter) {
+            const itemDate = item.date_of_update ? new Date(item.date_of_update).toISOString().split('T')[0] : null;
+            if (itemDate !== dateFilter) return false;
+        }
+
+        // Filter by updated by (exact match)
+        if (updatedByFilter && item.updated_by !== updatedByFilter) {
+            return false;
+        }
+
+        // Filter by source of info (exact match)
+        if (sourceFilter && item.source_of_info !== sourceFilter) {
+            return false;
+        }
+
+        // Filter by months from update (numeric comparison)
+        if (monthsFromUpdateFilter) {
+            if (item.months_from_update === null || item.months_from_update === undefined) return false;
+            if (item.months_from_update.toString() !== monthsFromUpdateFilter) return false;
+        }
+
+        return true;
+    });
+
+    buildFlatTable();
+    // Note: Removed addFilterInputs() as column filtering is now in dropdowns
+  }
+
+  function buildFlatTable() {
+    if (!marketData.length) {
+        document.getElementById("pivotTableContainer").innerHTML = "<p>No market data available.</p>";
+        return;
+    }
+
+    // Removed the search row from the table header
+    const header = `
+        <table id="marketReportTable">
+            <thead>
+                <tr>
+                    ${headers.map(h => `<th style="text-align: center; position: relative;">
+                        ${h}
+                        <i class="fas fa-filter filter-icon" onclick="toggleDropdown(event, ${headers.indexOf(h)})" style="cursor: pointer; margin-left: 5px;"></i>
+                    </th>`).join('')}
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    let body = "";
+
+    const groupedData = {};
+    marketData.forEach(unit => {
+        const key = [
+            unit.location || "Unknown",
+            unit.developer_name || "Unknown",
+            unit.project_name || "Unknown",
+            unit.asset_type || "Unknown",
+            unit.unit_type || "Unknown",
+            unit.dp_percentage || "Unknown"  // Include dp_percentage in grouping key
+        ].join('|');
+
+        if (!groupedData[key]) {
+            groupedData[key] = {
+                location: unit.location || "Unknown",
+                developer: unit.developer_name || "Unknown",
+                project: unit.project_name || "Unknown",
+                assetType: unit.asset_type || "Unknown",
+                unitType: unit.unit_type || "Unknown",
+                dpPercentage: unit.dp_percentage || "-",  // Store as direct field
+                units: [],
+                finishingSpecs: new Set(),
+                paymentYears: new Set(),
+                deliveryDates: new Set(),
+                buaValues: [],
+                priceValues: []
+            };
+        }
+
+        groupedData[key].units.push(unit);
+        if (unit.finishing_specs) groupedData[key].finishingSpecs.add(unit.finishing_specs);
+        if (unit.payment_yrs) groupedData[key].paymentYears.add(unit.payment_yrs);
+        if (unit.delivery_date) groupedData[key].deliveryDates.add(unit.delivery_date);
+        if (unit.bua !== null) groupedData[key].buaValues.push(unit.bua);
+        if (unit.unit_price !== null) groupedData[key].priceValues.push(unit.unit_price);
+    });
+
+    const tableData = Object.values(groupedData).map(group => {
+        const deliveryDates = Array.from(group.deliveryDates);
+        const maxDeliveryDate = deliveryDates.length ?
+            deliveryDates.reduce((a, b) => a > b ? a : b) : null;
+
+        const buaStats = {
+            min: group.buaValues.length ? Math.min(...group.buaValues) : null,
+            avg: group.buaValues.length ?
+                (group.buaValues.reduce((a, b) => a + b, 0)) / group.buaValues.length : null,
+            max: group.buaValues.length ? Math.max(...group.buaValues) : null
+        };
+
+        const priceStats = {
+            min: group.priceValues.length ? Math.min(...group.priceValues) : null,
+            avg: group.priceValues.length ?
+                (group.priceValues.reduce((a, b) => a + b, 0)) / group.priceValues.length : null,
+            max: group.priceValues.length ? Math.max(...group.priceValues) : null
+        };
+
+        return {
+            ...group,
+            finishingSpecs: Array.from(group.finishingSpecs).join(", "),
+            paymentYears: Array.from(group.paymentYears).join(", "),
+            maxDeliveryDate,
+            bua: buaStats,
+            price: priceStats
+        };
+    });
+
+    tableData.sort((a, b) => (
+        a.location.localeCompare(b.location) ||
+        a.developer.localeCompare(b.developer) ||
+        a.project.localeCompare(b.project) ||
+        a.assetType.localeCompare(b.assetType) ||
+        a.unitType.localeCompare(b.unitType)
+    ));
+
+    let prevLocation = null;
+    let prevDeveloper = null;
+    let prevProject = null;
+    let prevAssetType = null;
+    let firstRow = true;
+
+    tableData.forEach(row => {
+        const showLocation = row.location !== prevLocation;
+        const showDeveloper = showLocation || row.developer !== prevDeveloper;
+        const showProject = showDeveloper || row.project !== prevProject;
+        const showAssetType = showProject || row.assetType !== prevAssetType;
+
+        // Add project separator row if this is a new project and not the first row
+        if (showProject && !firstRow) {
+            body += `
+                <tr class="project-separator" style="background-color:white;">
+                    <td colspan="15" style="background-color:white;"></td>
+                </tr>
+            `;
+        }
+
+        prevLocation = row.location;
+        prevDeveloper = row.developer;
+        prevProject = row.project;
+        prevAssetType = row.assetType;
+        firstRow = false;
+
+        body += `
+            <tr>
+                <td style="text-align: left;">${showLocation ? row.location : ''}</td>
+                <td style="text-align: left;">${showDeveloper ? row.developer : ''}</td>
+                <td style="text-align: left;">${showProject ? row.project : ''}</td>
+                <td style="text-align: left;">${showAssetType ? row.assetType : ''}</td>
+                <td style="text-align: left;">${row.unitType}</td>
+                <td>${row.finishingSpecs || '-'}</td>
+                <td>${row.dpPercentage || '-'}</td>
+                <td>${row.paymentYears || '-'}</td>
+                <td>${row.maxDeliveryDate || '-'}</td>
+                <td>${formatNumber(row.bua.min)}</td>
+                <td>${formatNumber(row.bua.avg)}</td>
+                <td>${formatNumber(row.bua.max)}</td>
+                <td>${formatNumber(row.price.min)}</td>
+                <td>${formatNumber(row.price.avg)}</td>
+                <td>${formatNumber(row.price.max)}</td>
+            </tr>
+        `;
+    });
+
+    const footer = `</tbody></table>`;
+    document.getElementById("pivotTableContainer").innerHTML = header + body + footer;
+    // Clear any existing dropdowns
+    document.querySelectorAll('.filter-dropdown').forEach(dd => dd.remove());
+  }
+
+  // Removed addFilterInputs() function as it's no longer needed
+
+  function downloadTable() {
+    const table = document.querySelector("#pivotTableContainer table");
+    if (!table) {
+      alert("No data available to download.");
+      return;
+    }
+
+    // Clone the table to modify for export
+    const tableClone = table.cloneNode(true);
+    
+    // Remove project separator rows from the export
+    const separators = tableClone.querySelectorAll(".project-separator");
+    separators.forEach(sep => sep.remove());
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.table_to_sheet(tableClone);
+    XLSX.utils.book_append_sheet(wb, ws, "Market Research");
+
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const fileName = `Market_Research_Report_${dateStr}.xlsx`;
+
+    XLSX.writeFile(wb, fileName);
+  }
+
+  function toggleDropdown(event, colIndex) {
+    event.stopPropagation();
+  
+    const dropdownId = `dropdown-${colIndex}`;
+    let dropdown = document.getElementById(dropdownId);
+  
+    // If dropdown doesn't exist yet, create it
+    if (!dropdown) {
+      dropdown = document.createElement('ul');
+      dropdown.id = dropdownId;
+      dropdown.className = 'filter-dropdown';
+      dropdown.style.position = 'absolute';
+      dropdown.style.zIndex = '1000';
+      dropdown.style.maxHeight = '300px';
+      dropdown.style.overflowY = 'auto';
+      dropdown.style.listStyleType = 'none';
+      dropdown.style.padding = '0';
+      dropdown.style.margin = '0';
+      dropdown.style.backgroundColor = 'white';
+      dropdown.style.border = '1px solid #ccc';
+      dropdown.style.display = 'none';
+      document.getElementById("dropdown-root").appendChild(dropdown);
+    }
+  
+    // Hide all other dropdowns
+    document.querySelectorAll('.filter-dropdown').forEach(dd => {
+      if (dd !== dropdown) dd.style.display = 'none';
+    });
+  
+    // Get position of icon
+    const icon = event.currentTarget || event.target.closest('.filter-icon');
+    if (!icon) return;
+  
+    const rect = icon.getBoundingClientRect();
+  
+    // Position dropdown near the icon
+    dropdown.style.top = `${rect.bottom + window.scrollY}px`;
+    dropdown.style.left = `${rect.left + window.scrollX}px`;
+    
+    // Match dropdown width with column header or set a minimum
+    const th = document.querySelector(`#marketReportTable thead th:nth-child(${colIndex + 1})`);
+    if (th) {
+        dropdown.style.width = `${Math.max(th.offsetWidth, 200)}px`;
+    }
+
+    // Toggle visibility
+    const isVisible = dropdown.style.display === 'block';
+    dropdown.style.display = isVisible ? 'none' : 'block';
+    
+    // Populate dropdown if it's being shown
+    if (!isVisible) {
+      populateDropdown(colIndex);
+    }
+  }
+
+  function populateDropdown(colIndex) {
+    const dropdown = document.getElementById(`dropdown-${colIndex}`);
+    dropdown.innerHTML = ""; // Clear existing items
+
+    // Create search input container
+    const searchContainer = document.createElement('div');
+    searchContainer.className = 'dropdown-search-container';
+    
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Search...';
+    searchInput.className = 'dropdown-search-input';
+    
+    // Add event listener for search input
+    searchInput.addEventListener('input', function() {
+      const filterValue = this.value.toLowerCase();
+      const items = dropdown.querySelectorAll('li:not(.dropdown-search-container li)');
+      items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        item.style.display = text.includes(filterValue) ? '' : 'none';
+      });
+    });
+    
+    searchContainer.appendChild(searchInput);
+    dropdown.appendChild(searchContainer);
+
+    const tbody = document.querySelector("#marketReportTable tbody");
+    const uniqueValues = new Set();
+
+    // Track last values for grouped columns
+    let lastValues = Array(headers.length).fill('');
+
+    Array.from(tbody.rows).forEach(row => {
+        if (row.classList.contains('project-separator')) return;
+        
+        let cellText = row.cells[colIndex]?.textContent.trim();
+        if (!cellText && colIndex < 4) { // For grouped columns
+            cellText = lastValues[colIndex];
+        } else if (cellText) {
+            lastValues[colIndex] = cellText;
+        }
+        
+        if (cellText) uniqueValues.add(cellText);
+    });
+
+    // Sort alphabetically or numerically based on content
+    const sortedValues = [...uniqueValues].sort((a, b) => {
+        const numA = parseFloat(a), numB = parseFloat(b);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return a.localeCompare(b);
+    });
+
+    sortedValues.forEach(value => {
+        const li = document.createElement("li");
+        li.textContent = value;
+        li.onclick = () => applyColumnFilter(colIndex, value);
+        dropdown.appendChild(li);
+    });
+    
+    // Focus the search input
+    setTimeout(() => searchInput.focus(), 10);
+  }
+
+  function applyColumnFilter(colIndex, value) {
+    // Apply filter by simulating input in the hidden column filter
+    const filterKey = `columnFilter_${colIndex}`;
+    let filterInput = document.getElementById(filterKey);
+    
+    if (!filterInput) {
+      filterInput = document.createElement('input');
+      filterInput.type = 'hidden';
+      filterInput.id = filterKey;
+      filterInput.dataset.colIndex = colIndex;
+      document.body.appendChild(filterInput);
+      
+      // Add event listener to this hidden input
+      filterInput.addEventListener('input', function() {
+        filterTableByColumn(this.dataset.colIndex, this.value);
+      });
+    }
+    
+    filterInput.value = value;
+    const event = new Event('input', { bubbles: true });
+    filterInput.dispatchEvent(event);
+    
+    // Close dropdown
+    document.querySelectorAll('.filter-dropdown').forEach(dd => dd.style.display = 'none');
+  }
+  
+  function filterTableByColumn(colIndex, filterValue) {
+    const table = document.getElementById("marketReportTable");
+    if (!table) return;
+    
+    const tbody = table.querySelector("tbody");
+    if (!tbody) return;
+    
+    const rows = Array.from(tbody.rows);
+    
+    // Track the last visible value for each column (for grouped display)
+    let lastValues = Array(headers.length).fill('');
+    let lastVisibleProject = null;
+    let hasVisibleRows = false;
+    
+    rows.forEach(row => {
+      if (row.classList.contains('project-separator')) {
+        // Hide separator if the previous project had no visible rows
+        row.style.display = hasVisibleRows ? "" : "none";
+        hasVisibleRows = false;
+        return;
+      }
+      
+      // Get the cell text - if empty, use the last value we saw for this column
+      let cellText = row.cells[colIndex].textContent.trim().toLowerCase();
+      if (!cellText && colIndex < 4) { // Only for grouped columns (Location, Developer, Project, Asset Type)
+        cellText = lastValues[colIndex].toLowerCase();
+      } else {
+        lastValues[colIndex] = row.cells[colIndex].textContent.trim();
+      }
+      
+      // Apply filter
+      const shouldShow = cellText.includes(filterValue.toLowerCase());
+      row.style.display = shouldShow ? "" : "none";
+      
+      // Track if this project has any visible rows
+      if (shouldShow) {
+        const currentProject = row.cells[2].textContent.trim(); // Project is in column 2
+        if (currentProject !== lastVisibleProject) {
+          lastVisibleProject = currentProject;
+          hasVisibleRows = true;
+        }
+      }
+    });
+    
+    // After filtering, we might need to hide the last separator
+    const lastRow = rows[rows.length - 1];
+    if (lastRow && lastRow.classList.contains('project-separator') && !hasVisibleRows) {
+      lastRow.style.display = "none";
+    }
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.filter-icon') && !e.target.closest('.filter-dropdown')) {
+      document.querySelectorAll('.filter-dropdown').forEach(dd => dd.style.display = 'none');
+    }
+  });
+
+  function clearFilters() {
+    // Reset dropdown filters
+    document.getElementById('dateFilter').value = '';
+    document.getElementById('updatedByFilter').value = '';
+    document.getElementById('sourceFilter').value = '';
+    document.getElementById('monthsFromUpdateFilter').value = '';
+    
+    // Reset column filters
+    document.querySelectorAll('input[id^="columnFilter_"]').forEach(input => {
+      input.value = '';
+      const event = new Event('input', { bubbles: true });
+      input.dispatchEvent(event);
+    });
+    
+    // Reset the data to show all records
+    marketData = [...allData];
+    
+    // Rebuild the table
+    buildFlatTable();
+    // Note: Removed addFilterInputs() as column filtering is now in dropdowns
+  }
+
+</script>
+
+{% endblock %}

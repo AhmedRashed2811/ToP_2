@@ -1,0 +1,159 @@
+{% extends 'ToP/admin_dashboard/base_dashboard.html' %} 
+{% block title %}{{ action }} {{ model_verbose_name|title }}{% endblock %} 
+
+{% block extra_css %}
+<style>
+  .form-card {
+    background: var(--bg-surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .form-grid {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .form-label {
+    font-weight: 500;
+    font-size: 0.925rem;
+    color: var(--text-main);
+  }
+
+  /* Target all standard Django inputs */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="url"],
+  input[type="date"],
+  input[type="datetime-local"],
+  select,
+  textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    background: #f9fafb;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    background: white;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+    outline: none;
+  }
+
+  /* Checkbox styling */
+  input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    accent-color: var(--primary);
+    cursor: pointer;
+  }
+  
+  .checkbox-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .help-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  .error-list {
+    list-style: none;
+    color: var(--danger);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  .form-footer {
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+  }
+</style>
+{% endblock %} 
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">{{ action }} {{ model_verbose_name|title }}</h1>
+  <a href="{% url 'dynamic_model_list' model_name=model_name %}" class="btn btn-secondary">
+    Cancel
+  </a>
+</div>
+
+<div class="form-card">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %} 
+    
+    {% if form.non_field_errors %}
+    <div class="alert alert-error">
+      {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    <div class="form-grid">
+      {% for field in form %}
+      <div class="form-group {% if field.field.widget.input_type == 'checkbox' %}checkbox-wrapper{% endif %}">
+        
+        {% if field.field.widget.input_type != 'checkbox' %}
+          <label class="form-label" for="{{ field.id_for_label }}">
+            {{ field.label }}
+            {% if field.field.required %}<span style="color: var(--danger)">*</span>{% endif %}
+          </label>
+        {% endif %}
+
+        {{ field }}
+
+        {% if field.field.widget.input_type == 'checkbox' %}
+          <label class="form-label" for="{{ field.id_for_label }}" style="margin-bottom: 0;">
+            {{ field.label }}
+          </label>
+        {% endif %}
+
+        {% if field.help_text %}
+        <div class="help-text">{{ field.help_text|safe }}</div>
+        {% endif %}
+        
+        {% if field.errors %}
+        <ul class="error-list">
+          {% for error in field.errors %}
+            <li>• {{ error }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="form-footer">
+      <a href="{% url 'dynamic_model_list' model_name=model_name %}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        Save Changes
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
