@@ -496,7 +496,7 @@ class Dashboard {
             datasets: [{
                 label: 'Price vs Area',
                 data: units.map(u => ({
-                    x: parseFloat(u.sellable_area) || 0,
+                    x: parseFloat(u.gross_area) || 0,
                     y: parseFloat(u.sales_value) || 0
                 })),
                 backgroundColor: '#4472C4',
@@ -514,7 +514,7 @@ class Dashboard {
             <tr>
                 <td>${unit.project || '-'}</td>
                 <td>${unit.unit_type || '-'}</td>
-                <td>${this.formatNumber(unit.sellable_area)}</td>
+                <td>${this.formatNumber(unit.gross_area)}</td>
                 <td>${unit.status || '-'}</td>
                 <td>${this.formatCurrency(unit.sales_value)}</td>
                 <td>${this.formatCurrency(unit.psm)}</td>

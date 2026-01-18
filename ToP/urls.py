@@ -177,6 +177,15 @@ urlpatterns = [
     path('import-hub/', views.import_hub, name='import_hub'),
     path('import-hub/trigger/', views.trigger_unified_import, name='trigger_unified_import'),
     path('import-hub/delete-units/', views.delete_hub_units, name='delete_hub_units'),
+    path("sales-teams/", views.sales_teams, name="sales_teams"),
+    
+    
+    path("sales-team-report/", views.sales_team_report, name="sales_team_report"),
+    path("ajax/sales-teams/", views.ajax_sales_teams, name="ajax_sales_teams"),
+    path("ajax/sales-team-report/", views.ajax_sales_team_report, name="ajax_sales_team_report"),
+
+
+
 ] 
  
   

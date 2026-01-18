@@ -257,11 +257,23 @@
                 <h2>Project Details</h2>
                 <div class="form-fields-horizontal">
                     {% for field in project_form %}
-                        <div class="form-field-group">
-                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                            {{ field }}
-                        </div>
+                        {% if is_uploader and field.name == "company" %}
+                            <div class="form-field-group">
+                                <label>Company</label>
+                                <input type="text"
+                                    value="{{ uploader_company_name }}"
+                                    readonly
+                                    style="background-color:rgb(231, 227, 227); border: 1px solid #ccc;">
+                                <input type="hidden" name="company" value="{{ uploader_company_id }}">
+                            </div>
+                        {% else %}
+                            <div class="form-field-group">
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                            </div>
+                        {% endif %}
                     {% endfor %}
+
                 </div>
             </section>
 

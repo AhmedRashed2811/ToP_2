@@ -1940,7 +1940,7 @@
           units.forEach((u) => {
             const target = u.adj_status === "Sold" ? sold : unsold;
             target.count++;
-            target.area += parseFloat(u.sellable_area) || 0;
+            target.area += parseFloat(u.gross_area) || 0;
             target.sales += parseFloat(u.sales_value) || 0;
             if (u.psm) target.psm.push(parseFloat(u.psm));
             if (u.interest_free_unit_price)
@@ -3104,7 +3104,7 @@
                     switch (canvas.id) {
                         case 'unitPriceChart': valueField = 'interest_free_unit_price'; break;
                         case 'unitPSMChart': valueField = 'psm'; break;
-                        case 'unitAreaChart': valueField = 'sellable_area'; break;
+                        case 'unitAreaChart': valueField = 'gross_area'; break;
                     }
                     
                     setTimeout(() => {
@@ -4395,7 +4395,7 @@
                 <td>${unit.project || '-'}</td>
                 <td>${unit.unit_code ? unit.unit_code.split('_')[0] : '-'}</td>
                 <td>${unit.unit_type || '-'}</td>
-                <td>${this.formatNumber(unit.sellable_area)}</td>
+                <td>${this.formatNumber(unit.gross_area)}</td>
                 <td>${unit.status || '-'}</td>
                 <td>${this.formatCurrency(unit.interest_free_unit_price)}</td>
                 <td>${this.formatCurrency(unit.sales_value)}</td>
@@ -5649,7 +5649,7 @@
                                     let fieldName = 'Value';
                                     if (valueField === 'interest_free_unit_price') fieldName = 'Price';
                                     else if (valueField === 'psm') fieldName = 'PSM';
-                                    else if (valueField === 'sellable_area') fieldName = 'Area';
+                                    else if (valueField === 'gross_area') fieldName = 'Area';
 
                                     return [
                                       `Max: ${formatUnitMetricNumber(rawDataPoint.max, valueField)}`,
@@ -5768,7 +5768,7 @@
           renderUnitMetricsChart('unitPriceChart', units, 'sales_value', 'Unit Price Range (Sales Value)', '#D2691E');
           
           renderUnitMetricsChart('unitPSMChart', units, 'psm', 'Price per Square Meter (PSM)', '#D2691E');
-          renderUnitMetricsChart('unitAreaChart', units, 'sellable_area', 'Sellable Area (sqm)', '#D2691E');
+          renderUnitMetricsChart('unitAreaChart', units, 'gross_area', 'Sellable Area (sqm)', '#D2691E');
       }
 
       // Example: Call updateUnitMetricsCharts when dashboard filters change
@@ -6047,7 +6047,7 @@
                   <td>${u.project || '-'}</td>
                   <td>${u.unit_code ? u.unit_code.split('_')[0] : '-'}</td>
                   <td>${u.unit_type || '-'}</td>
-                  <td>${fmtNum(u.sellable_area)}</td>
+                  <td>${fmtNum(u.gross_area)}</td>
                   <td>${u.status || '-'}</td>
                   <td>${fmtEGP(u.sales_value)}</td>
                   <td>${fmtNum(u.psm)}</td>

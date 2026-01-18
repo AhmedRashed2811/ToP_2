@@ -1,7 +1,7 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
 from channels.db import database_sync_to_async
-from .models import CompanyController
+from .models import SalesOperation
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,8 +20,8 @@ class SalesRequestConsumer(AsyncWebsocketConsumer):
                 logger.info(f"User {user.email} joined WebSocket group: {self.company_group_name}")
                 await self.channel_layer.group_add(self.company_group_name, self.channel_name)
                 await self.accept()
-            except CompanyController.DoesNotExist:
-                logger.error(f"CompanyController does not exist for user: {user.email}")
+            except SalesOperation.DoesNotExist:
+                logger.error(f"SalesOperation does not exist for user: {user.email}")
                 await self.close()
             except Exception as e:
                 logger.exception("Unexpected error during connect")
@@ -50,5 +50,5 @@ class SalesRequestConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_user_company_id(self, user):
-        controller = CompanyController.objects.get(user=user)
+        controller = SalesOperation.objects.get(user=user)
         return controller.company.id

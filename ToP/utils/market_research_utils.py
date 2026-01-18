@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from ..models import CompanyManager
+from ..models import Manager
 
 
 # ----------------------------------------------
@@ -24,7 +24,7 @@ def build_base_context(user) -> Dict[str, Any]:
 
         try:
             if user.groups.filter(name="Manager").exists():
-                manager = CompanyManager.objects.filter(user=user).first()
+                manager = Manager.objects.filter(user=user).first()
                 if manager and manager.company:
                     context["company"] = manager.company
         except Exception:

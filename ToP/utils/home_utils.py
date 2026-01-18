@@ -10,9 +10,9 @@ from ..models import (
     Company,
     Project,
     Unit,
-    CompanyUser,
-    CompanyManager,
-    CompanyFinanceManager,
+    Sales,
+    SalesHead,
+    Manager,
     SalesRequest,
     ProjectConfiguration,
     ProjectExtendedPayments,
@@ -21,6 +21,10 @@ from ..models import (
     Constraints,
     BaseNPV,
 )
+
+from ..utils.viewer_permissions import is_company_viewer, viewer_company, viewer_allowed_statuses
+from ..utils.viewer_permissions import is_company_viewer, viewer_allowed_statuses
+
 
 # -----------------------------
 # Scope result container
@@ -65,7 +69,6 @@ def init_home_context(*, session) -> Dict[str, Any]:
         "base_npv": None,
         "user_company": None,
         "company": None,
-        "is_finance_manager": False,
     }
 
 
@@ -74,8 +77,12 @@ def init_home_context(*, session) -> Dict[str, Any]:
 # -----------------------------
 def resolve_user_scope(*, user, session) -> UserScope:
     user_company = None
-    is_client_user = user.groups.filter(name="Client").exists()
+    is_client_user = False
+    is_sales_user = user.groups.filter(name__in=["Client", "Sales"]).exists()
+    is_sales_head_user = user.groups.filter(name__in=["SalesHead"]).exists()
     role = getattr(user, "role", None)
+    
+    is_viewer_user = is_company_viewer(user)
 
     context_updates: Dict[str, Any] = {}
 
@@ -93,30 +100,54 @@ def resolve_user_scope(*, user, session) -> UserScope:
         )
 
     # 2. Handle Regular Company Users
+    
+    if is_viewer_user:
+        user_company = viewer_company(user)
+        context_updates["user_can_edit"] = True
+        context_updates["user_can_change_years"] = True
+        context_updates["is_company_active"] = user_company.is_active if user_company else False
+        context_updates["company"] = user_company
+        is_client_user = True  # treat as sales member
+        return UserScope(
+            user_company=user_company,
+            is_client_user=is_client_user,
+            user_role="Viewer",
+            context_updates=context_updates,
+        )
+
+
+
     try:
-        if is_client_user and role == "CompanyUser":
-            company_user = CompanyUser.objects.get(user=user)
+        if is_sales_user:
+            company_user = Sales.objects.get(user=user)
             user_company = company_user.company
             context_updates["user_can_edit"] = company_user.can_edit
             context_updates["user_can_change_years"] = company_user.can_change_years
             context_updates["is_company_active"] = user_company.is_active
             context_updates["company"] = user_company
-
+            
+        elif is_sales_head_user:
+            company_user = SalesHead.objects.get(user=user)
+            user_company = company_user.company
+            context_updates["user_can_edit"] = True
+            context_updates["user_can_change_years"] = True
+            context_updates["is_company_active"] = user_company.is_active
+            context_updates["company"] = user_company
+            
+            
         elif user.groups.filter(name="Manager").exists():
-            company_manager = CompanyManager.objects.get(user=user)
+            company_manager = Manager.objects.get(user=user)
             user_company = company_manager.company
             context_updates["is_company_active"] = user_company.is_active
             context_updates["company"] = user_company
             
-        elif user.groups.filter(name="FinanceManager").exists():
-            finance_manager = CompanyFinanceManager.objects.get(user=user)
-            user_company = finance_manager.company
-            context_updates["is_company_active"] = user_company.is_active
-            context_updates["company"] = user_company
-            context_updates["is_finance_manager"] = True
 
-    except (CompanyUser.DoesNotExist, CompanyManager.DoesNotExist, CompanyFinanceManager.DoesNotExist):
+
+    except (Sales.DoesNotExist, SalesHead.DoesNotExist ,Manager.DoesNotExist):
         context_updates["is_company_active"] = False
+        
+    if is_sales_user or  is_sales_head_user:
+        is_client_user = True
 
     return UserScope(
         user_company=user_company,
@@ -187,21 +218,12 @@ def enforce_client_unit_rules_and_limits(
     found_unit,
     messages_api=None,
     request_for_messages=None,
-    is_finance_manager: bool = False,
 ):
     result = {"redirect_home": False, "found_unit": found_unit}
 
     if not found_unit:
         return result
 
-    # --- Case A: Finance Manager Security Check ---
-    if is_finance_manager:
-        status = getattr(found_unit, "status", "")
-        if status in ["Blocked Development", "Blocked Sales", "Blocked Developement"]:
-            if messages_api and request_for_messages:
-                messages_api.error(request_for_messages, "Access Denied: This unit is blocked.")
-            return {"redirect_home": True, "found_unit": None}
-        return result
 
     # --- Case B: Client User (Sales) Logic ---
     if is_client_user:
@@ -223,9 +245,14 @@ def enforce_client_unit_rules_and_limits(
 
         status = getattr(found_unit, "status", "Available")
 
-
-        if  status != "Available":
-            return {"redirect_home": True, "found_unit": None}
+        if is_company_viewer(user):
+            allowed_statuses = viewer_allowed_statuses(user)
+            if not allowed_statuses or status not in allowed_statuses:
+                return {"redirect_home": True, "found_unit": None}
+        else:
+            if status != "Available":
+                return {"redirect_home": True, "found_unit": None}
+            
 
     return result
 

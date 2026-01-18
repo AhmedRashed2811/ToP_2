@@ -555,7 +555,7 @@
         <div class="tooltip-field field-price"><label>Price:</label><span data-field="interest_free_unit_price"></span></div>
         <div class="tooltip-field field-delivery"><label>Delivery Date:</label><span data-field="development_delivery_date"></span></div>
         <div class="tooltip-field field-finishing"><label>Finishing Type:</label><span data-field="finishing_specs"></span></div>
-        <div class="tooltip-field field-gross"><label>Gross Area:</label><span data-field="sellable_area"></span></div>
+        <div class="tooltip-field field-gross"><label>Gross Area:</label><span data-field="gross_area"></span></div>
         <div class="tooltip-field field-garden"><label>Garden Area:</label><span data-field="garden_area"></span></div>
         <div class="tooltip-field field-land"><label>Land Area:</label><span data-field="land_area"></span></div>
         <div class="tooltip-field field-penthouse"><label>Penthouse Area:</label><span data-field="penthouse_area"></span></div>
@@ -1009,7 +1009,7 @@
                                 if (selMod.length > 0 && !selMod.includes(u.unit_model)) return;
                                 if (selStat.length > 0 && !selStat.includes(u.status)) return;
                                 
-                                const area = parseFloat(u.sellable_area);
+                                const area = parseFloat(u.gross_area);
                                 if (!isNaN(minA) && (isNaN(area) || area < minA)) return;
                                 if (!isNaN(maxA) && (isNaN(area) || area > maxA)) return;
 
@@ -1017,7 +1017,7 @@
                                 
                                 visibleCount++;
                                 const fmtFinish = u.finishing_specs || 'N/A';
-                                const fmtArea = formatArea(u.sellable_area);
+                                const fmtArea = formatArea(u.gross_area);
                                 let priceHtml = u.hasOwnProperty('interest_free_unit_price') ? formatPrice(u.interest_free_unit_price) : '';
                                 
                                 let actionHtml = '<div style="display:flex; gap:5px; align-items:center;">';
@@ -1050,7 +1050,7 @@
                              tooltipContent.find('.field-price').show().find('span').text(formatPrice(u.interest_free_unit_price));
                         } else tooltipContent.find('.field-price').hide();
 
-                        if (isValidMetric(u.sellable_area)) tooltipContent.find('[data-field="sellable_area"]').text(formatArea(u.sellable_area)); else tooltipContent.find('.field-gross').remove();
+                        if (isValidMetric(u.gross_area)) tooltipContent.find('[data-field="gross_area"]').text(formatArea(u.gross_area)); else tooltipContent.find('.field-gross').remove();
                         if (isValidMetric(u.garden_area)) tooltipContent.find('[data-field="garden_area"]').text(formatArea(u.garden_area)); else tooltipContent.find('.field-garden').remove();
                         if (isValidMetric(u.land_area)) tooltipContent.find('[data-field="land_area"]').text(formatArea(u.land_area)); else tooltipContent.find('.field-land').remove();
                         if (isValidMetric(u.penthouse_area)) tooltipContent.find('[data-field="penthouse_area"]').text(formatArea(u.penthouse_area)); else tooltipContent.find('.field-penthouse').remove();

@@ -1,16 +1,11 @@
-# services.py (append this class - Updated with deletion methods)
-
 from django.shortcuts import get_object_or_404
-from django.contrib import messages
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from django.http import QueryDict # Import QueryDict
 
 from ..models import (
     Project,
     ProjectConfiguration,
     Constraints,
-    # ProjectWebConfiguration, # <-- Removed from import
     BaseNPV,
     GasPolicy,
     MaintenancePolicy,
@@ -20,12 +15,12 @@ from ..models import (
     MaintenancePolicyScheduling,
     ModificationRecords,
     Company,
-    CTD, # <-- Add CTD import
-    # Add other related models if needed like GasPolicyFees if used in the old view
-    GasPolicyFees, # Example if used
+    CTD,
+    GasPolicyFees,
+    Uploader,   # ✅ add this
 )
 
-from ..forms import ( # Assuming you have these forms in forms.py
+from ..forms import (
     ProjectForm,
     ProjectConfigurationForm,
     ConstraintsForm,
@@ -34,15 +29,84 @@ from ..forms import ( # Assuming you have these forms in forms.py
     ProjectMasterplanForm,
 )
 
+
 class ProjectManagementService:
     """
     Handles project creation, updating, and deletion.
-    Phase 3 – Step 5: Refactor project CRUD operations into a service.
-    Logic and behavior are unchanged.
-    Excludes ProjectWebConfiguration creation/update during project CRUD.
-    Handles multi-value fields (like Base NPV, CTD, Offsets) using raw data.getlist().
-    Handles structured JSON data for updates directly (no forms for update).
+    Adds uploader-company scoping:
+      - If user has uploader_profile -> force company on create,
+        only allow touching records under that company for update/delete.
+      - Admin/Developer/TeamMember without uploader_profile -> normal behavior.
     """
+
+    # ==================================================
+    # SCOPE HELPERS
+    # ==================================================
+
+    @staticmethod
+    def _get_uploader_company(user):
+        """
+        Returns Company if user has uploader_profile, else None.
+        """
+        try:
+            return user.uploader_profile.company
+        except (Uploader.DoesNotExist, AttributeError):
+            return None
+
+    @staticmethod
+    def get_user_scope_flags(user):
+        """
+        Small helper for templates.
+        """
+        company = ProjectManagementService._get_uploader_company(user)
+        return {
+            "is_uploader": bool(company),
+            "uploader_company_id": company.id if company else None,
+            "uploader_company_name": company.name if company else None,
+        }
+
+    @staticmethod
+    def get_projects_for_user(user):
+        """
+        Dashboard projects list scoped for uploader.
+        """
+        company = ProjectManagementService._get_uploader_company(user)
+        if company:
+            return Project.objects.filter(company=company)
+        return Project.objects.all()
+
+    @staticmethod
+    def get_companies_for_user(user):
+        """
+        Dashboard companies dropdown scoped for uploader.
+        """
+        company = ProjectManagementService._get_uploader_company(user)
+        if company:
+            return Company.objects.filter(id=company.id)
+        return Company.objects.all()
+
+    @staticmethod
+    def _inject_company_into_post_data(data, company):
+        """
+        Ensures POST data includes company for uploader users (even if UI hides/disabled it).
+        """
+        if not company:
+            return data
+
+        # QueryDict is immutable; copy it
+        mutable = data.copy()
+        current = mutable.get("company")
+        if not current:
+            mutable["company"] = str(company.id)
+        return mutable
+
+    @staticmethod
+    def _project_scope_kwargs(user):
+        """
+        Returns kwargs to scope Project queries (for uploader users).
+        """
+        company = ProjectManagementService._get_uploader_company(user)
+        return {"company": company} if company else {}
 
     # ==================================================
     # PUBLIC ENTRY POINTS
@@ -53,20 +117,24 @@ class ProjectManagementService:
         """
         Handles the entire project creation process.
         Excludes ProjectWebConfiguration creation.
-        Handles multi-value fields using raw data.getlist().
-        Uses Django Forms for validation and creation.
+        Forces company for uploader users.
         """
+        uploader_company = ProjectManagementService._get_uploader_company(user)
+        data = ProjectManagementService._inject_company_into_post_data(data, uploader_company)
+
         # 1. Validate All Forms
         forms_ctx = ProjectManagementService._validate_forms_for_create(data, files)
         if not forms_ctx["is_valid"]:
-            # Return detailed errors from the forms
             return {"success": False, "errors": forms_ctx["errors"]}
 
-        # 2. Create Project and Related Objects (excluding ProjectWebConfiguration)
+        # 2. Create Project and Related Objects
         try:
-            project = ProjectManagementService._perform_create_transaction(forms_ctx, data) # Pass raw data
+            project = ProjectManagementService._perform_create_transaction(
+                forms_ctx=forms_ctx,
+                raw_data=data,
+                uploader_company=uploader_company
+            )
         except Exception as e:
-            # Include the exception details in the error message
             return {"success": False, "errors": {"__all__": [f"An error occurred during creation: {str(e)}"]}}
 
         # 3. Log Modification
@@ -78,25 +146,19 @@ class ProjectManagementService:
 
         return {"success": True, "project": project, "message": "Project and related configurations created successfully!"}
 
-
     @staticmethod
     def update_project(*, user, project_id, structured_data, files=None):
         """
-        Handles the entire project update process.
-        Excludes ProjectWebConfiguration update here; handled separately.
-        Expects structured JSON data like {"project": {...}, "project_config": {...}, ...}.
-        Does NOT use Django Forms for validation/update. Mimics old view logic.
+        Handles project update.
+        ✅ Scoped: uploader cannot update projects outside their company.
         """
-        project = get_object_or_404(Project, id=project_id)
+        project = get_object_or_404(Project, id=project_id, **ProjectManagementService._project_scope_kwargs(user))
 
         try:
-            # Perform the update transaction using structured data
             ProjectManagementService._perform_update_transaction_direct(project, structured_data, files)
         except Exception as e:
-            # Include the exception details in the error message
             return {"success": False, "errors": {"__all__": [f"An error occurred during update: {str(e)}"]}}
 
-        # Log Modification
         ModificationRecords.objects.create(
             user=user,
             type='UPDATE',
@@ -105,24 +167,21 @@ class ProjectManagementService:
 
         return {"success": True, "project": project, "message": "Project updated successfully!"}
 
-
     @staticmethod
     def delete_project(*, user, project_id):
         """
-        Handles the entire project deletion process.
-        ProjectWebConfiguration deletion happens via CASCADE if linked to Project.
+        Deletes a project.
+        ✅ Scoped: uploader cannot delete projects outside their company.
         """
-        project = get_object_or_404(Project, id=project_id)
+        project = get_object_or_404(Project, id=project_id, **ProjectManagementService._project_scope_kwargs(user))
 
         try:
             project_name = project.name
             company_name = project.company.name
-            project.delete() # Django handles cascading deletes based on models
+            project.delete()
         except Exception as e:
-            # Include the exception details in the error message
             return {"success": False, "errors": {"__all__": [f"An error occurred during deletion: {str(e)}"]}}
 
-        # Log Modification
         ModificationRecords.objects.create(
             user=user,
             type='DELETE',
@@ -132,16 +191,16 @@ class ProjectManagementService:
         return {"success": True, "message": f"Project '{project_name}' and all related data deleted successfully."}
 
     @staticmethod
-    def build_create_view_context(*, data=None, files=None):
+    def build_create_view_context(*, user, data=None, files=None):
         """
-        Returns the SAME forms + SAME context keys your view used.
-        Used to re-render the create_project page (GET or failed POST).
-
-        - data: request.POST (QueryDict) or None
-        - files: request.FILES (MultiValueDict) or None
+        Returns SAME forms + SAME context keys your view used.
+        Adds flags to hide company selection in template for uploader users.
         """
+        uploader_company = ProjectManagementService._get_uploader_company(user)
+        scope_flags = ProjectManagementService.get_user_scope_flags(user)
+        company = None
+        
         if data is None:
-            # GET: empty forms
             project_form = ProjectForm()
             config_form = ProjectConfigurationForm()
             constraints_form = ConstraintsForm()
@@ -149,13 +208,22 @@ class ProjectManagementService:
             maintenance_policy_form = MaintenancePolicyForm()
             masterplan_form = ProjectMasterplanForm()
         else:
-            # POST: bound forms (exactly like your view)
+            # ensure company exists for uploader even if UI hides it
+            data = ProjectManagementService._inject_company_into_post_data(data, uploader_company)
+
             project_form = ProjectForm(data)
             config_form = ProjectConfigurationForm(data)
             constraints_form = ConstraintsForm(data)
             gas_policy_form = GasPolicyForm(data)
             maintenance_policy_form = MaintenancePolicyForm(data)
-            masterplan_form = ProjectMasterplanForm(data, files)  # include files if needed
+            masterplan_form = ProjectMasterplanForm(data, files)
+
+        # If uploader: lock down company field (extra safety, even if template hides it)
+        if uploader_company and "company" in project_form.fields:
+            project_form.fields["company"].queryset = Company.objects.filter(id=uploader_company.id)
+            project_form.fields["company"].initial = uploader_company.id
+            project_form.fields["company"].disabled = True
+            company = uploader_company
 
         return {
             "project_form": project_form,
@@ -164,19 +232,23 @@ class ProjectManagementService:
             "gas_policy_form": gas_policy_form,
             "maintenance_policy_form": maintenance_policy_form,
             "masterplan_form": masterplan_form,
+            "company":company,
+            **scope_flags,
         }
 
     # ==================================================
-    # DELETION ENTRY POINTS
+    # DELETION ENTRY POINTS (SCOPED)
     # ==================================================
 
     @staticmethod
     def delete_npv(*, user, npv_id):
-        """
-        Handles deletion of a BaseNPV record.
-        """
         try:
-            npv = BaseNPV.objects.get(id=npv_id)
+            company = ProjectManagementService._get_uploader_company(user)
+            qs = BaseNPV.objects.select_related("project_config__project")
+            if company:
+                qs = qs.filter(project_config__project__company=company)
+            npv = qs.get(id=npv_id)
+
             npv.delete()
             return {"success": True, "message": "NPV record deleted successfully!"}
         except BaseNPV.DoesNotExist:
@@ -186,11 +258,13 @@ class ProjectManagementService:
 
     @staticmethod
     def delete_gas_fee(*, user, fee_id):
-        """
-        Handles deletion of a GasPolicyFees record.
-        """
         try:
-            fee = GasPolicyFees.objects.get(id=fee_id)
+            company = ProjectManagementService._get_uploader_company(user)
+            qs = GasPolicyFees.objects.select_related("gas_policy__project_config__project")
+            if company:
+                qs = qs.filter(gas_policy__project_config__project__company=company)
+            fee = qs.get(id=fee_id)
+
             fee.delete()
             return {"success": True, "message": "Gas Policy Fee deleted successfully!"}
         except GasPolicyFees.DoesNotExist:
@@ -200,11 +274,13 @@ class ProjectManagementService:
 
     @staticmethod
     def delete_gas_offset(*, user, offset_id):
-        """
-        Handles deletion of a GasPolicyOffsets record.
-        """
         try:
-            offset = GasPolicyOffsets.objects.get(id=offset_id)
+            company = ProjectManagementService._get_uploader_company(user)
+            qs = GasPolicyOffsets.objects.select_related("gas_policy__project_config__project")
+            if company:
+                qs = qs.filter(gas_policy__project_config__project__company=company)
+            offset = qs.get(id=offset_id)
+
             offset.delete()
             return {"success": True, "message": "Gas Policy Offset deleted successfully!"}
         except GasPolicyOffsets.DoesNotExist:
@@ -214,13 +290,13 @@ class ProjectManagementService:
 
     @staticmethod
     def delete_maintenance_offset(*, user, offset_id):
-        """
-        Handles deletion of a MaintenancePolicyOffsets record.
-        """
         try:
-            # Note: The original view had GasPolicyOffsets.DoesNotExist for this,
-            # which seems like a bug. Corrected to MaintenancePolicyOffsets.DoesNotExist.
-            offset = MaintenancePolicyOffsets.objects.get(id=offset_id)
+            company = ProjectManagementService._get_uploader_company(user)
+            qs = MaintenancePolicyOffsets.objects.select_related("maintenance_policy__project_config__project")
+            if company:
+                qs = qs.filter(maintenance_policy__project_config__project__company=company)
+            offset = qs.get(id=offset_id)
+
             offset.delete()
             return {"success": True, "message": "Maintenance Policy Offset deleted successfully!"}
         except MaintenancePolicyOffsets.DoesNotExist:
@@ -230,11 +306,13 @@ class ProjectManagementService:
 
     @staticmethod
     def delete_ctd(*, user, ctd_id):
-        """
-        Handles deletion of a CTD record.
-        """
         try:
-            ctd = CTD.objects.get(id=ctd_id)
+            company = ProjectManagementService._get_uploader_company(user)
+            qs = CTD.objects.select_related("project_constraints__project_config__project")
+            if company:
+                qs = qs.filter(project_constraints__project_config__project__company=company)
+            ctd = qs.get(id=ctd_id)
+
             ctd.delete()
             return {"success": True, "message": "CTD Value deleted successfully!"}
         except CTD.DoesNotExist:
@@ -244,11 +322,13 @@ class ProjectManagementService:
 
     @staticmethod
     def delete_maintenance_schedule(*, user, schedule_id):
-        """
-        Handles deletion of a MaintenancePolicyScheduling record.
-        """
         try:
-            schedule = MaintenancePolicyScheduling.objects.get(id=schedule_id)
+            company = ProjectManagementService._get_uploader_company(user)
+            qs = MaintenancePolicyScheduling.objects.select_related("maintenance_policy__project_config__project")
+            if company:
+                qs = qs.filter(maintenance_policy__project_config__project__company=company)
+            schedule = qs.get(id=schedule_id)
+
             schedule.delete()
             return {"success": True, "message": "Maintenance Schedule deleted successfully!"}
         except MaintenancePolicyScheduling.DoesNotExist:
@@ -256,52 +336,55 @@ class ProjectManagementService:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-
     # ==================================================
     # FORM VALIDATION HELPERS (For CREATE only)
     # ==================================================
 
     @staticmethod
     def _validate_forms_for_create(data, files):
-        """Validates all forms required for project creation."""
         project_form = ProjectForm(data)
         config_form = ProjectConfigurationForm(data)
         constraints_form = ConstraintsForm(data)
         gas_policy_form = GasPolicyForm(data)
         maintenance_policy_form = MaintenancePolicyForm(data)
-        masterplan_form = ProjectMasterplanForm(files or {}) if files else None
+
+        masterplan_form = ProjectMasterplanForm(data, files) if files else None
 
         forms = [project_form, config_form, constraints_form, gas_policy_form, maintenance_policy_form]
         if masterplan_form:
             forms.append(masterplan_form)
 
-        # Check if all forms are valid
         is_valid = all(form.is_valid() for form in forms)
 
         if is_valid:
-            # All forms are valid
-            return {"is_valid": True, "project_form": project_form, "config_form": config_form,
-                    "constraints_form": constraints_form, "gas_policy_form": gas_policy_form,
-                    "maintenance_policy_form": maintenance_policy_form, "masterplan_form": masterplan_form}
+            return {
+                "is_valid": True,
+                "project_form": project_form,
+                "config_form": config_form,
+                "constraints_form": constraints_form,
+                "gas_policy_form": gas_policy_form,
+                "maintenance_policy_form": maintenance_policy_form,
+                "masterplan_form": masterplan_form
+            }
         else:
-            # Forms are invalid, collect all errors
             all_errors = {}
             for form in forms:
-                # form.errors is a dictionary like {'field_name': ['error_message1', 'error_message2'], ...}
                 all_errors.update(form.errors)
-            print(f"DEBUG: Form validation failed for create. Errors: {all_errors}") # Debug print
+            print(f"DEBUG: Form validation failed for create. Errors: {all_errors}")
             return {"is_valid": False, "errors": all_errors}
-
 
     # ==================================================
     # TRANSACTIONAL HELPERS (For CREATE)
     # ==================================================
 
     @staticmethod
-    def _perform_create_transaction(forms_ctx, raw_data): # Added raw_data parameter
-        """Performs the database transaction for project creation."""
+    def _perform_create_transaction(*, forms_ctx, raw_data, uploader_company=None):
         with transaction.atomic():
-            project = forms_ctx["project_form"].save()
+            # ✅ Save project with forced company for uploader
+            project = forms_ctx["project_form"].save(commit=False)
+            if uploader_company:
+                project.company = uploader_company
+            project.save()
 
             config = forms_ctx["config_form"].save(commit=False)
             config.project = project
@@ -319,10 +402,10 @@ class ProjectManagementService:
             maintenance_policy.project_config = config
             maintenance_policy.save()
 
-            # Handle Base NPV - Use raw_data.getlist()
+            # Handle Base NPV
             ProjectManagementService._handle_base_npv(config, raw_data)
 
-            # Handle CTD - Use raw_data.getlist()
+            # Handle CTD
             ProjectManagementService._handle_ctd(constraints, raw_data)
 
             # Handle Masterplan
@@ -331,19 +414,14 @@ class ProjectManagementService:
                 masterplan.project = project
                 masterplan.save()
 
-            # Handle related policy data (Offsets, Scheduling) - Use raw_data.getlist()
+            # Handle related policy data
             ProjectManagementService._handle_related_policy_data(gas_policy, maintenance_policy, raw_data)
-
-            # ProjectWebConfiguration is NOT created here.
-            # It should be created/updated separately, e.g., via project_web_config view.
 
         return project
 
-
     # ==================================================
-    # TRANSACTIONAL HELPERS (For UPDATE - Direct Model Manipulation)
+    # TRANSACTIONAL HELPERS (For UPDATE - Direct)
     # ==================================================
-
 
     @staticmethod
     def _perform_update_transaction_direct(project, structured_data, files):
@@ -505,56 +583,50 @@ class ProjectManagementService:
                     )
 
     # ==================================================
-    # DATA HANDLING HELPERS (For CREATE only)
+    # DATA HANDLING HELPERS (For CREATE only) - unchanged
     # ==================================================
 
     @staticmethod
     def _handle_base_npv(config, raw_data, clear_existing=False):
-        """Handles creation/deletion of BaseNPV records for CREATE using raw_data.getlist()."""
         if clear_existing:
             BaseNPV.objects.filter(project_config=config).delete()
 
-        # Use raw_data (QueryDict) to get lists
-        term_periods = raw_data.getlist('term_period') # Adjust key as needed
-        npv_values = raw_data.getlist('npv_value')    # Adjust key as needed
+        term_periods = raw_data.getlist('term_period')
+        npv_values = raw_data.getlist('npv_value')
 
         for term_period, npv_value in zip(term_periods, npv_values):
             if term_period.strip() and npv_value.strip():
                 BaseNPV.objects.create(
                     project_config=config,
                     term_period=term_period,
-                    npv_value=(float(npv_value) / 100) # Assuming input is percentage, convert to decimal
+                    npv_value=(float(npv_value) / 100)
                 )
 
     @staticmethod
     def _handle_ctd(constraints, raw_data, clear_existing=False):
-        """Handles creation/deletion of CTD records for CREATE using raw_data.getlist()."""
         if clear_existing:
             CTD.objects.filter(project_constraints=constraints).delete()
 
-        # Use raw_data (QueryDict) to get lists
-        ctd_term_periods = raw_data.getlist('ctd_term_period') # Adjust key as needed
-        ctd_npv_values = raw_data.getlist('ctd_npv_value')    # Adjust key as needed
+        ctd_term_periods = raw_data.getlist('ctd_term_period')
+        ctd_npv_values = raw_data.getlist('ctd_npv_value')
 
         for ctd_term_period, ctd_npv_value in zip(ctd_term_periods, ctd_npv_values):
             if ctd_term_period.strip() and ctd_npv_value.strip():
                 CTD.objects.create(
                     project_constraints=constraints,
                     term_period=ctd_term_period,
-                    npv_value=(float(ctd_npv_value) / 100) # Assuming input is percentage, convert to decimal
+                    npv_value=(float(ctd_npv_value) / 100)
                 )
 
     @staticmethod
     def _handle_related_policy_data(gas_policy, maintenance_policy, raw_data, clear_existing=False):
-        """Handles creation/deletion of related policy offset and scheduling records for CREATE using raw_data.getlist()."""
         if clear_existing:
             GasPolicyOffsets.objects.filter(gas_policy=gas_policy).delete()
             MaintenancePolicyOffsets.objects.filter(maintenance_policy=maintenance_policy).delete()
             MaintenancePolicyScheduling.objects.filter(maintenance_policy=maintenance_policy).delete()
 
-        # Handle Gas Policy Offsets - Use raw_data.getlist()
-        gas_offset_periods = raw_data.getlist('gas_offset_period') # Adjust key as needed
-        gas_policy_offsets = raw_data.getlist('gas_policy_offsets') # Adjust key as needed
+        gas_offset_periods = raw_data.getlist('gas_offset_period')
+        gas_policy_offsets = raw_data.getlist('gas_policy_offsets')
         for term_period, offset_value in zip(gas_offset_periods, gas_policy_offsets):
             if term_period.strip() and offset_value.strip():
                 GasPolicyOffsets.objects.create(
@@ -563,9 +635,8 @@ class ProjectManagementService:
                     offset_value=offset_value
                 )
 
-        # Handle Maintenance Policy Offsets - Use raw_data.getlist()
-        maintenance_offset_periods = raw_data.getlist('maintenance_offset_period') # Adjust key as needed
-        maintenance_policy_offsets = raw_data.getlist('maintenance_policy_offsets') # Adjust key as needed
+        maintenance_offset_periods = raw_data.getlist('maintenance_offset_period')
+        maintenance_policy_offsets = raw_data.getlist('maintenance_policy_offsets')
         for term_period, offset_value in zip(maintenance_offset_periods, maintenance_policy_offsets):
             if term_period.strip() and offset_value.strip():
                 MaintenancePolicyOffsets.objects.create(
@@ -574,9 +645,8 @@ class ProjectManagementService:
                     offset_value=offset_value
                 )
 
-        # Handle Maintenance Policy Scheduling - Use raw_data.getlist()
-        maintenance_scheduling_periods = raw_data.getlist('maintenance_scheduling_period') # Adjust key as needed
-        maintenance_scheduling_data = raw_data.getlist('maintenance_policy_scheduling') # Adjust key as needed
+        maintenance_scheduling_periods = raw_data.getlist('maintenance_scheduling_period')
+        maintenance_scheduling_data = raw_data.getlist('maintenance_policy_scheduling')
         for term_period, scheduling_value in zip(maintenance_scheduling_periods, maintenance_scheduling_data):
             if term_period.strip() and scheduling_value.strip():
                 MaintenancePolicyScheduling.objects.create(
@@ -584,21 +654,19 @@ class ProjectManagementService:
                     term_period=term_period,
                     scheduling=scheduling_value
                 )
-       
-                
+
     @staticmethod
     def remove_masterplan(*, user, project_id):
         """
-        Handles removal of a project's masterplan image and record.
+        Scoped: uploader can only remove masterplan from their own company’s projects.
         """
         try:
-            project = Project.objects.get(id=project_id)
+            project = get_object_or_404(Project, id=project_id, **ProjectManagementService._project_scope_kwargs(user))
+
             try:
                 masterplan = project.masterplan
                 if masterplan and masterplan.image:
-                    # Delete the image file
                     masterplan.image.delete(save=False)
-                    # Delete the masterplan record
                     masterplan.delete()
 
                     ModificationRecords.objects.create(
@@ -613,7 +681,5 @@ class ProjectManagementService:
             except ProjectMasterplan.DoesNotExist:
                 return {"success": False, "error": "No masterplan found"}
 
-        except Project.DoesNotExist:
-            return {"success": False, "error": "Project not found"}
         except Exception as e:
             return {"success": False, "error": str(e)}

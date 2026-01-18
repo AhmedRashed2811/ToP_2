@@ -3051,7 +3051,7 @@
   function calculateBasePSM(unit) {
     try {
         const unitBasePrice = calculateUnitBasePrice(unit);
-        const grossArea = parseFloat(unit.sellable_area) || 0;
+        const grossArea = parseFloat(unit.gross_area) || 0;
         
         // Check for zero denominator
         if (grossArea <= 0) {

@@ -14,9 +14,10 @@ from django.db.models import Count
 from django.shortcuts import get_object_or_404
 
 from ..models import (
-    CompanyController,
-    CompanyManager,
-    CompanyUser,
+    SalesOperation,
+    Manager,
+    Sales,
+    SalesHead,
     SalesRequest,
     SalesRequestAnalytical,
     Project,
@@ -57,19 +58,19 @@ class SalesRequestManagementService:
     @staticmethod
     def _resolve_company_for_user(*, user):
         if user.groups.filter(name="Manager").exists():
-            rel = CompanyManager.objects.select_related("company").get(user=user)
+            rel = Manager.objects.select_related("company").get(user=user)
             return rel.company
 
-        if user.groups.filter(name="Controller").exists():
-            rel = CompanyController.objects.select_related("company").get(user=user)
+        if user.groups.filter(name__in=["Controller", "SalesOperation"]).exists():
+            rel = SalesOperation.objects.select_related("company").get(user=user)
             return rel.company
 
         # Fallbacks (Admin/Developer)
-        rel = CompanyController.objects.select_related("company").filter(user=user).first()
+        rel = SalesOperation.objects.select_related("company").filter(user=user).first()
         if rel:
             return rel.company
 
-        rel = CompanyManager.objects.select_related("company").filter(user=user).first()
+        rel = Manager.objects.select_related("company").filter(user=user).first()
         if rel:
             return rel.company
 
@@ -479,10 +480,14 @@ class SalesRequestManagementService:
             sales_man = sales_request.sales_man
             is_restricted_client = False
             
-            if sales_man.groups.filter(name="Client").exists():
-                cu = CompanyUser.objects.filter(user=sales_man).first()
-                if cu and not cu.can_edit and not cu.can_change_years:
+            is_sales = sales_man.groups.filter(name="Sales").exists()
+            
+            if is_sales:
+                sp = Sales.objects.filter(user=sales_man).first()
+                if sp and (not sp.can_edit) and (not sp.can_change_years):
                     is_restricted_client = True
+                    
+                    
 
             use_multiple_dp_labels = is_multiple_dp
             if one_dp_for_sales and is_restricted_client:

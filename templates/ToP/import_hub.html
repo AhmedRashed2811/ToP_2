@@ -77,23 +77,37 @@
 
 <div class="container mt-4">
     {% csrf_token %}
-    
+
     <div class="text-center mb-5">
         <h1>Unit Warehouse Import Hub</h1>
         <p class="text-muted">Aggregate inventory data from multiple sources into a single warehouse.</p>
     </div>
 
-    <div class="row justify-content-center mb-5">
+    {# --- Company Selector (hidden for uploader) --- #}
+    <div class="row justify-content-center mb-5" id="companySelectRow" {% if is_uploader %}style="display:none"{% endif %}>
         <div class="col-md-6">
             <label class="form-label fw-bold">Select Warehouse (Company)</label>
             <select id="companySelect" class="form-select form-select-lg">
-                <option value="" selected disabled>Choose a company...</option>
+                <option value="" selected disabled>Choose a company.</option>
                 {% for company in companies %}
-                <option value="{{ company.id }}">{{ company.name }}</option>
+                    <option value="{{ company.id }}"
+                        {% if is_uploader and locked_company_id and company.id|stringformat:"s" == locked_company_id|stringformat:"s" %}selected{% endif %}>
+                        {{ company.name }}
+                    </option>
                 {% endfor %}
             </select>
         </div>
     </div>
+
+    {% if is_uploader %}
+        <div class="row justify-content-center mb-4">
+            <div class="col-md-6">
+                <div class="alert alert-info mb-0">
+                    Warehouse locked to: <strong>{{ locked_company_name }}</strong>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 
     <div id="sourcesPanel" class="row hidden">
         <div class="col-md-4">
@@ -139,7 +153,7 @@
                     </button>
                 </div>
                 <p class="text-muted small">Type a unit code and press <strong>Enter</strong> to add it to the deletion list.</p>
-                
+
                 <div class="tag-container" id="tagContainer" onclick="document.getElementById('unitTagInput').focus()">
                     <input type="text" id="unitTagInput" class="tag-input" placeholder="Type unit code (e.g. A-101)...">
                 </div>
@@ -159,10 +173,11 @@
     // Configuration loaded from Django
     const companyConfigs = {{ company_configs|safe }};
 
+    // DOM refs (define FIRST)
     const companySelect = document.getElementById('companySelect');
     const sourcesPanel = document.getElementById('sourcesPanel');
-    const deletePanel = document.getElementById('deletePanel'); // New Panel
-    
+    const deletePanel = document.getElementById('deletePanel');
+
     const cardSheet = document.getElementById('card-sheet');
     const cardErp = document.getElementById('card-erp');
     const sheetDisplay = document.getElementById('sheetUrlDisplay');
@@ -170,10 +185,18 @@
     const consoleLog = document.getElementById('consoleLog');
     const consolePanel = document.getElementById('consolePanel');
 
+    // Uploader locking flags
+    const IS_UPLOADER = {{ is_uploader|yesno:"true,false" }};
+    const LOCKED_COMPANY_ID = "{{ locked_company_id|default:'' }}";
+
+    function getSelectedCompanyId() {
+        return IS_UPLOADER ? LOCKED_COMPANY_ID : companySelect.value;
+    }
+
     // --- Tag System Logic ---
     const unitTagInput = document.getElementById('unitTagInput');
     const tagContainer = document.getElementById('tagContainer');
-    let unitsToDelete = new Set(); // Use Set for unique values
+    let unitsToDelete = new Set();
 
     unitTagInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
@@ -188,14 +211,13 @@
 
     function addTag(code) {
         unitsToDelete.add(code);
-        
+
         const tag = document.createElement('div');
         tag.className = 'tag';
         tag.innerHTML = `
-            ${code} 
+            ${code}
             <span class="close-tag" onclick="removeTag(this, '${code}')">&times;</span>
         `;
-        // Insert before the input field
         tagContainer.insertBefore(tag, unitTagInput);
     }
 
@@ -203,38 +225,11 @@
         unitsToDelete.delete(code);
         element.parentElement.remove();
     }
-    // ------------------------
 
     // Retrieve CSRF Token from the DOM
     function getCsrfToken() {
         return document.querySelector('[name=csrfmiddlewaretoken]').value;
     }
-
-    // Handle Selection Change
-    companySelect.addEventListener('change', function() {
-        const id = this.value;
-        const config = companyConfigs[id];
-
-        if (!config) return;
-
-        // Reset UI
-        sourcesPanel.classList.remove('hidden');
-        deletePanel.classList.remove('hidden'); // Show Delete Panel
-        consolePanel.classList.add('hidden');
-        consoleLog.innerHTML = '<div>> Ready.</div>';
-
-        // Clear tags on company switch
-        unitsToDelete.clear();
-        document.querySelectorAll('.tag').forEach(t => t.remove());
-
-        // Toggle Cards based on capability
-        cardSheet.style.display = config.has_sheets ? 'block' : 'none';
-        cardErp.style.display = config.has_erp ? 'block' : 'none';
-
-        // Update Info
-        sheetDisplay.innerText = config.sheet_url ? 'Link: ' + config.sheet_url.substring(0, 30) + '...' : 'No URL Configured';
-        erpDisplay.innerText = config.erp_url ? 'Endpoint: ' + config.erp_url.substring(0, 30) + '...' : 'No URL Configured';
-    });
 
     function log(msg, type='info') {
         const color = type === 'error' ? 'red' : (type === 'success' ? '#00ff00' : 'white');
@@ -243,17 +238,54 @@
         consoleLog.scrollTop = consoleLog.scrollHeight;
     }
 
-    // Existing Import Function
+    function applyCompanySelection(id) {
+        const config = companyConfigs[id];
+        if (!config) return;
+
+        // Show panels
+        sourcesPanel.classList.remove('hidden');
+        deletePanel.classList.remove('hidden');
+        consolePanel.classList.add('hidden');
+        consoleLog.innerHTML = '<div>> Ready.</div>';
+
+        // Clear tags on company switch
+        unitsToDelete.clear();
+        document.querySelectorAll('.tag').forEach(t => t.remove());
+        unitTagInput.value = '';
+
+        // Toggle Cards
+        cardSheet.style.display = config.has_sheets ? 'block' : 'none';
+        cardErp.style.display = config.has_erp ? 'block' : 'none';
+
+        // Update Info
+        sheetDisplay.innerText = config.sheet_url ? 'Link: ' + config.sheet_url.substring(0, 30) + '...' : 'No URL Configured';
+        erpDisplay.innerText = config.erp_url ? 'Endpoint: ' + config.erp_url.substring(0, 30) + '...' : 'No URL Configured';
+    }
+
+    // Handle Selection Change (Admin/Dev/TeamMember)
+    companySelect.addEventListener('change', function() {
+        applyCompanySelection(this.value);
+    });
+
+    // Auto-init for uploader (no dropdown)
+    if (IS_UPLOADER && LOCKED_COMPANY_ID) {
+        companySelect.value = LOCKED_COMPANY_ID;
+        applyCompanySelection(LOCKED_COMPANY_ID);
+    }
+
+    // Existing Import Function (updated to support uploader)
     async function triggerImport(sourceType) {
-        // ... (Your existing import logic remains exactly here) ...
-        const companyId = companySelect.value;
-        if (!companyId) return alert("Select a company first");
+        const companyId = getSelectedCompanyId();
+
+        if (!companyId) {
+            return alert("Select a company first");
+        }
 
         consolePanel.classList.remove('hidden');
         log(`Starting ${sourceType.toUpperCase()} import...`);
 
         const formData = new FormData();
-        formData.append('company_id', companyId);
+        formData.append('company_id', companyId); // backend ignores it for uploader, but ok
         formData.append('source_type', sourceType);
 
         if (sourceType === 'csv') {
@@ -269,7 +301,7 @@
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-CSRFToken': getCsrfToken() 
+                    'X-CSRFToken': getCsrfToken()
                 }
             });
 
@@ -283,8 +315,8 @@
                 log(`-> Created: ${s.created}`, 'success');
                 log(`-> Updated: ${s.updated}`, 'success');
                 log(`-> Skipped: ${s.skipped}`);
-                
-                if (s.errors.length > 0) {
+
+                if (s.errors && s.errors.length > 0) {
                     log(`Warning: ${s.errors.length} row errors occurred.`, 'error');
                     s.errors.slice(0, 5).forEach(err => log(err, 'error'));
                 }
@@ -297,18 +329,18 @@
         }
     }
 
-    // --- NEW: Delete Units Function ---
+    // Delete Units Function (updated to support uploader)
     async function executeDelete() {
-        const companyId = companySelect.value;
+        const companyId = getSelectedCompanyId();
+
         if (!companyId) return Swal.fire('Error', 'Please select a company first.', 'error');
-        
+
         const unitsArray = Array.from(unitsToDelete);
-        
+
         if (unitsArray.length === 0) {
             return Swal.fire('No Units Selected', 'Please type a unit code and press Enter.', 'warning');
         }
 
-        // 1. SweetAlert Confirmation
         const result = await Swal.fire({
             title: 'Are you sure?',
             text: `You are about to delete ${unitsArray.length} units from the database. This cannot be undone!`,
@@ -321,7 +353,6 @@
 
         if (!result.isConfirmed) return;
 
-        // 2. AJAX Request
         try {
             consolePanel.classList.remove('hidden');
             log(`Deleting ${unitsArray.length} units...`, 'info');
@@ -329,7 +360,7 @@
             const response = await fetch("{% url 'delete_hub_units' %}", {
                 method: 'POST',
                 body: JSON.stringify({
-                    company_id: companyId,
+                    company_id: companyId, // backend ignores it for uploader, but ok
                     unit_codes: unitsArray
                 }),
                 headers: {
@@ -343,19 +374,16 @@
             const data = await response.json();
 
             if (data.success) {
-                // 3. Success Feedback
                 Swal.fire('Deleted!', `Successfully deleted ${data.deleted_count} units.`, 'success');
-                
+
                 log(`Deleted ${data.deleted_count} units successfully.`, 'success');
                 if (data.not_found_count > 0) {
                     log(`Note: ${data.not_found_count} units were not found.`, 'info');
                 }
 
-                // Clear inputs
                 unitsToDelete.clear();
                 document.querySelectorAll('.tag').forEach(t => t.remove());
                 unitTagInput.value = '';
-
             } else {
                 Swal.fire('Error', data.error || 'Deletion failed', 'error');
                 log(`Deletion Failed: ${data.error}`, 'error');

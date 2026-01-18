@@ -195,6 +195,25 @@ if not DEBUG:
 
 
 
+# ========= Google Sheets Integration =========
+
+# Option A: Use a JSON key file
+GOOGLE_SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "django-gsheets-470712-1a13200c5b57.json")
+
+# Your spreadsheet ID (from the full URL)
+# Example URL: https://docs.google.com/spreadsheets/d/1krwkIYyxBWPGoDl4YeSDhLxRyVl6Hmk20WldgGpybSE/edit#gid=0
+GOOGLE_SHEETS_SPREADSHEET_ID = os.getenv(
+    "GOOGLE_SHEETS_SPREADSHEET_ID",
+    "1krwkIYyxBWPGoDl4YeSDhLxRyVl6Hmk20WldgGpybSE"
+)
+
+# Default worksheet (tab) name
+GOOGLE_SHEETS_WORKSHEET_TITLE = os.getenv("GOOGLE_SHEETS_WORKSHEET_TITLE", "Sheet1")
+
+# Or use worksheet gid (numeric ID, like 0 in your URL)
+GOOGLE_SHEETS_WORKSHEET_GID = os.getenv("GOOGLE_SHEETS_WORKSHEET_GID", "0")
+
+
 
 # --- PUSHER CONFIGURATION ---
 PUSHER_APP_ID = "2085101"

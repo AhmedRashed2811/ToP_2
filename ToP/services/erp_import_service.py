@@ -101,7 +101,7 @@ class ERPImportService:
         # Areas
         mapped['footprint'] = get_val("footprint", "Foot print")
         mapped['net_area'] = get_val("net_area", "netArea", "Unit Area (Net Area)")
-        mapped['sellable_area'] = get_val("sellable_area", "sellableArea", "Gross Area", "Sellable Area")
+        mapped['gross_area'] = get_val("gross_area", "sellableArea", "Gross Area", "Sellable Area")
         mapped['total_area'] = get_val("total_area", "totalArea", "Total Area")
         mapped['internal_area'] = get_val("internal_area", "internalArea", "Internal Area")
         mapped['covered_terraces'] = get_val("covered_terraces", "coveredTerraces", "Covered Terraces")

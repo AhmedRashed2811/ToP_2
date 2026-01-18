@@ -291,84 +291,198 @@ class MaintenancePolicyForm(forms.ModelForm):
         return instance
 
 
+from django import forms
+from django.utils.timezone import now
+
+from .models import (
+    User,
+    Company,
+    SalesTeam,
+)
+
 class CreateUserForm(forms.ModelForm):
+    # Auth password fields (kept)
     password = forms.CharField(
-        widget=forms.PasswordInput(attrs={
-            'autocomplete': 'new-password'
-        })
+        widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
+        required=True,
     )
     confirm_password = forms.CharField(
-        widget=forms.PasswordInput(attrs={
-            'autocomplete': 'new-password'
-        })
+        widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
+        required=True,
     )
+
+    ROLE_CHOICES = [
+        ('Admin', 'Admin'),
+        ('CompanyAdmin', 'Company Admin'),
+        ('Manager', 'Manager'),
+        ('SalesHead', 'Sales Head'),
+        ('Sales', 'Sales'),
+        ('SalesOperation', 'Sales Operation'),
+        ('Uploader', 'Uploader'),
+        ('Viewer', 'Viewer'),
+        ('BusinessTeam', 'Business Team'),
+    ]
     role = forms.ChoiceField(
-        choices=[
-            ('Admin', 'Admin'),
-            ('BusinessTeam', 'Business Team'),
-            ('CompanyUser', 'Company User'),
-            ('CompanyController', 'Company Controller'),
-            ('Developer', 'Developer'),
-            ('Manager', 'Company Manager'),
-            ('CompanyFinanceManager', 'Company Finance Manager'), 
-        ],
-        widget=forms.Select(attrs={'autocomplete': 'off'})
+        choices=ROLE_CHOICES,
+        widget=forms.Select(attrs={'autocomplete': 'off', 'id': 'id_role'})
     )
+
+    # Company (required for company roles)
     company = forms.ModelChoiceField(
-        queryset=Company.objects.all(),
+        queryset=Company.objects.all().order_by("name"),
         required=False,
-        widget=forms.Select(attrs={'autocomplete': 'off'})
+        widget=forms.Select(attrs={'autocomplete': 'off', 'id': 'id_company'})
     )
+
+    # Team (only for Sales & SalesHead)
+    team = forms.ModelChoiceField(
+        queryset=SalesTeam.objects.select_related("company").all().order_by("company__name", "name"),
+        required=False,
+        widget=forms.Select(attrs={'autocomplete': 'off', 'id': 'id_team'})
+    )
+
+    # BusinessTeam & Admin metadata
     joining_date = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'type': 'date', 'autocomplete': 'off'})
+        widget=forms.DateInput(attrs={'type': 'date', 'autocomplete': 'off', 'id': 'id_joining_date'})
     )
     job_title = forms.CharField(
         max_length=100,
         required=False,
-        widget=forms.TextInput(attrs={'autocomplete': 'off'})
+        widget=forms.TextInput(attrs={'autocomplete': 'off', 'id': 'id_job_title'})
     )
-    # NEW FIELD: Can Edit
+
+    # ✅ Sales profile fields
     can_edit = forms.BooleanField(
         required=False,
         initial=False,
-        label="Can Edit (Company User only)"
+        label="Can Edit (Sales only)",
+        widget=forms.CheckboxInput(attrs={'id': 'id_can_edit'})
     )
-    
     can_change_years = forms.BooleanField(
         required=False,
         initial=False,
-        label="Can Change Year (Company User only)"
+        label="Can Change Years (Sales only)",
+        widget=forms.CheckboxInput(attrs={'id': 'id_can_change_years'})
+    )
+
+    # ✅ SalesHead profile field
+    one_dp_only = forms.BooleanField(
+        required=False,
+        initial=False,
+        label="One DP Only (Sales Head only)",
+        widget=forms.CheckboxInput(attrs={'id': 'id_one_dp_only'})
+    )
+
+    # ✅ SalesOperation profile field (JSON list)
+    editable_unit_fields = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'autocomplete': 'off',
+            'id': 'id_editable_unit_fields',
+            'rows': 3,
+            'placeholder': 'e.g. price,status OR ["price","status"]'
+        }),
+        help_text='Provide JSON array or comma-separated values.'
+    )
+
+    # ✅ Viewer profile field (JSON list)
+    allowed_pages = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'autocomplete': 'off',
+            'id': 'id_allowed_pages',
+            'rows': 3,
+            'placeholder': 'e.g. dashboard,map OR ["dashboard","map"]'
+        }),
+        help_text='Provide JSON array or comma-separated values.'
     )
 
     class Meta:
         model = User
         fields = ['email', 'full_name', 'role']
         widgets = {
-            'email': forms.EmailInput(attrs={'autocomplete': 'off'}),
-            'full_name': forms.TextInput(attrs={'autocomplete': 'off'}),
+            'email': forms.EmailInput(attrs={'autocomplete': 'off', 'id': 'id_email'}),
+            'full_name': forms.TextInput(attrs={'autocomplete': 'off', 'id': 'id_full_name'}),
         }
+
+    # -------------------------
+    # Helpers
+    # -------------------------
+    @staticmethod
+    def _parse_list(text: str):
+        """
+        Accepts:
+          - JSON list string: ["a","b"]
+          - comma-separated: a,b
+          - empty => []
+        Returns python list[str]
+        """
+        if not text:
+            return []
+        text = text.strip()
+        if not text:
+            return []
+        # try JSON
+        if text.startswith("[") and text.endswith("]"):
+            import json
+            try:
+                val = json.loads(text)
+                if isinstance(val, list):
+                    return [str(x).strip() for x in val if str(x).strip()]
+            except Exception:
+                pass
+        # fallback CSV
+        parts = [p.strip() for p in text.split(",")]
+        return [p for p in parts if p]
 
     def clean(self):
         cleaned_data = super().clean()
+
+        # passwords
         password = cleaned_data.get('password')
         confirm_password = cleaned_data.get('confirm_password')
-
         if password and confirm_password and password != confirm_password:
             raise forms.ValidationError("Passwords do not match.")
 
         role = cleaned_data.get('role')
-        if role in ['CompanyUser', 'CompanyController', 'Manager', 'CompanyFinanceManager'] and not cleaned_data.get('company'):
+        company = cleaned_data.get('company')
+        team = cleaned_data.get('team')
+
+        # roles that require company
+        company_required_roles = [
+            'CompanyAdmin', 'Manager', 'SalesHead', 'Sales', 'SalesOperation', 'Uploader', 'Viewer'
+        ]
+        if role in company_required_roles and not company:
             raise forms.ValidationError("Company is required for this role.")
-        
-        if role == 'BusinessTeam' and not cleaned_data.get('joining_date'):
-            raise forms.ValidationError("Joining Date is required for Business Team.")
-        if role == 'BusinessTeam' and not cleaned_data.get('job_title'):
-            raise forms.ValidationError("Job Title is required for Business Team.")
-        
-        
-        
+
+        # team rules
+        if role not in ['Sales', 'SalesHead'] and team:
+            raise forms.ValidationError("Team can only be assigned for Sales or Sales Head.")
+        if role in ['Sales', 'SalesHead'] and team and company and team.company_id != company.id:
+            raise forms.ValidationError("Selected team does not belong to the selected company.")
+
+        # BusinessTeam requirements
+        if role == 'BusinessTeam':
+            if not cleaned_data.get('joining_date'):
+                raise forms.ValidationError("Joining Date is required for Business Team.")
+            if not cleaned_data.get('job_title'):
+                raise forms.ValidationError("Job Title is required for Business Team.")
+
+        # Admin joining date (optional but if you want to enforce, uncomment)
+        # if role == 'Admin' and not cleaned_data.get('joining_date'):
+        #     raise forms.ValidationError("Joining Date is required for Admin.")
+
+        # Role-specific validation for JSON-ish inputs
+        if role == 'SalesOperation':
+            # validate parseable
+            _ = self._parse_list(cleaned_data.get('editable_unit_fields') or "")
+        if role == 'Viewer':
+            _ = self._parse_list(cleaned_data.get('allowed_pages') or "")
+
         return cleaned_data
+
+
 
 class ProjectMasterplanForm(forms.ModelForm):
     class Meta:

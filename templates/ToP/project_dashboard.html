@@ -234,13 +234,22 @@
 <!-- ✅ Search & Filters -->
 <div class="filters-container">
     <input type="text" id="searchInput" placeholder="Search by Project Name..." onkeyup="filterProjects()">
-    <select id="companyFilter" onchange="filterProjects()">
-        <option value="">All Companies</option>
-        {% for company in companies %}
-        <option value="{{ company.name }}">{{ company.name }}</option>
-        {% endfor %}
-    </select>
+
+    {% if not is_uploader %}
+        <select id="companyFilter" onchange="filterProjects()">
+            <option value="">All Companies</option>
+            {% for company in companies %}
+                <option value="{{ company.name }}">{{ company.name }}</option>
+            {% endfor %}
+        </select>
+    {% else %}
+        {# Keep the element for JS, but hide it #}
+        <select id="companyFilter" onchange="filterProjects()" style="display:none;">
+            <option value="{{ uploader_company_name }}" selected>{{ uploader_company_name }}</option>
+        </select>
+    {% endif %}
 </div>
+
 
 <!-- ✅ Table of Projects -->
 <div class="container">

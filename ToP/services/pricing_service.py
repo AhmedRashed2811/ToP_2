@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404
 
 from ..models import (
     Company,
-    CompanyManager,
+    Manager,
     PricingCriteria,
     PricingPremiumGroup,
     PricingPremiumSubgroup,
@@ -53,10 +53,9 @@ class PricingService:
         # Same Manager logic as your view:
         company_id = None
         if user.groups.filter(name="Manager").exists():
-            try:
-                company_id = user.companymanager.company.id
-            except CompanyManager.DoesNotExist:
-                pass
+            manager_profile = Manager.objects.select_related("company").filter(user=user).first()
+            if manager_profile and manager_profile.company:
+                company_id = manager_profile.company.id
 
         return {
             "companies": companies,

@@ -114,7 +114,7 @@ class HistoricalSalesRequestsAnalysisService:
             
             # NEW: Initialize unit fields
             land_area = None
-            sellable_area = None
+            gross_area = None
             
             if show_base_price:
                 base_price = float(r.base_price) if r.base_price is not None else None
@@ -129,7 +129,7 @@ class HistoricalSalesRequestsAnalysisService:
                 
                 if unit_obj:
                     land_area = float(unit_obj.land_area) if unit_obj.land_area else 0
-                    sellable_area = float(unit_obj.sellable_area) if unit_obj.sellable_area else 0
+                    gross_area = float(unit_obj.gross_area) if unit_obj.gross_area else 0
 
             sales_price = float(r.final_price) if r.final_price is not None else None
 
@@ -147,7 +147,7 @@ class HistoricalSalesRequestsAnalysisService:
                 "sales_price": sales_price,
                 # ADDED THESE:
                 "land_area": land_area,
-                "sellable_area": sellable_area,
+                "gross_area": gross_area,
             })
 
         return ServiceResult(

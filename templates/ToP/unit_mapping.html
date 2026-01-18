@@ -137,7 +137,7 @@
     <div class="unit-tooltip">
         <div class="tooltip-header"><span data-field="unit_code"></span><span class="tooltip-close" title="Close">&times;</span></div>
         <div class="tooltip-field"><label>Price:</label><span data-field="price"></span></div>
-        <div class="tooltip-field"><label>Gross Area:</label><span data-field="sellable_area"></span></div>
+        <div class="tooltip-field"><label>Gross Area:</label><span data-field="gross_area"></span></div>
         <div class="tooltip-field"><label>Land Area:</label><span data-field="land_area"></span></div>
         <div style="margin-top: 10px; text-align: center; border-top: 1px solid #eee; padding-top: 10px;">
             <button class="btn btn-danger btn-sm delete-unit">Delete Pin</button>
@@ -454,7 +454,7 @@
                         else {
                             response.data.forEach(u => {
                                 const formattedPrice = formatPrice(u.interest_free_unit_price);
-                                tbody.append(`<tr><td>${u.unit_code}</td><td>${u.floor||'-'}</td><td>${formattedPrice}</td><td>${u.sellable_area}</td><td><button class="delete-child-btn" data-child-id="${u.child_id}">X</button></td></tr>`);
+                                tbody.append(`<tr><td>${u.unit_code}</td><td>${u.floor||'-'}</td><td>${formattedPrice}</td><td>${u.gross_area}</td><td><button class="delete-child-btn" data-child-id="${u.child_id}">X</button></td></tr>`);
                             });
                         }
                     } else {
@@ -463,7 +463,7 @@
                         const u = response.data;
                         tooltipContent.find('[data-field="unit_code"]').text(u.unit_code);
                         tooltipContent.find('[data-field="price"]').text(formatPrice(u.interest_free_unit_price));
-                        tooltipContent.find('[data-field="sellable_area"]').text(u.sellable_area || '-');
+                        tooltipContent.find('[data-field="gross_area"]').text(u.gross_area || '-');
                         tooltipContent.find('[data-field="land_area"]').text(u.land_area || '-');
                     }
                     

@@ -1,0 +1,406 @@
+{% extends 'ToP/base.html' %}
+{% block title %}Sales Team Report{% endblock %}
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<style>
+    /* REQUIRED by you */
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl { max-width: 100%; }
+    }
+    @media (min-width: 576px) {
+        .container, .container-sm { max-width: 100%; }
+    }
+    table{ margin-top: 0%; }
+    table td:first-child {
+        min-width: 100%;
+        max-width: 100%;
+    }
+
+    /* Page styling */
+    body { background: #f6f8fb; }
+    .wrap { padding: 18px; max-width: 1400px; margin: 0 auto; }
+
+    .header {
+        display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;
+        background:#fff; border:1px solid rgba(0,0,0,.06); border-radius:16px;
+        padding:16px 18px; box-shadow:0 10px 30px rgba(0,0,0,.06); margin-bottom:14px;
+    }
+    .header h1 { margin:0; font-weight:950; font-size:18px; color:#111827; letter-spacing:.2px; }
+    .sub { margin-top:4px; font-weight:800; font-size:12px; color:#6b7280; }
+
+    .filters {
+        background:#fff; border:1px solid rgba(0,0,0,.06); border-radius:16px;
+        padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.06); margin-bottom:14px;
+        display:grid; grid-template-columns: 1.2fr 1.2fr; gap:12px; align-items:end;
+    }
+    .fg label { display:block; font-weight:900; font-size:12px; color:#374151; margin-bottom:6px; }
+    .fg select {
+        width:100%; padding:11px 12px; border-radius:14px; border:1px solid rgba(0,0,0,.14);
+        font-weight:850; background:#fff;
+    }
+
+    .pill {
+        display:inline-flex; gap:8px; align-items:center;
+        padding:10px 12px; border-radius:999px;
+        background:#f9fafb; border:1px solid rgba(0,0,0,.06);
+        font-weight:900; font-size:12px; color:#374151;
+        height: 44px;
+    }
+
+    /* Two tables beside each other on laptop */
+    .grid {
+        display:grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap:14px;
+    }
+    .card {
+        background:#fff; border:1px solid rgba(0,0,0,.06); border-radius:16px;
+        box-shadow:0 10px 30px rgba(0,0,0,.06); padding:14px;
+        min-width: 0;
+    }
+    .card.half { grid-column: span 6; }
+
+    .card-title {
+        display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
+        margin-bottom: 10px;
+    }
+    .card-title h2 { margin:0; font-size:14px; font-weight:950; color:#111827; }
+    .muted { color:#6b7280; font-weight:800; font-size:12px; }
+
+    .table-wrap { overflow:auto; border-radius:14px; border:1px solid rgba(0,0,0,.06); }
+    table { width:100%; border-collapse:collapse; min-width: 720px; background:#fff; }
+    thead th {
+        position: sticky; top: 0;
+        background:#f9fafb; border-bottom:1px solid rgba(0,0,0,.06);
+        text-align:left; padding:12px; font-size:12px; font-weight:950; color:#374151;
+        white-space: nowrap;
+    }
+    tbody td {
+        border-bottom:1px solid rgba(0,0,0,.06);
+        padding:12px; font-size:12px; font-weight:850; color:#111827;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+    tbody tr:hover { background:#fbfdff; }
+
+    .namecell { display:flex; flex-direction:column; gap:3px; }
+    .namecell .n { font-weight:950; color:#111827; }
+    .namecell .e { font-weight:800; color:#6b7280; font-size:11px; }
+
+    .badge {
+        display:inline-flex; padding:6px 10px; border-radius:999px;
+        font-weight:950; font-size:11px; border:1px solid rgba(0,0,0,.06);
+        background:#f9fafb;
+    }
+    .b-blue  { background:#dbeafe; color:#1e40af; border-color:#bfdbfe; } /* total cell color */
+    .b-green { background:#dcfce7; color:#166534; border-color:#bbf7d0; }
+    .b-red   { background:#fee2e2; color:#991b1b; border-color:#fecaca; }
+
+    /* Spinner overlay */
+    .overlay {
+        position: fixed; inset: 0; background: rgba(17,24,39,.35);
+        display:none; align-items:center; justify-content:center; z-index: 9999;
+        backdrop-filter: blur(2px);
+    }
+    .overlay .box {
+        width:min(420px, 92vw);
+        background:#fff; border-radius:16px; padding:16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.25);
+        display:flex; gap:12px; align-items:center;
+    }
+    .spinner {
+        width: 34px; height: 34px; border-radius:50%;
+        border: 4px solid #e5e7eb; border-top-color:#2563eb;
+        animation: spin 1s linear infinite;
+        flex: 0 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .overlay .t1 { font-weight:950; color:#111827; }
+    .overlay .t2 { font-weight:800; color:#6b7280; font-size:12px; margin-top:2px; }
+
+    /* Responsive behavior */
+    @media (max-width: 1150px) {
+        .card.half { grid-column: span 12; }
+        .filters { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div class="overlay" id="loadingOverlay">
+    <div class="box">
+        <div class="spinner"></div>
+        <div>
+            <div class="t1">Loading report…</div>
+            <div class="t2">Fetching teams and analytics.</div>
+        </div>
+    </div>
+</div>
+
+<div class="wrap">
+    <div class="header">
+        <div>
+            <h1><i class="fa-solid fa-chart-line" style="margin-right:8px;"></i> Sales Team Report</h1>
+            <div class="sub">Heads and members performance based on SalesRequestAnalytical.</div>
+        </div>
+    </div>
+
+    <div class="filters">
+        {% if mode == "ADMIN" %}
+            <div class="fg">
+                <label>Company</label>
+                <select id="companySelect">
+                    <option value="">— Select Company —</option>
+                    {% for c in companies %}
+                        <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        {% else %}
+            <div class="fg">
+                <label>Company</label>
+                <div class="pill">
+                    <i class="fa-solid fa-building"></i>
+                    <span>{{ company_locked_name|default:"—" }}</span>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="fg">
+            <label>Sales Team</label>
+            <select id="teamSelect" disabled>
+                <option value="">— Select Team —</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card half">
+            <div class="card-title">
+                <div>
+                    <h2>Team Heads</h2>
+                    <div class="muted" id="headsMeta">Select a team to load heads report.</div>
+                </div>
+                <span class="badge" id="headsCount">0</span>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Head</th>
+                            <th>Approved</th>
+                            <th>Fake</th>
+                            <th>Approved Sum Final</th>
+                        </tr>
+                    </thead>
+                    <tbody id="headsTbody">
+                        <tr><td colspan="4" class="muted" style="padding:14px;">No data yet.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card half">
+            <div class="card-title">
+                <div>
+                    <h2>Sales Members</h2>
+                    <div class="muted" id="membersMeta">Select a team to load members report.</div>
+                </div>
+                <span class="badge" id="membersCount">0</span>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Member</th>
+                            <th>Approved</th>
+                            <th>Fake</th>
+                            <th>Approved Sum Final</th>
+                        </tr>
+                    </thead>
+                    <tbody id="membersTbody">
+                        <tr><td colspan="4" class="muted" style="padding:14px;">No data yet.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const MODE = "{{ mode }}";
+    const INITIAL_COMPANY_ID = {{ initial_company_id|default:"null" }};
+    const INITIAL_TEAM_ID = {{ initial_team_id|default:"null" }};
+
+    const companySelect = document.getElementById("companySelect");
+    const teamSelect = document.getElementById("teamSelect");
+
+    const overlay = document.getElementById("loadingOverlay");
+    let overlayTimer = null;
+
+    function showLoadingDelayed() {
+        clearTimeout(overlayTimer);
+        overlayTimer = setTimeout(() => { overlay.style.display = "flex"; }, 250);
+    }
+    function hideLoading() {
+        clearTimeout(overlayTimer);
+        overlay.style.display = "none";
+    }
+
+    function fmtNum(x) {
+        const n = Number(x || 0);
+        return n.toLocaleString();
+    }
+
+    function setEmpty(tbody, msg, colspan) {
+        tbody.innerHTML = `<tr><td colspan="${colspan}" class="muted" style="padding:14px;">${msg}</td></tr>`;
+    }
+
+    function renderTable(tbody, rows) {
+        if (!rows || !rows.length) {
+            setEmpty(tbody, "No data found.", 4);
+            return;
+        }
+
+        tbody.innerHTML = rows.map(r => `
+            <tr>
+                <td>
+                    <div class="namecell">
+                        <div class="n">${r.full_name || "—"}</div>
+                        <div class="e">${r.email || ""}</div>
+                    </div>
+                </td>
+                <td><span class="badge b-green">${fmtNum(r.approved_requests)}</span></td>
+                <td><span class="badge b-red">${fmtNum(r.fake_requests)}</span></td>
+                <td><span class="badge b-blue">${fmtNum(r.approved_sum_final_price)}</span></td>
+            </tr>
+        `).join("");
+    }
+
+    async function fetchTeams(companyId) {
+        showLoadingDelayed();
+        try {
+            const url = new URL("{% url 'ajax_sales_teams' %}", window.location.origin);
+            if (companyId) url.searchParams.set("company_id", companyId);
+
+            const res = await fetch(url.toString(), { headers: { "X-Requested-With": "XMLHttpRequest" } });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || "Failed to load teams");
+
+            return data.teams || [];
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function fillTeamSelect(teams, selectedId=null) {
+        teamSelect.innerHTML = `<option value="">— Select Team —</option>` + teams.map(t => (
+            `<option value="${t.id}">${t.name}</option>`
+        )).join("");
+
+        teamSelect.disabled = teams.length === 0;
+
+        if (selectedId) {
+            teamSelect.value = String(selectedId);
+        }
+
+        const headsTbody = document.getElementById("headsTbody");
+        const membersTbody = document.getElementById("membersTbody");
+
+        if (!teamSelect.value) {
+            setEmpty(headsTbody, "Select a team to load heads report.", 4);
+            setEmpty(membersTbody, "Select a team to load members report.", 4);
+        }
+    }
+
+    async function fetchReport(teamId) {
+        showLoadingDelayed();
+        try {
+            const url = new URL("{% url 'ajax_sales_team_report' %}", window.location.origin);
+            url.searchParams.set("team_id", teamId);
+
+            const res = await fetch(url.toString(), { headers: { "X-Requested-With": "XMLHttpRequest" } });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || "Failed to load report");
+
+            return data;
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function loadTeamsFlow() {
+        let companyId = null;
+
+        if (MODE === "ADMIN") {
+            companyId = companySelect.value || null;
+            if (!companyId) {
+                fillTeamSelect([]);
+                return;
+            }
+        } else {
+            companyId = INITIAL_COMPANY_ID;
+        }
+
+        const teams = await fetchTeams(companyId);
+        fillTeamSelect(teams, INITIAL_TEAM_ID);
+
+        if (MODE === "SALESHEAD" && teamSelect.value) {
+            await loadReportFlow();
+        }
+    }
+
+    async function loadReportFlow() {
+        const teamId = teamSelect.value;
+        if (!teamId) return;
+
+        const headsTbody = document.getElementById("headsTbody");
+        const membersTbody = document.getElementById("membersTbody");
+
+        setEmpty(headsTbody, "Loading…", 4);
+        setEmpty(membersTbody, "Loading…", 4);
+
+        const data = await fetchReport(teamId);
+
+        const heads = data.heads || [];
+        const members = data.members || [];
+
+        document.getElementById("headsCount").textContent = heads.length;
+        document.getElementById("membersCount").textContent = members.length;
+
+        const teamName = data.team?.name || "—";
+        document.getElementById("headsMeta").textContent = `Team: ${teamName}`;
+        document.getElementById("membersMeta").textContent = `Team: ${teamName}`;
+
+        renderTable(headsTbody, heads);
+        renderTable(membersTbody, members);
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        if (MODE === "ADMIN") {
+            if (INITIAL_COMPANY_ID) companySelect.value = String(INITIAL_COMPANY_ID);
+            companySelect.addEventListener("change", async () => {
+                await loadTeamsFlow();
+            });
+        }
+
+        teamSelect.addEventListener("change", async () => {
+            if (!teamSelect.value) {
+                const headsTbody = document.getElementById("headsTbody");
+                const membersTbody = document.getElementById("membersTbody");
+                setEmpty(headsTbody, "Select a team to load heads report.", 4);
+                setEmpty(membersTbody, "Select a team to load members report.", 4);
+                return;
+            }
+            await loadReportFlow();
+        });
+
+        if (MODE !== "ADMIN") {
+            await loadTeamsFlow();
+        }
+    });
+</script>
+
+{% endblock %}

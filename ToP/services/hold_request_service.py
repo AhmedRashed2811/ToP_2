@@ -6,7 +6,8 @@ import threading
 import requests
 
 from ..models import (
-    CompanyUser,
+    Sales,
+    SalesHead,
     SalesRequest,
     Unit,
     Project,
@@ -39,8 +40,20 @@ class HoldRequestsManagementService:
         but logic is now Unified (Local First + ERP Sync).
         """
         try:
-            company_user = CompanyUser.objects.get(user=user)
-            company = company_user.company
+            company_user = None
+            company = None
+
+            sales_head_profile = SalesHead.objects.filter(user=user).select_related("company").first()
+            if sales_head_profile and sales_head_profile.company:
+                company_user = sales_head_profile
+                company = sales_head_profile.company
+            else:
+                sales_profile = Sales.objects.filter(user=user).select_related("company").first()
+                if sales_profile and sales_profile.company:
+                    company_user = sales_profile
+                    company = sales_profile.company
+            
+            
             data = dict(payload)  # copy to mutate safely
 
             # Cleanup for storage
@@ -87,8 +100,18 @@ class HoldRequestsManagementService:
         session_ops = []
 
         try:
-            company_user = CompanyUser.objects.get(user=user)
-            company = company_user.company
+            company_user = None
+            company = None
+
+            sales_head_profile = SalesHead.objects.filter(user=user).select_related("company").first()
+            if sales_head_profile and sales_head_profile.company:
+                company_user = sales_head_profile
+                company = sales_head_profile.company
+            else:
+                sales_profile = Sales.objects.filter(user=user).select_related("company").first()
+                if sales_profile and sales_profile.company:
+                    company_user = sales_profile
+                    company = sales_profile.company
 
             raw_data = post_data.get("payment_data")
             data_json = post_data.get("payment_all_data")
@@ -370,8 +393,8 @@ class HoldRequestsManagementService:
         one_dp_for_sales = bool(project_web_config and project_web_config.one_dp_for_sales)
 
         is_restricted_client = False
-        if user.groups.filter(name="Client").exists():
-            cu = CompanyUser.objects.filter(user=user).first()
+        if user.groups.filter(name__in=["Client", "Sales"]).exists():
+            cu = Sales.objects.filter(user=user).first()
             if cu and not cu.can_edit and not cu.can_change_years:
                 is_restricted_client = True
 

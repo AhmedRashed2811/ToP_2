@@ -227,7 +227,7 @@ class CsvInventoryService:
                 'basement_area': float(row.get('Basement Area', 0)) if row.get('Basement Area') else None,
                 'net_area': float(row.get('Unit Area (Net Area)', 0)) if row.get('Unit Area (Net Area)') else None,
                 'common_area': float(row.get('Common Area', 0)) if row.get('Common Area') else None,
-                'sellable_area': float(row.get('Sellable Area without Roof (Gross Area)', 0))
+                'gross_area': float(row.get('Sellable Area without Roof (Gross Area)', 0))
                     if row.get('Sellable Area without Roof (Gross Area)') else None,
                 'roof_pergola_area': float(row.get('Roof Pergola Area', 0)) if row.get('Roof Pergola Area') else None,
                 'roof_terraces_area': float(row.get('Roof Terraces Area', 0)) if row.get('Roof Terraces Area') else None,

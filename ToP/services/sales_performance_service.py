@@ -6,11 +6,11 @@ import traceback
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, List, Tuple
 
-from django.db.models import Min, Max, Q
+from django.db.models import Min, Max
 
 from ..models import (
     Company,
-    CompanyManager,
+    Manager,
     Project,
     Unit,
     PricingPremiumSubgroup,
@@ -21,6 +21,8 @@ from ..utils.sales_performance_utils import (
     build_status_counts,
     attach_percentages,
 )
+
+from ..utils.viewer_permissions import is_company_viewer, viewer_company
 
 
 @dataclass
@@ -43,6 +45,38 @@ class SalesPerformanceService:
     """
 
     # --------------------------
+    # Internal helpers
+    # --------------------------
+    @staticmethod
+    def _viewer_company_id(user) -> Optional[int]:
+        if not is_company_viewer(user):
+            return None
+        c = viewer_company(user)
+        return c.id if c else None
+
+    @staticmethod
+    def _forbidden() -> ServiceResult:
+        return ServiceResult(False, 403, error="Forbidden")
+
+    @staticmethod
+    def _enforce_viewer_project_scope(*, user, project_obj: Project) -> Optional[ServiceResult]:
+        """
+        If user is a viewer -> project must belong to viewer's company.
+        Returns a ServiceResult (Forbidden) if not allowed, else None.
+        """
+        if not is_company_viewer(user):
+            return None
+
+        vc_id = SalesPerformanceService._viewer_company_id(user)
+        if not vc_id:
+            return SalesPerformanceService._forbidden()
+
+        if project_obj.company_id != vc_id:
+            return SalesPerformanceService._forbidden()
+
+        return None
+
+    # --------------------------
     # Public endpoints
     # --------------------------
     @staticmethod
@@ -51,19 +85,33 @@ class SalesPerformanceService:
         Preserves your logic:
         - companies = Company.objects.all()
         - if Manager: preselect company_id, attach company, initial_projects
+        - if Viewer: treat like Manager (fixed company)
         """
         try:
-            companies = Company.objects.all()
             selected_company_id = None
-            initial_projects = []
+            initial_projects: List[Project] = []
             user_company = None
 
-            if user.groups.filter(name="Manager").exists():
-                cm = CompanyManager.objects.filter(user=user).select_related("company").first()
-                if cm and cm.company:
-                    user_company = cm.company
-                    selected_company_id = cm.company.id
+            # Viewer -> fixed company + (optional) limit companies list to that company
+            if is_company_viewer(user):
+                c = viewer_company(user)
+                if c:
+                    user_company = c
+                    selected_company_id = c.id
                     initial_projects = list(Project.objects.filter(company_id=selected_company_id))
+                    companies = Company.objects.filter(id=c.id)
+                else:
+                    companies = Company.objects.none()
+
+            # Manager -> same as before
+            else:
+                companies = Company.objects.all()
+                if user.groups.filter(name="Manager").exists():
+                    cm = Manager.objects.filter(user=user).select_related("company").first()
+                    if cm and cm.company:
+                        user_company = cm.company
+                        selected_company_id = cm.company.id
+                        initial_projects = list(Project.objects.filter(company_id=selected_company_id))
 
             return ServiceResult(
                 success=True,
@@ -85,9 +133,16 @@ class SalesPerformanceService:
         - read company_id from GET
         - return list of {id, name} for projects in company
         - else return []
+        Viewer:
+        - force company_id to viewer company (treat like Manager but locked)
         """
         try:
             company_id = request.GET.get("company_id")
+
+            if is_company_viewer(request.user):
+                vc_id = SalesPerformanceService._viewer_company_id(request.user)
+                company_id = vc_id
+
             if not company_id:
                 return ServiceResult(True, 200, payload=[])
 
@@ -105,6 +160,9 @@ class SalesPerformanceService:
         - exclude interest_free_unit_price__isnull=True
         - compute 5 price ranges based on min/max
         - count statuses within each range and totals
+
+        Viewer:
+        - project must belong to viewer company (locked scope)
         """
         try:
             project_id = request.GET.get("project_id")
@@ -112,6 +170,13 @@ class SalesPerformanceService:
                 return ServiceResult(False, 400, error="project_id is required")
 
             project_obj = Project.objects.select_related("company").get(id=project_id)
+
+            scope_err = SalesPerformanceService._enforce_viewer_project_scope(
+                user=request.user, project_obj=project_obj
+            )
+            if scope_err:
+                return scope_err
+
             project_name = project_obj.name
             project_company = project_obj.company
 
@@ -125,7 +190,6 @@ class SalesPerformanceService:
 
             min_price, max_price = SalesPerformanceService._min_max_price(units)
 
-            # If min/max missing (shouldn’t happen due to exclude null), still protect:
             if min_price is None or max_price is None:
                 return ServiceResult(True, 200, payload={"price_ranges": [], "totals": {}})
 
@@ -153,6 +217,9 @@ class SalesPerformanceService:
         - group by distinct unit_model (including null/empty)
         - for each model: counts by status
         - totals + breakdown_percent + released_percent (same formulas)
+
+        Viewer:
+        - project must belong to viewer company (locked scope)
         """
         try:
             project_id = request.GET.get("project_id")
@@ -160,6 +227,13 @@ class SalesPerformanceService:
                 return ServiceResult(False, 400, error="project_id is required")
 
             project_obj = Project.objects.select_related("company").get(id=project_id)
+
+            scope_err = SalesPerformanceService._enforce_viewer_project_scope(
+                user=request.user, project_obj=project_obj
+            )
+            if scope_err:
+                return scope_err
+
             project_name = project_obj.name
             project_company = project_obj.company
 
@@ -175,10 +249,12 @@ class SalesPerformanceService:
                 model_units = units.filter(unit_model=model)
                 counts = build_status_counts(model_units)
 
-                unit_models_data.append({
-                    "unit_model": model,
-                    **counts,
-                })
+                unit_models_data.append(
+                    {
+                        "unit_model": model,
+                        **counts,
+                    }
+                )
 
             totals = SalesPerformanceService._sum_totals(unit_models_data)
             attach_percentages(unit_models_data, total_all=totals["all"])
@@ -201,6 +277,9 @@ class SalesPerformanceService:
         - lookup premium_percent from PricingPremiumSubgroup:
             subgroup where name=value and premium_group__project=project
         - totals + released_percent
+
+        Viewer:
+        - project must belong to viewer company (locked scope)
         """
         try:
             project_id = request.GET.get("project_id")
@@ -216,6 +295,13 @@ class SalesPerformanceService:
                 return ServiceResult(False, 400, error="Invalid premium type")
 
             project = Project.objects.select_related("company").get(id=project_id)
+
+            scope_err = SalesPerformanceService._enforce_viewer_project_scope(
+                user=request.user, project_obj=project
+            )
+            if scope_err:
+                return scope_err
+
             project_name = project.name
             project_company = project.company
 
@@ -226,9 +312,9 @@ class SalesPerformanceService:
 
             distinct_values = (
                 units.exclude(**{f"{field_name}__isnull": True})
-                    .exclude(**{field_name: ""})
-                    .values_list(field_name, flat=True)
-                    .distinct()
+                .exclude(**{field_name: ""})
+                .values_list(field_name, flat=True)
+                .distinct()
             )
 
             premium_groups: List[Dict[str, Any]] = []
@@ -245,11 +331,13 @@ class SalesPerformanceService:
                     premium_value=value,
                 )
 
-                premium_groups.append({
-                    "premium_value": value,
-                    **counts,
-                    "premium_percent": premium_percent,
-                })
+                premium_groups.append(
+                    {
+                        "premium_value": value,
+                        **counts,
+                        "premium_percent": premium_percent,
+                    }
+                )
 
             totals = SalesPerformanceService._sum_totals(premium_groups)
 
@@ -276,7 +364,9 @@ class SalesPerformanceService:
         return agg["min_price"], agg["max_price"]
 
     @staticmethod
-    def _build_price_ranges(*, units, min_price: float, max_price: float, buckets: int = 5) -> List[Dict[str, Any]]:
+    def _build_price_ranges(
+        *, units, min_price: float, max_price: float, buckets: int = 5
+    ) -> List[Dict[str, Any]]:
         # Same math as your view
         range_width = (max_price - min_price) / buckets if buckets else 0
         price_ranges: List[Dict[str, Any]] = []
@@ -287,16 +377,18 @@ class SalesPerformanceService:
 
             range_units = units.filter(
                 interest_free_unit_price__gte=current_from,
-                interest_free_unit_price__lte=current_to
+                interest_free_unit_price__lte=current_to,
             )
 
             counts = build_status_counts(range_units, price_mode=True)
 
-            price_ranges.append({
-                "from": current_from,
-                "to": current_to,
-                **counts,
-            })
+            price_ranges.append(
+                {
+                    "from": current_from,
+                    "to": current_to,
+                    **counts,
+                }
+            )
 
             # Preserve your exact next-range logic
             current_from = current_to + 1
@@ -315,7 +407,6 @@ class SalesPerformanceService:
     @staticmethod
     def _get_premium_percent(*, project, premium_value: str) -> float:
         subgroup = PricingPremiumSubgroup.objects.filter(
-            name=premium_value,
-            premium_group__project=project
+            name=premium_value, premium_group__project=project
         ).first()
         return float(subgroup.value) if subgroup else 0.0

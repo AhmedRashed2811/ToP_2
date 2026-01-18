@@ -5,702 +5,1942 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 <style>
-    /* --- General Layout --- */
-    .container {
-        padding: 20px;
-        text-align: center;
-        max-width: 100%; 
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl { max-width: 100%; }
     }
-
-    h1 { margin-bottom: 20px; }
-
-    /* --- Buttons --- */
-    .submit-button {
-        background-color: green; 
-        color: white; 
-        padding: 10px 16px; 
-        border: none; 
-        border-radius: 4px; 
-        text-decoration: none; 
-        display: inline-block;
-        white-space: nowrap;
+    @media (min-width: 576px) {
+        .container, .container-sm { max-width: 100%; }
     }
+    table{ margin-top: 0%; }
 
-    #scrollTopBtn {
-        display: none; /* Hidden on desktop */
-        position: fixed;
-        bottom: 25px;
-        right: 25px;
-        z-index: 98; /* Below toast (9999) but above content */
-        font-size: 20px;
-        border: none;
-        outline: none;
-        background-color: #007bff; /* Primary Blue */
-        color: white;
-        cursor: pointer;
-        padding: 10px 15px;
-        border-radius: 50%;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        transition: opacity 0.3s, transform 0.3s;
-        opacity: 0.9;
-    }
-
-    #scrollTopBtn:hover {
-        background-color: #0056b3;
-        transform: scale(1.1);
-    }
-
-    @media (max-width: 900px) {
-        .sticky-header { flex-direction: column; align-items: center; position: static; }
-        .payments-wrapper { flex-direction: column; }
-        .payment-box { min-width: 100%; padding: 10px; }
-        table { min-width: 100%; display: block; overflow-x: auto; }
-        th, td { font-size: 12px; padding: 4px; }
-        select { width: 90%; }
-        
-        #scrollTopBtn.show {
-            display: block;
-        }
-
-        .toggle-row {
-            flex-direction: column;
-            gap: 15px;
-        }
-    }
-
-    .btn { margin: 2px; }
-
-    /* --- Search & Filter Bar --- */
-    .search-container {
-        margin-bottom: 20px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-        width: 100%;
-    }
-
-    .filter-group {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap; /* Stacks items on mobile */
-        justify-content: center;
-        width: 100%;
-        align-items: center;
-    }
-
-    /* Style all inputs and selects in the filter group */
-    .filter-group input[type="text"], 
-    .filter-group select {
-        padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        min-width: 150px; /* Minimum width for dropdowns */
-    }
-
-    /* Make text search slightly wider */
-    #searchInput {
-        width: 300px;
+    table td:first-child {
+        min-width: 100%;
         max-width: 100%;
     }
 
-    /* --- NEW BULK ACTION BUTTONS STYLING --- */
-    .bulk-actions-form {
-        display: none; /* Hidden by default */
-        gap: 10px;
-        margin-top: 10px;
-        flex-wrap: wrap;
-        justify-content: center;
-        width: 100%;
+    :root{
+        --bg: #f6f7fb;
+        --card: #ffffff;
+        --text: #111827;
+        --muted: #6b7280;
+        --border: rgba(0,0,0,.08);
+        --shadow: 0 14px 40px rgba(17, 24, 39, .08);
+        --shadow-sm: 0 10px 25px rgba(17, 24, 39, .06);
+
+        --blue: #2563eb;
+        --green: #16a34a;
+        --red: #dc2626;
+        --amber: #f59e0b;
+        --slate: #0f172a;
     }
 
-    .btn-bulk {
-        padding: 8px 16px;
+    body { background: var(--bg); }
+    .page-wrap { padding: 18px; width: 100%; }
+
+    .top-card{
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        padding: 16px;
+        margin-bottom: 14px;
+    }
+
+    .top-row{
+        display:flex;
+        gap:14px;
+        align-items:flex-start;
+        justify-content:space-between;
+        flex-wrap:wrap;
+    }
+
+    .title-wrap h1{
+        margin:0;
+        font-size: 20px;
+        font-weight: 950;
+        color: var(--text);
+        letter-spacing:.2px;
+    }
+    .title-wrap .sub{
+        margin-top: 6px;
+        color: var(--muted);
+        font-weight: 750;
+        font-size: 13px;
+        max-width: 980px;
+        line-height: 1.35;
+    }
+
+    .actions{
+        display:flex;
+        gap:10px;
+        align-items:center;
+        flex-wrap:wrap;
+        justify-content:flex-end;
+    }
+
+    .btn-linkish{
+        display:inline-flex;
+        align-items:center;
+        gap:10px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        text-decoration:none;
+        font-weight: 900;
+        border: 1px solid var(--border);
+        background: #fff;
+        box-shadow: var(--shadow-sm);
+        color: var(--slate);
+        transition: transform .08s ease, opacity .2s ease;
+        white-space: nowrap;
+    }
+    .btn-linkish:hover{ opacity:.96; transform: translateY(-1px); }
+    .btn-linkish.primary{ background: var(--green); color:#fff; border-color: rgba(0,0,0,.06); }
+    .btn-linkish.blue{ background: var(--blue); color:#fff; border-color: rgba(0,0,0,.06); }
+
+    .switch-wrap{
+        margin-top: 12px;
+        display:flex;
+        gap:10px;
+        align-items:center;
+        justify-content:space-between;
+        flex-wrap:wrap;
+    }
+
+    .segmented{
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        display:inline-flex;
+        padding: 4px;
+        gap: 4px;
+        box-shadow: var(--shadow-sm);
+    }
+    .segmented button{
         border: none;
-        border-radius: 4px;
-        color: white;
-        font-weight: 600;
-        cursor: pointer;
-        transition: opacity 0.3s, transform 0.1s;
+        background: transparent;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-weight: 950;
+        color: var(--muted);
+        cursor:pointer;
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+    }
+    .segmented button.active{
+        background: rgba(37, 99, 235, .12);
+        color: var(--blue);
+    }
+
+    .filters{
+        display:flex;
+        gap:10px;
+        flex-wrap:wrap;
+        align-items:center;
+    }
+    .filters .field{
+        position:relative;
+        min-width: 220px;
+        flex: 1 1 220px;
+        max-width: 420px;
+    }
+    .filters input,
+    .filters select{
+        width:100%;
+        padding: 10px 12px;
+        border: 1px solid rgba(0,0,0,.14);
+        border-radius: 12px;
+        background:#fff;
+        font-weight: 800;
+        color: var(--text);
+        outline:none;
+    }
+    .filters input:focus,
+    .filters select:focus{
+        border-color: rgba(37,99,235,.45);
+        box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+
+    .role-block{
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: var(--shadow-sm);
+        overflow:hidden;
+        margin-bottom: 14px;
+    }
+
+    .role-head{
+        padding: 12px 14px;
+        background: linear-gradient(180deg, #ffffff, #fbfbff);
+        border-bottom: 1px solid var(--border);
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        flex-wrap:wrap;
+    }
+
+    .role-head .left{
+        display:flex;
+        align-items:center;
+        gap:10px;
+        flex-wrap:wrap;
+    }
+
+    .role-title{
+        margin:0;
+        font-size: 15px;
+        font-weight: 950;
+        color: var(--text);
+        display:flex;
+        align-items:center;
+        gap:10px;
+    }
+    .pill{
+        display:inline-flex;
+        align-items:center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-weight: 950;
+        font-size: 12px;
+        color: #1e3a8a;
+        background: #eef2ff;
+        border: 1px solid rgba(0,0,0,.06);
+    }
+
+    .toggle-btn{
+        border: 1px solid var(--border);
+        background:#fff;
+        border-radius: 12px;
+        padding: 8px 10px;
+        font-weight: 900;
+        color: var(--slate);
+        cursor:pointer;
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+        box-shadow: var(--shadow-sm);
+    }
+    .toggle-btn i{ color: var(--blue); }
+    .toggle-btn:hover{ opacity:.96; }
+
+    .role-body{ padding: 0; }
+    .role-body.collapsed{ display:none; }
+
+    .table-wrap{ width:100%; overflow:auto; }
+
+    /* ✅ 1) Let columns size by content (longest text) */
+    table.user-table{
+        width:max-content;              /* allow natural width based on content */
+        min-width:100%;                 /* but never smaller than container */
+        border-collapse: separate;
+        border-spacing:0;
+        table-layout: auto;             /* critical for content sizing */
+    }
+
+    .user-table thead th{
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: #f8fafc;
+        border-bottom: 1px solid var(--border);
+        padding: 12px 12px;
+        text-align: left;
+        color: #334155;
+        font-weight: 950;
+        font-size: 12px;
         white-space: nowrap;
     }
 
-    .btn-bulk:hover {
-        opacity: 0.9;
-        transform: translateY(-1px);
-    }
-
-    .btn-activate-all {
-        background-color: #198754; /* Professional Green */
-        box-shadow: 0 2px 4px rgba(25, 135, 84, 0.3);
-    }
-
-    .btn-deactivate-all {
-        background-color: #dc3545; /* Professional Red */
-        box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
-    }
-
-    /* Mobile adjustments for filters */
-    @media (max-width: 768px) {
-        .filter-group {
-            flex-direction: column; /* Force stack on mobile */
-            align-items: stretch; /* Full width */
-        }
-        
-        .filter-group input[type="text"], 
-        .filter-group select,
-        .submit-button,
-        .btn-bulk {
-            width: 100%; /* Full width on mobile */
-            margin: 0;
-        }
-        
-        #searchInput { width: 100%; }
-        
-        .bulk-actions-form {
-            flex-direction: column;
-        }
-    }
-
-    /* --- TABLE STYLES --- */
-    .table-container {
-        width: 100%;
-        overflow-x: auto; 
-        margin-bottom: 20px;
-        padding-bottom: 10px;
-    }
-
-    .user-table {
-        width: auto;
-        min-width: 100%;
-        border-collapse: collapse;
-        margin: auto;
-    }
-
-    .user-table th, .user-table td {
-        border: 1px solid #ddd;
-        padding: 10px 15px; 
-        text-align: center;
+    .user-table tbody td{
+        border-bottom: 1px solid rgba(0,0,0,.06);
+        padding: 10px 12px;
         vertical-align: middle;
-        white-space: nowrap; 
+        color: var(--text);
+        font-weight: 800;
+        font-size: 13px;
+        white-space: nowrap;            /* makes width follow the longest text */
     }
 
-    .user-table th {
-        background-color: #f4f4f4;
-        font-weight: bold;
+    /* inputs keep readable min width but allow auto expansion */
+    .user-table input:not([type="checkbox"]),
+    .user-table select,
+    .user-table textarea{
+        width:100%;
+        padding: 9px 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(0,0,0,.14);
+        background:#fff;
+        font-weight: 800;
+        color: var(--text);
+        min-height: 38px;
+        min-width: 140px;               /* avoid too narrow */
+    }
+    .user-table textarea{
+        min-height: 44px;
+        resize: vertical;
+        white-space: normal;            /* allow multi-line in textarea */
+        min-width: 260px;
     }
 
-    .user-table input:not([type="checkbox"]) {
-        width: 100%; 
-        min-width: 150px; 
-        padding: 5px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        text-align: center;
+    .user-table input[type="checkbox"]{
+        width: 18px;
+        height: 18px;
+        accent-color: var(--blue);
+        min-width: auto;
     }
 
-    .read-only-text { font-size: 14px; color: #333; font-weight: 500; }
-    .na-text { color: #999; font-style: italic; }
-
-    /* --- MOBILE CARD VIEW --- */
-    @media (max-width: 900px) {
-        .user-table, .user-table thead, .user-table tbody, .user-table th, .user-table td, .user-table tr {
-            display: block;
-        }
-        .user-table thead tr { position: absolute; top: -9999px; left: -9999px; }
-        
-        .user-table tr.user-row {
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            padding: 15px;
-        }
-
-        .user-table td {
-            border: none;
-            border-bottom: 1px solid #eee;
-            position: relative;
-            padding-left: 45%; 
-            padding-top: 10px;
-            padding-bottom: 10px;
-            text-align: right;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            min-height: 40px;
-            white-space: normal;
-        }
-
-        .user-table td::before {
-            position: absolute;
-            top: 50%; left: 10px; transform: translateY(-50%);
-            width: 40%;
-            content: attr(data-label);
-            font-weight: bold;
-            text-align: left;
-            color: #555;
-            font-size: 14px;
-        }
-
-        .user-table input:not([type="checkbox"]) {
-            width: 55% !important; text-align: left; margin: 0;
-        }
-        .user-table input[type="checkbox"] { width: 20px; height: 20px; margin-right: 0; }
-        .mobile-hidden { display: none !important; }
-
-        .user-table td:last-child {
-            border-bottom: 0; justify-content: center; padding-left: 0; margin-top: 10px; flex-wrap: wrap;
-        }
-        .user-table td:last-child::before { content: ""; }
+    .icon-btn{
+        border: 1px solid var(--border);
+        background:#fff;
+        border-radius: 12px;
+        padding: 8px 10px;
+        cursor:pointer;
+        box-shadow: var(--shadow-sm);
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        gap:8px;
+        margin-right: 6px;
+        white-space: nowrap;
     }
+    .icon-btn:hover{ opacity:.96; transform: translateY(-1px); transition: transform .08s ease; }
+    .icon-save i{ color: var(--green); }
+    .icon-del i{ color: var(--red); }
+    .icon-login i{ color: var(--amber); }
 
-    .table-container::-webkit-scrollbar { width: 10px; height: 10px; }
-    .table-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
-    .table-container::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
-    .table-container::-webkit-scrollbar-thumb:hover { background: #555; }
-
-    table td:first-child {
-        font-weight: bold; background: #f2f2f2; min-width: 80px; max-width: 100%;
-    }
-
-    /* --- UPDATED GREEN TOAST STYLE --- */
-    #ajax-toast {
-        visibility: hidden;
-        min-width: 250px;
-        background-color: #198754; /* Professional Green (Bootstrap Success) */
-        color: #fff;
-        text-align: center;
-        border-radius: 8px;
-        padding: 16px;
+    #ajax-toast{
+        visibility:hidden;
+        min-width: 280px;
+        background: var(--green);
+        color:#fff;
+        border-radius: 14px;
+        padding: 12px 14px;
         position: fixed;
         z-index: 10000;
-        right: 30px;
-        top: 30px;
-        font-size: 17px;
-        box-shadow: 0 4px 15px rgba(25, 135, 84, 0.4); /* Subtle green glow */
-        border: 1px solid rgba(255, 255, 255, 0.2); /* Soft inner border */
-        font-weight: 500;
+        right: 18px;
+        top: 18px;
+        font-size: 14px;
+        box-shadow: 0 10px 30px rgba(22,163,74,.35);
+        border: 1px solid rgba(255,255,255,.22);
+        font-weight: 900;
+    }
+    #ajax-toast.show{ visibility:visible; animation: fadein .25s, fadeout .35s 2.4s; }
+    @keyframes fadein{ from{ transform: translateY(-8px); opacity:0; } to{ transform: translateY(0); opacity:1; } }
+    @keyframes fadeout{ from{ opacity:1; } to{ opacity:0; } }
+
+    .messages-wrap{ max-width: 980px; margin: 0 auto 14px auto; }
+    .msg{ border-radius: 14px; font-weight: 900; }
+
+    /* ✅ 4) Sticky first column while horizontal scroll */
+    .user-table th:first-child,
+    .user-table td:first-child{
+        position: sticky;
+        left: 0;
+        z-index: 4;
+        background: #fff;
+        border-right: 1px solid rgba(0,0,0,.06);
+    }
+    .user-table thead th:first-child{
+        z-index: 6;
+        background: #f8fafc;
     }
 
-    #ajax-toast.show {
-        visibility: visible;
-        -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
-        animation: fadein 0.5s, fadeout 0.5s 2.5s;
+    @media (max-width: 992px){
+        .filters .field{ max-width: 100%; }
     }
 
-    /* Animations remain the same */
-    @-webkit-keyframes fadein { from {top: 0; opacity: 0;} to {top: 30px; opacity: 1;} }
-    @keyframes fadein { from {top: 0; opacity: 0;} to {top: 30px; opacity: 1;} }
-    @-webkit-keyframes fadeout { from {top: 30px; opacity: 1;} to {top: 0; opacity: 0;} }
-    @keyframes fadeout { from {top: 30px; opacity: 1;} to {top: 0; opacity: 0;} }
+    /* Hide company column everywhere when Company Admin */
+    .hide-company-col .col-company {
+        display: none !important;
+    }
+
 </style>
 
-<div id="ajax-toast">User data updated successfully!</div>
+<div id="ajax-toast">Saved.</div>
 
-{% if messages %}
-  <div class="messages mt-3" style="max-width: 600px; margin: 0 auto 20px auto;">
-    {% for message in messages %}
-      <div class="msg alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" onclick="dismissAlert(this)" aria-label="Close"></button>
+<div class="page-wrap">
+
+    {% if messages %}
+      <div class="messages-wrap">
+        {% for message in messages %}
+          <div class="msg alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" onclick="dismissAlert(this)" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="top-card">
+        <div class="top-row">
+            <div class="title-wrap">
+                <h1>Manage Users</h1>
+                <div class="sub">
+                    {% if is_company_admin %}
+                        You can manage only users in your company.
+                    {% else %}
+                        Two views: <b>Company Users</b> (Sales / Ops / Heads / Viewers / Managers) and <b>Internal</b> (Admins / Business Team).
+                        Role filter will show only the relevant groups.
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="actions">
+                <a href="{% url 'create_user' %}" class="btn-linkish primary">
+                    <i class="fa-solid fa-user-plus"></i> Create User
+                </a>
+                <a href="{% url 'sales_teams' %}" class="btn-linkish blue">
+                    <i class="fa-solid fa-people-group"></i> Sales Teams
+                </a>
+            </div>
+        </div>
+
+        <div class="switch-wrap">
+            <div class="segmented" role="tablist" aria-label="User Tables">
+
+                {% if not is_company_admin %}
+                    <button type="button" id="tabCompanyBtn" class="active" onclick="showTab('company')">
+                        <i class="fa-solid fa-building"></i> Company Users
+                    </button>
+
+                    <button type="button" id="tabInternalBtn" onclick="showTab('internal')">
+                        <i class="fa-solid fa-shield-halved"></i> Internal Users
+                    </button>
+                {% else %}
+                    {# Company admin: no switching buttons at all #}
+                    <button type="button" id="tabCompanyBtn" class="active" style="display:none;"></button>
+                {% endif %}
+
+            </div>
+
+
+            <div class="filters">
+                <div class="field">
+                    <input type="text" id="searchInput" placeholder="Search by name..." onkeyup="filterAll()">
+                </div>
+
+                <div class="field" id="companyFilterWrap">
+                    {# ✅ 2) filter by company ID not name #}
+                    <select id="searchCompany" onchange="filterAll()">
+                        <option value="">All Companies</option>
+                        {% for company in companies %}
+                            <option value="{{ company.id }}">{{ company.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="field" id="roleFilterCompanyWrap">
+                    <select id="searchRoleCompany" onchange="filterAll()">
+                        <option value="">All Company Roles</option>
+                        <option value="Sales">Sales</option>
+                        <option value="SalesHead">SalesHead</option>
+                        <option value="SalesOperation">SalesOperation</option>
+                        <option value="Viewer">Viewer</option>
+                        <option value="Manager">Manager</option>
+                        <option value="CompanyAdmin">CompanyAdmin</option>
+                        <option value="Uploader">Uploader</option>
+                    </select>
+                </div>
+
+                {% if not is_company_admin %}
+                <div class="field" id="roleFilterInternalWrap" style="display:none;">
+                    <select id="searchRoleInternal" onchange="filterAll()">
+                        <option value="">All Internal Roles</option>
+                        <option value="Admin">Admin</option>
+                        <option value="BusinessTeam">BusinessTeam</option>
+                        <option value="Superuser">Superuser</option>
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+        </div>
     </div>
-    {% endfor %}
-  </div>
-{% endif %}
 
-<script>
-    function dismissAlert(button) {
-      const alertBox = button.closest('.alert');
-      if (alertBox) {
-        alertBox.style.opacity = '0';
-        setTimeout(() => { alertBox.remove(); }, 300);
-      }
-    }
-</script>
+    <!-- ========================= -->
+    <!-- COMPANY USERS TAB -->
+    <!-- ========================= -->
+    <div id="tabCompany" class="tab-panel">
 
-<div class="search-container">
-    <h1>Manage Users</h1>
-    
-    <div class="filter-group">
-        <input type="text" id="searchInput" placeholder="Search User Name..." onkeyup="filterTable()">
-        
-        <select id="searchCompany" onchange="filterTable()">
-            <option value="">All Companies</option>
-            {% for company in companies %}
-                <option value="{{ company.name }}">{{ company.name }}</option>
-            {% endfor %}
-        </select>
+        <!-- SALES -->
+        <div class="role-block" data-role-group="Sales">
+            <div class="role-head">
+                <div class="left">
+                    <div class="role-title"><i class="fa-solid fa-chart-line" style="color:#2563eb;"></i> Sales</div>
+                </div>
+                <button class="toggle-btn" type="button" onclick="toggleGroup('Sales')">
+                    <i class="fa-solid fa-chevron-down" id="chev-Sales"></i> Toggle
+                </button>
+            </div>
 
-        <select id="searchRole" onchange="filterTable()">
-            <option value="">All Roles</option>
-            <option value="Admin">Admin</option>
-            <option value="Developer">Developer</option>
-            <option value="BusinessTeam">Business Team</option>
-            <option value="CompanyUser">Company User</option>
-            <option value="CompanyController">Company Controller</option>
-            <option value="CompanyFinanceManager">Company Finance Manager</option>
-            <option value="Manager">Manager</option>
-        </select>
+            <div class="role-body" id="body-Sales">
+                <div class="table-wrap">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Password</th>
+                                <th>Role</th>
+                                <th>Active</th>
+                                <th class="col-company">Company</th>
+                                <th>Team</th>
+                                <th>Can Edit</th>
+                                <th>Can Change Years</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+{% for user in users %}
+    {% if user.role_label == "Sales" %}
+        {% with cur_company_id=user.sales_profile.company_id cur_team_id=user.sales_profile.team_id %}
+            <tr class="user-row"
+                data-user-id="{{ user.id }}"
+                data-role="{{ user.role_label }}"
+                data-company="{{ user.company_name }}"
+                data-company-id="{{ cur_company_id|default_if_none:'' }}">
 
-        <a href="{% url 'create_user' %}" class="submit-button">Create User</a>
-    </div>
-
-    <form method="POST" id="bulkActionForm" class="bulk-actions-form">
-        {% csrf_token %}
-        <input type="hidden" name="target_company" id="bulkTargetCompany">
-        
-        <button type="submit" name="action" value="activate_all_sales" class="btn-bulk btn-activate-all" onclick="return confirm('Are you sure you want to ACTIVATE all users for this company?');">
-            &#10003; Activate All Sales
-        </button>
-        
-        <button type="submit" name="action" value="deactivate_all_sales" class="btn-bulk btn-deactivate-all" onclick="return confirm('Are you sure you want to DEACTIVATE all users for this company?');">
-            &#10005; Deactivate All Sales
-        </button>
-    </form>
-</div>
-
-<div class="table-container">
-    <table class="user-table">
-        <thead>
-            <tr>
-                <th>Full Name</th>
-                <th>Email</th>
-                <th>Password</th>
-                <th>Role</th>
-                <th>Active</th>
-                <th>Can Edit</th> 
-                <th>Can Change Years</th> 
-                <th>Company</th>
-                <th>Job Title</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="userTableBody">
-            {% for user in users %}
-            <tr class="user-row" data-user-id="{{ user.id }}">
-                
-                <td data-label="Full Name">
-                    <input type="text" name="full_name" value="{{ user.full_name }}" class="ajax-input" data-user-id="{{ user.id }}" required>
-                </td>
-                
-                <td data-label="Email">
-                    <input type="email" name="email" value="{{ user.email }}" class="ajax-input" data-user-id="{{ user.id }}" required>
+                <td>
+                    <input type="text" name="full_name" value="{{ user.full_name }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}>
                 </td>
 
-                <td data-label="Password">
-                    <input type="text" name="password" placeholder="New Password" class="ajax-input" data-user-id="{{ user.id }}">
+                <td>
+                    <input type="email" name="email" value="{{ user.email }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}>
                 </td>
-                
-                <td data-label="Role">
-                    <span class="read-only-text role-cell">{{ user.role }}</span>
+
+                <td>
+                    <input type="text" name="password" placeholder="New password" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}>
                 </td>
-    
-                <td data-label="Active">
+
+                <td>
+                    {% if user.is_superuser %}
+                        <span class="pill">Superuser</span>
+                        <input type="hidden" name="role" value="Superuser">
+                    {% else %}
+                        <select name="role" class="ajax-select role-select">
+                            <option value="Sales" selected>Sales</option>
+                            <option value="SalesHead">SalesHead</option>
+                            <option value="SalesOperation">SalesOperation</option>
+                            <option value="Viewer">Viewer</option>
+                            <option value="Manager">Manager</option>
+                            <option value="CompanyAdmin">CompanyAdmin</option>
+                            <option value="Uploader">Uploader</option>
+                        </select>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if user.is_superuser %}
+                        <input type="checkbox" checked disabled style="opacity:.5;">
+                    {% else %}
+                        <input type="checkbox" name="is_active" class="ajax-checkbox" {% if user.is_active %}checked{% endif %}>
+                    {% endif %}
+                </td>
+
+                <td class="col-company">
+                    <select name="company_id" class="ajax-select company-select" {% if user.is_superuser %}disabled{% endif %}>
+                        <option value="">—</option>
+                        {% for c in companies %}
+                            <option value="{{ c.id }}"
+                                {% if cur_company_id|default_if_none:""|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>
+                                {{ c.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </td>
+
+                <td>
+                    <select name="team_id" class="ajax-select team-select" {% if user.is_superuser %}disabled{% endif %}>
+                        <option value="">—</option>
+                        {% for t in teams %}
+                            <option value="{{ t.id }}"
+                                    data-company="{{ t.company_id }}"
+                                    {% if cur_team_id|default_if_none:""|stringformat:"s" == t.id|stringformat:"s" %}selected{% endif %}>
+                                {{ t.company.name }} — {{ t.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </td>
+
+                <td>
+                    <input type="checkbox" name="can_edit" class="ajax-checkbox"
+                        {% if user.sales_profile and user.sales_profile.can_edit %}checked{% endif %}>
+                </td>
+
+                <td>
+                    <input type="checkbox" name="can_change_years" class="ajax-checkbox"
+                        {% if user.sales_profile and user.sales_profile.can_change_years %}checked{% endif %}>
+                </td>
+
+                <td>
+                    <button type="button"
+                            class="icon-btn icon-save"
+                            onclick="triggerAjaxSave('{{ user.id }}')"
+                            title="Save"
+                            {% if user.is_superuser %}disabled{% endif %}>
+                        <i class="fa-solid fa-floppy-disk"></i>
+                    </button>
+
                     {% if not user.is_superuser %}
-                        <input type="checkbox" name="is_active" id="is-active-{{ user.id }}" class="ajax-checkbox" data-user-id="{{ user.id }}" {% if user.is_active %}checked{% endif %}>
-                    {% else %}
-                        <input type="checkbox" name="is_active" id="is-active-{{ user.id }}" {% if user.is_active %}checked{% endif %} disabled style="opacity: 0.5;">
+                        <button type="button"
+                                class="icon-btn icon-del"
+                                data-bs-toggle="modal"
+                                data-bs-target="#deleteModal-{{ user.id }}"
+                                title="Delete">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
                     {% endif %}
-                </td>
 
-                <td data-label="Can Edit" class="{% if user.role != 'CompanyUser' %}mobile-hidden{% endif %}">
-                    {% if user.role == 'CompanyUser' and user.companyuser %}
-                        <input type="checkbox" name="can_edit" id="can-edit-{{ user.id }}" class="ajax-checkbox" data-user-id="{{ user.id }}" {% if user.companyuser.can_edit %}checked{% endif %}>
-                    {% else %}
-                    {% endif %}
-                </td>
-
-                <td data-label="Can Change Years" class="{% if user.role != 'CompanyUser' %}mobile-hidden{% endif %}">
-                    {% if user.role == 'CompanyUser' and user.companyuser %}
-                        <input type="checkbox" name="can_change_years" id="can-change-years-{{ user.id }}" class="ajax-checkbox" data-user-id="{{ user.id }}" {% if user.companyuser.can_change_years %}checked{% endif %}>
-                    {% else %}
-                    {% endif %}
-                </td>
-                
-                <td data-label="Company" class="{% if user.role == 'Admin' or user.role == 'Developer' or user.role == 'BusinessTeam' %}mobile-hidden{% endif %}">
-                    {% if user.companyuser %}
-                        <span class="read-only-text company-cell">{{ user.companyuser.company.name }}</span>
-                        <input type="hidden" id="company-val-{{ user.id }}" value="{{ user.companyuser.company.id }}">
-                    {% elif user.companycontroller %}
-                        <span class="read-only-text company-cell">{{ user.companycontroller.company.name }}</span>
-                        <input type="hidden" id="company-val-{{ user.id }}" value="{{ user.companycontroller.company.id }}">
-                    {% elif user.companymanager %}
-                        <span class="read-only-text company-cell">{{ user.companymanager.company.name }}</span>
-                        <input type="hidden" id="company-val-{{ user.id }}" value="{{ user.companymanager.company.id }}">
-                    {% elif user.companyfinancemanager %}
-                        <span class="read-only-text company-cell">{{ user.companyfinancemanager.company.name }}</span>
-                        <input type="hidden" id="company-val-{{ user.id }}" value="{{ user.companyfinancemanager.company.id }}">
-                    {% else %}
-                        <input type="hidden" id="company-val-{{ user.id }}" value="">
-                    {% endif %}
-                </td>
-                
-                <td data-label="Job Title" class="{% if user.role != 'BusinessTeam' %}mobile-hidden{% endif %}">
-                    {% if user.role == "BusinessTeam" %}
-                        <span class="read-only-text">{{ user.businessanalysisteam.job_title }}</span>
-                        <input type="hidden" id="job-title-val-{{ user.id }}" value="{{ user.businessanalysisteam.job_title }}">
-                    {% else %}
-                        <input type="hidden" id="job-title-val-{{ user.id }}" value="">
-                    {% endif %}
-                </td>
-
-                <td data-label="Actions">
-                    <form id="saveForm-{{ user.id }}" method="post" style="display: inline;">
+                    {% if not is_company_admin %}
+                                    <form method="post" action="{% url 'login_as_user' %}" style="display:inline;">
                         {% csrf_token %}
                         <input type="hidden" name="user_id" value="{{ user.id }}">
-                        <input type="hidden" name="action" value="save">
-                        
-                        <input type="hidden" name="full_name" id="full_name-{{ user.id }}" value="{{ user.full_name }}">
-                        <input type="hidden" name="email" id="email-{{ user.id }}" value="{{ user.email }}">
-                        <input type="hidden" name="password" id="password-{{ user.id }}">
-                        <input type="hidden" name="is_active" id="hidden-is-active-{{ user.id }}"  value="{% if user.is_active %}true{% else %}false{% endif %}">
-                        <input type="hidden" name="can_edit" id="hidden-can-edit-{{ user.id }}" value="{% if user.companyuser.can_edit %}true{% else %}false{% endif %}">
-                        <input type="hidden" name="can_change_years" id="hidden-can-change-years-{{ user.id }}" value="{% if user.companyuser.can_change_years %}true{% else %}false{% endif %}">
-
-                        <input type="hidden" name="role" value="{{ user.role }}">
-                        <input type="hidden" name="company_id" value="{% if user.companyuser %}{{ user.companyuser.company.id }}{% elif user.companycontroller %}{{ user.companycontroller.company.id }}{% elif user.companymanager %}{{ user.companymanager.company.id }}{% elif user.companyfinancemanager %}{{ user.companyfinancemanager.company.id }}{% endif %}">
-                        <input type="hidden" name="job_title" value="{% if user.role == 'BusinessTeam' %}{{ user.businessanalysisteam.job_title }}{% endif %}">
-
-                        <button type="submit" class="btn btn-primary" title="Save"><i class="fas fa-save"></i></button>
+                        <button type="submit"
+                                class="icon-btn icon-login"
+                                {% if user.is_superuser %}disabled{% endif %}
+                                title="Login as">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                        </button>
                     </form>
-
-                    {% if not user.is_superuser %}
-                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ user.id }}" title="Delete"><i class="fas fa-trash"></i></button>
-                    {% else %}
-                    {% endif %}
-
-                    <form method="post" action="{% url 'login_as_user' %}" style="display:inline;">
-                        {% csrf_token %}
-                        <input type="hidden" name="user_id" value="{{ user.id }}">
-                        <button type="submit" class="btn btn-warning" {% if user.is_superuser %}disabled{% endif %} title="Login as"><i class="fas fa-sign-in-alt"></i></button>                    </form>
+                                    {% endif %}
                 </td>
+
             </tr>
-    
-            <div class="modal fade" id="deleteModal-{{ user.id }}" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Confirm Deletion</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            Are you sure you want to delete the user "{{ user.full_name }}"?
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <form method="post" style="display: inline;">
-                                {% csrf_token %}
-                                <input type="hidden" name="user_id" value="{{ user.id }}">
-                                <input type="hidden" name="action" value="delete">
-                                <button type="submit" class="btn btn-danger">Delete</button>
-                            </form>
+
+            {% if not user.is_superuser %}
+                <div class="modal fade" id="deleteModal-{{ user.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content" style="border-radius:16px;">
+                            <div class="modal-header">
+                                <h5 class="modal-title" style="font-weight:950;">Confirm Deletion</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body" style="font-weight:800;">
+                                Delete user "<b>{{ user.full_name }}</b>"?
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <form method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                                    <input type="hidden" name="action" value="delete">
+                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
+            {% endif %}
+
+        {% endwith %}
+    {% endif %}
+{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            {% endfor %}
-        </tbody>
-    </table>
+        </div>
+
+        <!-- SALES HEAD -->
+        <div class="role-block" data-role-group="SalesHead">
+            <div class="role-head">
+                <div class="left">
+                    <div class="role-title"><i class="fa-solid fa-crown" style="color:#2563eb;"></i> Sales Heads </div>
+                </div>
+                <button class="toggle-btn" type="button" onclick="toggleGroup('SalesHead')">
+                    <i class="fa-solid fa-chevron-down" id="chev-SalesHead"></i> Toggle
+                </button>
+            </div>
+
+            <div class="role-body" id="body-SalesHead">
+                <div class="table-wrap">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Password</th>
+                                <th>Role</th>
+                                <th>Active</th>
+                                <th class="col-company">Company</th>
+                                <th>Team</th>
+                                <th>One DP Only</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+{% for user in users %}
+    {% if user.role_label == "SalesHead" %}
+        {% with cur_company_id=user.sales_head_profile.company_id cur_team_id=user.sales_head_profile.team_id %}
+            <tr class="user-row"
+                data-user-id="{{ user.id }}"
+                data-role="{{ user.role_label }}"
+                data-company="{{ user.company_name }}"
+                data-company-id="{{ cur_company_id|default_if_none:'' }}">
+
+                <td><input type="text" name="full_name" value="{{ user.full_name }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+                <td><input type="email" name="email" value="{{ user.email }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+                <td><input type="text" name="password" placeholder="New password" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+
+                <td>
+                    {% if user.is_superuser %}
+                        <span class="pill">Superuser</span>
+                        <input type="hidden" name="role" value="Superuser">
+                    {% else %}
+                        <select name="role" class="ajax-select role-select">
+                            <option value="Sales">Sales</option>
+                            <option value="SalesHead" selected>SalesHead</option>
+                            <option value="SalesOperation">SalesOperation</option>
+                            <option value="Viewer">Viewer</option>
+                            <option value="Manager">Manager</option>
+                            <option value="CompanyAdmin">CompanyAdmin</option>
+                            <option value="Uploader">Uploader</option>
+                        </select>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if user.is_superuser %}
+                        <input type="checkbox" checked disabled style="opacity:.5;">
+                    {% else %}
+                        <input type="checkbox" name="is_active" class="ajax-checkbox" {% if user.is_active %}checked{% endif %}>
+                    {% endif %}
+                </td>
+
+                <td class="col-company">
+                    <select name="company_id" class="ajax-select company-select" {% if user.is_superuser %}disabled{% endif %}>
+                        <option value="">—</option>
+                        {% for c in companies %}
+                            <option value="{{ c.id }}" {% if cur_company_id|default_if_none:""|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>
+                                {{ c.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </td>
+
+                <td>
+                    <select name="team_id" class="ajax-select team-select" {% if user.is_superuser %}disabled{% endif %}>
+                        <option value="">—</option>
+                        {% for t in teams %}
+                            <option value="{{ t.id }}" data-company="{{ t.company_id }}" {% if cur_team_id|default_if_none:""|stringformat:"s" == t.id|stringformat:"s" %}selected{% endif %}>
+                                {{ t.company.name }} — {{ t.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </td>
+
+                <td>
+                    <input type="checkbox" name="one_dp_only" class="ajax-checkbox"
+                        {% if user.sales_head_profile and user.sales_head_profile.one_dp_only %}checked{% endif %}>
+                </td>
+
+                <td>
+                    <button type="button" class="icon-btn icon-save" onclick="triggerAjaxSave('{{ user.id }}')" title="Save" {% if user.is_superuser %}disabled{% endif %}>
+                        <i class="fa-solid fa-floppy-disk"></i>
+                    </button>
+
+                    {% if not user.is_superuser %}
+                        <button type="button" class="icon-btn icon-del" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ user.id }}" title="Delete">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    {% endif %}
+
+                    {% if not is_company_admin %}
+                                    <form method="post" action="{% url 'login_as_user' %}" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                        <button type="submit" class="icon-btn icon-login" {% if user.is_superuser %}disabled{% endif %} title="Login as">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                        </button>
+                    </form>
+                                    {% endif %}
+                </td>
+            </tr>
+
+            {% if not user.is_superuser %}
+                <div class="modal fade" id="deleteModal-{{ user.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content" style="border-radius:16px;">
+                            <div class="modal-header">
+                                <h5 class="modal-title" style="font-weight:950;">Confirm Deletion</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body" style="font-weight:800;">
+                                Delete user "<b>{{ user.full_name }}</b>"?
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <form method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                                    <input type="hidden" name="action" value="delete">
+                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+    {% endif %}
+{% endfor %}
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SALES OPERATION -->
+        <div class="role-block" data-role-group="SalesOperation">
+            <div class="role-head">
+                <div class="left">
+                    <div class="role-title"><i class="fa-solid fa-gears" style="color:#2563eb;"></i> Sales Operations </div>
+                </div>
+                <button class="toggle-btn" type="button" onclick="toggleGroup('SalesOperation')">
+                    <i class="fa-solid fa-chevron-down" id="chev-SalesOperation"></i> Toggle
+                </button>
+            </div>
+
+            <div class="role-body" id="body-SalesOperation">
+                <div class="table-wrap">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Password</th>
+                                <th>Role</th>
+                                <th>Active</th>
+                                <th class="col-company">Company</th>
+                                <th>Editable Unit Fields</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+{% for user in users %}
+    {% if user.role_label == "SalesOperation" %}
+        {% with cur_company_id=user.sales_ops_profile.company_id %}
+            <tr class="user-row"
+                data-user-id="{{ user.id }}"
+                data-role="{{ user.role_label }}"
+                data-company="{{ user.company_name }}"
+                data-company-id="{{ cur_company_id|default_if_none:'' }}">
+
+                <td><input type="text" name="full_name" value="{{ user.full_name }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+                <td><input type="email" name="email" value="{{ user.email }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+                <td><input type="text" name="password" placeholder="New password" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+
+                <td>
+                    {% if user.is_superuser %}
+                        <span class="pill">Superuser</span>
+                        <input type="hidden" name="role" value="Superuser">
+                    {% else %}
+                        <select name="role" class="ajax-select role-select">
+                            <option value="Sales">Sales</option>
+                            <option value="SalesHead">SalesHead</option>
+                            <option value="SalesOperation" selected>SalesOperation</option>
+                            <option value="Viewer">Viewer</option>
+                            <option value="Manager">Manager</option>
+                            <option value="CompanyAdmin">CompanyAdmin</option>
+                            <option value="Uploader">Uploader</option>
+                        </select>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if user.is_superuser %}
+                        <input type="checkbox" checked disabled style="opacity:.5;">
+                    {% else %}
+                        <input type="checkbox" name="is_active" class="ajax-checkbox" {% if user.is_active %}checked{% endif %}>
+                    {% endif %}
+                </td>
+
+                <td class="col-company">
+                    <select name="company_id" class="ajax-select company-select" {% if user.is_superuser %}disabled{% endif %}>
+                        <option value="">—</option>
+                        {% for c in companies %}
+                            <option value="{{ c.id }}" {% if cur_company_id|default_if_none:""|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>
+                                {{ c.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </td>
+
+                <td>
+                    <textarea name="editable_unit_fields" class="ajax-input" placeholder='e.g. price,status or ["price","status"]'>{% if user.sales_ops_profile %}{{ user.sales_ops_profile.editable_unit_fields|join:", " }}{% endif %}</textarea>
+                </td>
+
+                <td>
+                    <button type="button" class="icon-btn icon-save" onclick="triggerAjaxSave('{{ user.id }}')" title="Save" {% if user.is_superuser %}disabled{% endif %}>
+                        <i class="fa-solid fa-floppy-disk"></i>
+                    </button>
+
+                    {% if not user.is_superuser %}
+                        <button type="button" class="icon-btn icon-del" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ user.id }}" title="Delete">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    {% endif %}
+
+                    {% if not is_company_admin %}
+                                    <form method="post" action="{% url 'login_as_user' %}" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                        <button type="submit" class="icon-btn icon-login" {% if user.is_superuser %}disabled{% endif %} title="Login as">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                        </button>
+                    </form>
+                                    {% endif %}
+                </td>
+            </tr>
+
+            {% if not user.is_superuser %}
+                <div class="modal fade" id="deleteModal-{{ user.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content" style="border-radius:16px;">
+                            <div class="modal-header">
+                                <h5 class="modal-title" style="font-weight:950;">Confirm Deletion</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body" style="font-weight:800;">
+                                Delete user "<b>{{ user.full_name }}</b>"?
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <form method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                                    <input type="hidden" name="action" value="delete">
+                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+    {% endif %}
+{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEWER -->
+        <div class="role-block" data-role-group="Viewer">
+            <div class="role-head">
+                <div class="left">
+                    <div class="role-title"><i class="fa-solid fa-eye" style="color:#2563eb;"></i> Viewers </div>
+                </div>
+                <button class="toggle-btn" type="button" onclick="toggleGroup('Viewer')">
+                    <i class="fa-solid fa-chevron-down" id="chev-Viewer"></i> Toggle
+                </button>
+            </div>
+
+            <div class="role-body" id="body-Viewer">
+                <div class="table-wrap">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Password</th>
+                                <th>Role</th>
+                                <th>Active</th>
+                                <th class="col-company">Company</th>
+                                <th>Allowed Pages</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+{% for user in users %}
+    {% if user.role_label == "Viewer" %}
+        {% with cur_company_id=user.viewer_profile.company_id %}
+            <tr class="user-row"
+                data-user-id="{{ user.id }}"
+                data-role="{{ user.role_label }}"
+                data-company="{{ user.company_name }}"
+                data-company-id="{{ cur_company_id|default_if_none:'' }}">
+
+                <td><input type="text" name="full_name" value="{{ user.full_name }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+                <td><input type="email" name="email" value="{{ user.email }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+                <td><input type="text" name="password" placeholder="New password" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+
+                <td>
+                    {% if user.is_superuser %}
+                        <span class="pill">Superuser</span>
+                        <input type="hidden" name="role" value="Superuser">
+                    {% else %}
+                        <select name="role" class="ajax-select role-select">
+                            <option value="Sales">Sales</option>
+                            <option value="SalesHead">SalesHead</option>
+                            <option value="SalesOperation">SalesOperation</option>
+                            <option value="Viewer" selected>Viewer</option>
+                            <option value="Manager">Manager</option>
+                            <option value="CompanyAdmin">CompanyAdmin</option>
+                            <option value="Uploader">Uploader</option>
+                        </select>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if user.is_superuser %}
+                        <input type="checkbox" checked disabled style="opacity:.5;">
+                    {% else %}
+                        <input type="checkbox" name="is_active" class="ajax-checkbox" {% if user.is_active %}checked{% endif %}>
+                    {% endif %}
+                </td>
+
+                <td class="col-company">
+                    <select name="company_id" class="ajax-select company-select" {% if user.is_superuser %}disabled{% endif %}>
+                        <option value="">—</option>
+                        {% for c in companies %}
+                            <option value="{{ c.id }}" {% if cur_company_id|default_if_none:""|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>
+                                {{ c.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </td>
+
+                <td>
+                    <textarea name="allowed_pages" class="ajax-input" placeholder='e.g. dashboard,map or ["dashboard","map"]'>{% if user.viewer_profile %}{{ user.viewer_profile.allowed_pages|join:", " }}{% endif %}</textarea>
+                </td>
+
+                <td>
+                    <button type="button" class="icon-btn icon-save" onclick="triggerAjaxSave('{{ user.id }}')" title="Save" {% if user.is_superuser %}disabled{% endif %}>
+                        <i class="fa-solid fa-floppy-disk"></i>
+                    </button>
+
+                    {% if not user.is_superuser %}
+                        <button type="button" class="icon-btn icon-del" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ user.id }}" title="Delete">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    {% endif %}
+
+                    {% if not is_company_admin %}
+                                    <form method="post" action="{% url 'login_as_user' %}" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                        <button type="submit" class="icon-btn icon-login" {% if user.is_superuser %}disabled{% endif %} title="Login as">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                        </button>
+                    </form>
+                                    {% endif %}
+                </td>
+            </tr>
+
+            {% if not user.is_superuser %}
+                <div class="modal fade" id="deleteModal-{{ user.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content" style="border-radius:16px;">
+                            <div class="modal-header">
+                                <h5 class="modal-title" style="font-weight:950;">Confirm Deletion</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body" style="font-weight:800;">
+                                Delete user "<b>{{ user.full_name }}</b>"?
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <form method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                                    <input type="hidden" name="action" value="delete">
+                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+    {% endif %}
+{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+
+                <!-- UPLOADER -->
+        <div class="role-block" data-role-group="Uploader">
+            <div class="role-head">
+                <div class="left">
+                    <div class="role-title">
+                        <i class="fa-solid fa-cloud-arrow-up" style="color:#2563eb;"></i>
+                        Uploaders 
+                    </div>
+                </div>
+                <button class="toggle-btn" type="button" onclick="toggleGroup('Uploader')">
+                    <i class="fa-solid fa-chevron-down" id="chev-Uploader"></i> Toggle
+                </button>
+            </div>
+
+            <div class="role-body" id="body-Uploader">
+                <div class="table-wrap">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Password</th>
+                                <th>Role</th>
+                                <th>Active</th>
+                                <th class="col-company">Company</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+{% for user in users %}
+    {% if user.role_label == "Uploader" %}
+        {# safer than user.uploader_profile.company_id in case legacy user has group but no profile #}
+        {% with cur_company_id=user.company_id %}
+            <tr class="user-row"
+                data-user-id="{{ user.id }}"
+                data-role="{{ user.role_label }}"
+                data-company="{{ user.company_name }}"
+                data-company-id="{{ cur_company_id|default_if_none:'' }}">
+
+                <td>
+                    <input type="text" name="full_name" value="{{ user.full_name }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}>
+                </td>
+
+                <td>
+                    <input type="email" name="email" value="{{ user.email }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}>
+                </td>
+
+                <td>
+                    <input type="text" name="password" placeholder="New password" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}>
+                </td>
+
+                <td>
+                    {% if user.is_superuser %}
+                        <span class="pill">Superuser</span>
+                        <input type="hidden" name="role" value="Superuser">
+                    {% else %}
+                        <select name="role" class="ajax-select role-select">
+                            <option value="Sales">Sales</option>
+                            <option value="SalesHead">SalesHead</option>
+                            <option value="SalesOperation">SalesOperation</option>
+                            <option value="Viewer">Viewer</option>
+                            <option value="Manager">Manager</option>
+                            <option value="CompanyAdmin">CompanyAdmin</option>
+                            <option value="Uploader" selected>Uploader</option>
+                        </select>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if user.is_superuser %}
+                        <input type="checkbox" checked disabled style="opacity:.5;">
+                    {% else %}
+                        <input type="checkbox" name="is_active" class="ajax-checkbox" {% if user.is_active %}checked{% endif %}>
+                    {% endif %}
+                </td>
+
+                <td class="col-company">
+                    <select name="company_id" class="ajax-select company-select" {% if user.is_superuser %}disabled{% endif %}>
+                        <option value="">—</option>
+                        {% for c in companies %}
+                            <option value="{{ c.id }}"
+                                {% if cur_company_id|default_if_none:""|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>
+                                {{ c.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </td>
+
+                <td>
+                    <button type="button"
+                            class="icon-btn icon-save"
+                            onclick="triggerAjaxSave('{{ user.id }}')"
+                            title="Save"
+                            {% if user.is_superuser %}disabled{% endif %}>
+                        <i class="fa-solid fa-floppy-disk"></i>
+                    </button>
+
+                    {% if not user.is_superuser %}
+                        <button type="button"
+                                class="icon-btn icon-del"
+                                data-bs-toggle="modal"
+                                data-bs-target="#deleteModal-{{ user.id }}"
+                                title="Delete">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    {% endif %}
+
+                    {% if not is_company_admin %}
+                                    <form method="post" action="{% url 'login_as_user' %}" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                        <button type="submit"
+                                class="icon-btn icon-login"
+                                {% if user.is_superuser %}disabled{% endif %}
+                                title="Login as">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                        </button>
+                    </form>
+                                    {% endif %}
+                </td>
+
+            </tr>
+
+            {% if not user.is_superuser %}
+                <div class="modal fade" id="deleteModal-{{ user.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content" style="border-radius:16px;">
+                            <div class="modal-header">
+                                <h5 class="modal-title" style="font-weight:950;">Confirm Deletion</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body" style="font-weight:800;">
+                                Delete user "<b>{{ user.full_name }}</b>"?
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <form method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                                    <input type="hidden" name="action" value="delete">
+                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+        {% endwith %}
+    {% endif %}
+{% endfor %}
+                        </tbody>
+
+                    </table>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- MANAGER -->
+        <div class="role-block" data-role-group="Manager">
+            <div class="role-head">
+                <div class="left">
+                    <div class="role-title"><i class="fa-solid fa-user-tie" style="color:#2563eb;"></i> Managers </div>
+                </div>
+                <button class="toggle-btn" type="button" onclick="toggleGroup('Manager')">
+                    <i class="fa-solid fa-chevron-down" id="chev-Manager"></i> Toggle
+                </button>
+            </div>
+
+            <div class="role-body" id="body-Manager">
+                <div class="table-wrap">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Password</th>
+                                <th>Role</th>
+                                <th>Active</th>
+                                <th class="col-company">Company</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+{% for user in users %}
+    {% if user.role_label == "Manager" %}
+        {% with cur_company_id=user.manager_profile.company_id %}
+            <tr class="user-row"
+                data-user-id="{{ user.id }}"
+                data-role="{{ user.role_label }}"
+                data-company="{{ user.company_name }}"
+                data-company-id="{{ cur_company_id|default_if_none:'' }}">
+
+                <td><input type="text" name="full_name" value="{{ user.full_name }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+                <td><input type="email" name="email" value="{{ user.email }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+                <td><input type="text" name="password" placeholder="New password" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+
+                <td>
+                    {% if user.is_superuser %}
+                        <span class="pill">Superuser</span>
+                        <input type="hidden" name="role" value="Superuser">
+                    {% else %}
+                        <select name="role" class="ajax-select role-select">
+                            <option value="Sales">Sales</option>
+                            <option value="SalesHead">SalesHead</option>
+                            <option value="SalesOperation">SalesOperation</option>
+                            <option value="Viewer">Viewer</option>
+                            <option value="Manager" selected>Manager</option>
+                            <option value="CompanyAdmin">CompanyAdmin</option>
+                            <option value="Uploader">Uploader</option>
+                        </select>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if user.is_superuser %}
+                        <input type="checkbox" checked disabled style="opacity:.5;">
+                    {% else %}
+                        <input type="checkbox" name="is_active" class="ajax-checkbox" {% if user.is_active %}checked{% endif %}>
+                    {% endif %}
+                </td>
+
+                <td class="col-company">
+                    <select name="company_id" class="ajax-select company-select" {% if user.is_superuser %}disabled{% endif %}>
+                        <option value="">—</option>
+                        {% for c in companies %}
+                            <option value="{{ c.id }}" {% if cur_company_id|default_if_none:""|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>
+                                {{ c.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </td>
+
+                <td>
+                    <button type="button" class="icon-btn icon-save" onclick="triggerAjaxSave('{{ user.id }}')" title="Save" {% if user.is_superuser %}disabled{% endif %}>
+                        <i class="fa-solid fa-floppy-disk"></i>
+                    </button>
+
+                    {% if not user.is_superuser %}
+                        <button type="button" class="icon-btn icon-del" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ user.id }}" title="Delete">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    {% endif %}
+
+                    {% if not is_company_admin %}
+                                    <form method="post" action="{% url 'login_as_user' %}" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                        <button type="submit" class="icon-btn icon-login" {% if user.is_superuser %}disabled{% endif %} title="Login as">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                        </button>
+                    </form>
+                                    {% endif %}
+                </td>
+            </tr>
+
+            {% if not user.is_superuser %}
+                <div class="modal fade" id="deleteModal-{{ user.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content" style="border-radius:16px;">
+                            <div class="modal-header">
+                                <h5 class="modal-title" style="font-weight:950;">Confirm Deletion</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body" style="font-weight:800;">
+                                Delete user "<b>{{ user.full_name }}</b>"?
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <form method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                                    <input type="hidden" name="action" value="delete">
+                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+    {% endif %}
+{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+
+
+       <!-- COMPANY ADMIN -->
+        <div class="role-block" data-role-group="CompanyAdmin">
+        <div class="role-head">
+            <div class="left">
+            <div class="role-title">
+                <i class="fa-solid fa-user-shield" style="color:#2563eb;"></i>
+                Company Admins 
+            </div>
+            </div>
+            <button class="toggle-btn" type="button" onclick="toggleGroup('CompanyAdmin')">
+            <i class="fa-solid fa-chevron-down" id="chev-CompanyAdmin"></i> Toggle
+            </button>
+        </div>
+
+        <div class="role-body" id="body-CompanyAdmin">
+            <div class="table-wrap">
+            <table class="user-table">
+                <thead>
+                <tr>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Password</th>
+                    <th>Role</th>
+                    <th>Active</th>
+                    <th class="col-company">Company</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                {% for user in users %}
+                {% if user.role_label == "CompanyAdmin" %}
+                    {% with cur_company_id=user.company_admin_profile.company_id %}
+                    <tr class="user-row"
+                        data-user-id="{{ user.id }}"
+                        data-role="{{ user.role_label }}"
+                        data-company="{{ user.company_name }}"
+                        data-company-id="{{ cur_company_id|default_if_none:'' }}">
+
+                    <td><input type="text" name="full_name" value="{{ user.full_name }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+                    <td><input type="email" name="email" value="{{ user.email }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+                    <td><input type="text" name="password" placeholder="New password" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+
+                    <td>
+                        {% if user.is_superuser %}
+                        <span class="pill">Superuser</span>
+                        <input type="hidden" name="role" value="Superuser">
+                        {% else %}
+                        <select name="role" class="ajax-select role-select">
+                            <option value="Sales">Sales</option>
+                            <option value="SalesHead">SalesHead</option>
+                            <option value="SalesOperation">SalesOperation</option>
+                            <option value="Viewer">Viewer</option>
+                            <option value="Manager">Manager</option>
+                            <option value="CompanyAdmin" selected>CompanyAdmin</option>
+                            <option value="Uploader">Uploader</option>
+                        </select>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if user.is_superuser %}
+                        <input type="checkbox" checked disabled style="opacity:.5;">
+                        {% else %}
+                        <input type="checkbox" name="is_active" class="ajax-checkbox" {% if user.is_active %}checked{% endif %}>
+                        {% endif %}
+                    </td>
+
+                    <td class="col-company">
+                        <select name="company_id" class="ajax-select company-select" {% if user.is_superuser %}disabled{% endif %}>
+                        <option value="">—</option>
+                        {% for c in companies %}
+                            <option value="{{ c.id }}"
+                            {% if cur_company_id|default_if_none:""|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>
+                            {{ c.name }}
+                            </option>
+                        {% endfor %}
+                        </select>
+                    </td>
+
+                    <td>
+                        <button type="button" class="icon-btn icon-save" onclick="triggerAjaxSave('{{ user.id }}')" title="Save" {% if user.is_superuser %}disabled{% endif %}>
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        </button>
+
+                        {% if not user.is_superuser %}
+                        <button type="button" class="icon-btn icon-del" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ user.id }}" title="Delete">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                        {% endif %}
+
+                        {% if not is_company_admin %}
+                        <form method="post" action="{% url 'login_as_user' %}" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                        <button type="submit" class="icon-btn icon-login" {% if user.is_superuser %}disabled{% endif %} title="Login as">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                        </button>
+                        </form>
+                        {% endif %}
+                    </td>
+
+                    </tr>
+
+                    {% if not user.is_superuser %}
+                    <div class="modal fade" id="deleteModal-{{ user.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content" style="border-radius:16px;">
+                        <div class="modal-header">
+                            <h5 class="modal-title" style="font-weight:950;">Confirm Deletion</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" style="font-weight:800;">
+                            Delete user "<b>{{ user.full_name }}</b>"?
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <form method="post" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="user_id" value="{{ user.id }}">
+                            <input type="hidden" name="action" value="delete">
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                            </form>
+                        </div>
+                        </div>
+                    </div>
+                    </div>
+                    {% endif %}
+
+                    {% endwith %}
+                {% endif %}
+                {% endfor %}
+                </tbody>
+
+            </table>
+            </div>
+        </div>
+        </div>
+ 
+
+    </div>
+
+    <!-- ========================= -->
+    <!-- INTERNAL USERS TAB -->
+    <!-- ========================= -->
+    {% if not is_company_admin %}
+    <div id="tabInternal" class="tab-panel" style="display:none;">
+
+        <div class="role-block" data-role-group="Internal">
+            <div class="role-head">
+                <div class="left">
+                    <div class="role-title"><i class="fa-solid fa-shield-halved" style="color:#2563eb;"></i> Internal Users <span class="pill">Admins / Business Team</span></div>
+                </div>
+            </div>
+
+            <div class="role-body">
+                <div class="table-wrap">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Password</th>
+                                <th>Role</th>
+                                <th>Active</th>
+                                <th>Job Title</th>
+                                <th>Joining Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                        {% for user in users %}
+                            {% if user.role_label == "Admin" or user.role_label == "BusinessTeam" or user.is_superuser %}
+                            <tr class="user-row"
+                                data-user-id="{{ user.id }}"
+                                data-role="{{ user.role_label }}"
+                                data-company=""
+                                data-company-id="">
+
+                                <td><input type="text" name="full_name" value="{{ user.full_name }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+                                <td><input type="email" name="email" value="{{ user.email }}" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+                                <td><input type="text" name="password" placeholder="New password" class="ajax-input" {% if user.is_superuser %}disabled{% endif %}></td>
+
+                                <td>
+                                    {% if user.is_superuser %}
+                                        <span class="pill">Superuser</span>
+                                        <input type="hidden" name="role" value="Superuser">
+                                    {% else %}
+                                        <select name="role" class="ajax-select role-select">
+                                            <option value="Admin" {% if user.role_label == "Admin" %}selected{% endif %}>Admin</option>
+                                            <option value="BusinessTeam" {% if user.role_label == "BusinessTeam" %}selected{% endif %}>BusinessTeam</option>
+                                        </select>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if user.is_superuser %}
+                                        <input type="checkbox" checked disabled style="opacity:.5;">
+                                    {% else %}
+                                        <input type="checkbox" name="is_active" class="ajax-checkbox" {% if user.is_active %}checked{% endif %}>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    <input type="text" name="job_title"
+                                           value="{% if user.business_team_profile %}{{ user.business_team_profile.job_title }}{% endif %}"
+                                           class="ajax-input"
+                                           {% if user.role_label != "BusinessTeam" %}disabled style="opacity:.35;"{% endif %}>
+                                </td>
+
+                                <td>
+                                    <input type="date" name="joining_date"
+                                           value="{% if user.admin_profile %}{{ user.admin_profile.joining_date|date:'Y-m-d' }}{% elif user.business_team_profile %}{{ user.business_team_profile.joining_date|date:'Y-m-d' }}{% endif %}"
+                                           class="ajax-input"
+                                           {% if user.is_superuser %}disabled style="opacity:.35;"{% endif %}>
+                                </td>
+
+                                <td>
+                                    <button type="button" class="icon-btn icon-save" onclick="triggerAjaxSave('{{ user.id }}')" title="Save" {% if user.is_superuser %}disabled{% endif %}>
+                                        <i class="fa-solid fa-floppy-disk"></i>
+                                    </button>
+
+                                    {% if not user.is_superuser %}
+                                        <button type="button" class="icon-btn icon-del" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ user.id }}" title="Delete">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    {% endif %}
+
+                                    {% if not is_company_admin %}
+                                    <form method="post" action="{% url 'login_as_user' %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                                        <button type="submit" class="icon-btn icon-login" {% if user.is_superuser %}disabled{% endif %} title="Login as">
+                                            <i class="fa-solid fa-right-to-bracket"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            {% if not user.is_superuser %}
+                            <div class="modal fade" id="deleteModal-{{ user.id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content" style="border-radius:16px;">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" style="font-weight:950;">Confirm Deletion</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body" style="font-weight:800;">
+                                            Delete user "<b>{{ user.full_name }}</b>"?
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <form method="post" style="display:inline;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                                <input type="hidden" name="action" value="delete">
+                                                <button type="submit" class="btn btn-danger">Delete</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% endif %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+{% endif %}
+
+        </div>
+
+    </div>
+
 </div>
 
-<button id="scrollTopBtn" title="UP"> &#8679; </button>
-
 <script>
-    // --- NEW: AJAX Dynamic Save Logic ---
-    function showToast(message) {
+    function dismissAlert(button) {
+        const alertBox = button.closest('.alert');
+        if (!alertBox) return;
+        alertBox.style.opacity = '0';
+        setTimeout(() => alertBox.remove(), 250);
+    }
+
+    function showToast(message, isError=false) {
         const toast = document.getElementById("ajax-toast");
         toast.textContent = message;
+        toast.style.background = isError ? "#dc2626" : "#16a34a";
         toast.className = "show";
-        setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+        setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 2800);
+    }
+
+    function showTab(tab){
+        const company = document.getElementById("tabCompany");
+        const internal = document.getElementById("tabInternal");
+
+        const btnC = document.getElementById("tabCompanyBtn");
+        const btnI = document.getElementById("tabInternalBtn");
+
+        const roleCompanyWrap = document.getElementById("roleFilterCompanyWrap");
+        const roleInternalWrap = document.getElementById("roleFilterInternalWrap");
+        const companyFilterWrap = document.getElementById("companyFilterWrap");
+
+        // If internal tab isn't rendered (CompanyAdmin), always stay on company tab.
+        if (!internal || !btnI) tab = "company";
+
+        if(tab === "company"){
+            if (company) company.style.display = "";
+            if (internal) internal.style.display = "none";
+            if (btnC) btnC.classList.add("active");
+            if (btnI) btnI.classList.remove("active");
+            if (roleCompanyWrap) roleCompanyWrap.style.display = "";
+            if (roleInternalWrap) roleInternalWrap.style.display = "none";
+            if (companyFilterWrap) companyFilterWrap.style.display = "";
+        }else{
+            if (company) company.style.display = "none";
+            if (internal) internal.style.display = "";
+            if (btnI) btnI.classList.add("active");
+            if (btnC) btnC.classList.remove("active");
+            if (roleCompanyWrap) roleCompanyWrap.style.display = "none";
+            if (roleInternalWrap) roleInternalWrap.style.display = "";
+            if (companyFilterWrap) companyFilterWrap.style.display = "none";
+        }
+        filterAll();
+    }
+
+    function toggleGroup(role){
+        const body = document.getElementById(`body-${role}`);
+        const chev = document.getElementById(`chev-${role}`);
+        if(!body) return;
+        const collapsed = body.classList.toggle("collapsed");
+        if(chev){
+            chev.classList.toggle("fa-chevron-down", !collapsed);
+            chev.classList.toggle("fa-chevron-right", collapsed);
+        }
+    }
+
+    function rowVal(row, selector, fallback="") {
+        const el = row.querySelector(selector);
+        if (!el) return fallback;
+        if (el.type === "checkbox") return el.checked ? "true" : "false";
+        return (el.value ?? fallback);
+    }
+
+    function applyRowVisibility(row) {
+        const role = row.querySelector("select[name='role']")?.value || row.dataset.role || "";
+        const companySelect = row.querySelector("select[name='company_id']");
+        const teamSelect = row.querySelector("select[name='team_id']");
+        const companyId = companySelect ? companySelect.value : "";
+
+        if (teamSelect) {
+            [...teamSelect.options].forEach(opt => {
+                if (!opt.value) return;
+                const optCompany = opt.getAttribute("data-company");
+                opt.hidden = (companyId && optCompany && optCompany !== companyId);
+            });
+
+            const curOpt = teamSelect.options[teamSelect.selectedIndex];
+            if (curOpt && curOpt.hidden) teamSelect.value = "";
+        }
+
+        const isSales = role === "Sales";
+        const isSalesHead = role === "SalesHead";
+        const isOps = role === "SalesOperation";
+        const isViewer = role === "Viewer";
+        const isBusiness = role === "BusinessTeam";
+        const isAdmin = role === "Admin";
+
+        const canEdit = row.querySelector("input[name='can_edit']");
+        const canChangeYears = row.querySelector("input[name='can_change_years']");
+        const oneDp = row.querySelector("input[name='one_dp_only']");
+        const editFields = row.querySelector("textarea[name='editable_unit_fields']");
+        const allowedPages = row.querySelector("textarea[name='allowed_pages']");
+        const jobTitle = row.querySelector("input[name='job_title']");
+        const joiningDate = row.querySelector("input[name='joining_date']");
+
+        if (canEdit) canEdit.disabled = !isSales;
+        if (canChangeYears) canChangeYears.disabled = !isSales;
+        if (oneDp) oneDp.disabled = !isSalesHead;
+        if (editFields) editFields.disabled = !isOps;
+        if (allowedPages) allowedPages.disabled = !isViewer;
+        if (jobTitle) jobTitle.disabled = !isBusiness;
+        if (joiningDate) joiningDate.disabled = !(isBusiness || isAdmin);
+
+        if (teamSelect) teamSelect.disabled = !(isSales || isSalesHead);
+    }
+
+    function applyRoleGroupVisibility(selectedRole, isCompanyTab){
+        const blocks = document.querySelectorAll("#tabCompany .role-block[data-role-group]");
+        blocks.forEach(b => {
+            const group = b.getAttribute("data-role-group");
+            if (!selectedRole) {
+                b.style.display = "";
+                return;
+            }
+            b.style.display = (group === selectedRole) ? "" : "none";
+        });
+
+        const internalBlock = document.querySelector("#tabInternal .role-block[data-role-group='Internal']");
+        if (internalBlock) internalBlock.style.display = "";
+    }
+
+    /* ✅ 5) hide empty blocks (after filtering too) */
+    function hideEmptyRoleBlocks(isCompanyTab) {
+        if (!isCompanyTab) return;
+        document.querySelectorAll("#tabCompany .role-block[data-role-group]").forEach(block => {
+            const rows = block.querySelectorAll(".user-row");
+            const hasVisible = Array.from(rows).some(r => r.style.display !== "none");
+            block.style.display = hasVisible ? "" : "none";
+        });
     }
 
     async function triggerAjaxSave(userId) {
-        // Find the specific row
         const row = document.querySelector(`.user-row[data-user-id="${userId}"]`);
         if (!row) return;
-
-        // Collect all data from the row inputs (just like the hidden form does)
-        const fullName = row.querySelector("input[name='full_name']").value;
-        const email = row.querySelector("input[name='email']").value;
-        const password = row.querySelector("input[name='password']").value;
-        const isActive = row.querySelector("input[name='is_active']") ? row.querySelector("input[name='is_active']").checked : false;
-        
-        // can_edit might not exist for all roles
-        const canEditInput = row.querySelector("input[name='can_edit']");
-        const canEdit = canEditInput ? canEditInput.checked : false;
-
-        const canChangeYearsInput = row.querySelector("input[name='can_change_years']");
-        const canChangeYears = canChangeYearsInput ? canChangeYearsInput.checked : false;
-
-        // Reference values from the hidden fields of the original form
-        const role = row.querySelector("input[name='role']").value;
-        const companyId = row.querySelector("input[name='company_id']").value;
-        const jobTitle = row.querySelector("input[name='job_title']").value;
 
         const formData = new FormData();
         formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
         formData.append('action', 'save');
         formData.append('user_id', userId);
-        formData.append('full_name', fullName);
-        formData.append('email', email);
-        formData.append('password', password);
-        formData.append('is_active', isActive ? 'true' : 'false');
-        formData.append('can_edit', canEdit ? 'true' : 'false');
-        formData.append('can_change_years', canChangeYears ? 'true' : 'false');
+
+        formData.append('full_name', rowVal(row, "input[name='full_name']"));
+        formData.append('email', rowVal(row, "input[name='email']"));
+        formData.append('password', rowVal(row, "input[name='password']"));
+        formData.append('is_active', rowVal(row, "input[name='is_active']", "false"));
+
+        const role = rowVal(row, "select[name='role']", row.dataset.role || "");
         formData.append('role', role);
-        formData.append('company_id', companyId);
-        formData.append('job_title', jobTitle);
+
+        const companyId = rowVal(row, "select[name='company_id']", "");
+
+        // If CompanyAdmin, always send row's company id from dataset (server-truth)
+        const IS_COMPANY_ADMIN = {{ is_company_admin|yesno:"true,false" }};
+
+        if (IS_COMPANY_ADMIN) {
+        const lockedCompanyId = row.dataset.companyId || companyId || "";
+        formData.append("company_id", lockedCompanyId);
+        } else {
+        if (row.querySelector("select[name='company_id']")) formData.append("company_id", companyId);
+        }
+
+        const teamId = rowVal(row, "select[name='team_id']", "");
+
+        if (row.querySelector("select[name='company_id']")) formData.append('company_id', companyId);
+        if (row.querySelector("select[name='team_id']")) formData.append('team_id', teamId);
+
+        if (row.querySelector("input[name='can_edit']")) formData.append('can_edit', rowVal(row, "input[name='can_edit']", "false"));
+        if (row.querySelector("input[name='can_change_years']")) formData.append('can_change_years', rowVal(row, "input[name='can_change_years']", "false"));
+        if (row.querySelector("input[name='one_dp_only']")) formData.append('one_dp_only', rowVal(row, "input[name='one_dp_only']", "false"));
+
+        if (row.querySelector("textarea[name='editable_unit_fields']")) formData.append('editable_unit_fields', rowVal(row, "textarea[name='editable_unit_fields']", ""));
+        if (row.querySelector("textarea[name='allowed_pages']")) formData.append('allowed_pages', rowVal(row, "textarea[name='allowed_pages']", ""));
+
+        if (row.querySelector("input[name='job_title']")) formData.append('job_title', rowVal(row, "input[name='job_title']", ""));
+        if (row.querySelector("input[name='joining_date']")) formData.append('joining_date', rowVal(row, "input[name='joining_date']", ""));
 
         try {
             const response = await fetch(window.location.href, {
                 method: 'POST',
                 body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
 
             if (response.ok) {
-                showToast(`User "${fullName}" updated successfully!`);
+                showToast(`Saved: ${rowVal(row, "input[name='full_name']")}`);
+
+                const prevRole = row.dataset.role || "";
+                if (prevRole && prevRole !== role) {
+                    setTimeout(() => window.location.reload(), 300);
+                }
             } else {
-                showToast("Error updating user.");
+                let msg = "Error saving changes.";
+                try {
+                    const data = await response.json();
+                    if (data && data.message) msg = data.message;
+                } catch(e){}
+                showToast(msg, true);
             }
-        } catch (error) {
-            console.error("AJAX Error:", error);
-            showToast("Connection error. Could not save.");
+        } catch (err) {
+            console.error(err);
+            showToast("Connection error.", true);
+        }
+
+        row.dataset.role = role;
+
+        /* ✅ update row dataset company-id for correct filtering */
+        const companySelect = row.querySelector("select[name='company_id']");
+        if (companySelect) {
+            row.dataset.companyId = companySelect.value || "";
+            if (companySelect.value) {
+                const companyName = companySelect.options[companySelect.selectedIndex]?.textContent || "";
+                row.dataset.company = companyName.trim();
+            } else {
+                row.dataset.company = "";
+            }
         }
     }
 
-    // --- Original Filter Logic ---
-    function filterTable() {
-        const nameFilter = document.getElementById("searchInput").value.toLowerCase();
-        const companyFilter = document.getElementById("searchCompany").value.toLowerCase();
-        const companyValueRaw = document.getElementById("searchCompany").value;
-        const roleFilter = document.getElementById("searchRole").value.toLowerCase(); 
+    function filterAll(){
+        const nameFilter = (document.getElementById("searchInput").value || "").toLowerCase();
 
-        const bulkActionForm = document.getElementById("bulkActionForm");
-        const bulkTargetCompanyInput = document.getElementById("bulkTargetCompany");
+        const tabInternalEl = document.getElementById("tabInternal");
+        const isCompanyTab = (!tabInternalEl) || (document.getElementById("tabCompany").style.display !== "none");
+        const roleFilter = isCompanyTab
+            ? (document.getElementById("searchRoleCompany").value || "")
+            : ((document.getElementById("searchRoleInternal")?.value) || "");
 
-        if (companyValueRaw !== "") {
-            bulkActionForm.style.display = "flex";
-            bulkTargetCompanyInput.value = companyValueRaw;
-        } else {
-            bulkActionForm.style.display = "none";
-            bulkTargetCompanyInput.value = "";
+        const roleFilterLower = roleFilter.toLowerCase();
+
+        /* ✅ company filter uses ID */
+        const companyFilterId = isCompanyTab
+            ? (document.getElementById("searchCompany").value || "")
+            : "";
+
+        if (isCompanyTab) {
+            applyRoleGroupVisibility(roleFilter, true);
         }
 
-        const rows = document.querySelectorAll("#userTableBody tr.user-row");
+        const visiblePanel = isCompanyTab ? document.getElementById("tabCompany") : (document.getElementById("tabInternal") || document.getElementById("tabCompany"));
+        const rows = visiblePanel.querySelectorAll(".user-row");
 
         rows.forEach(row => {
-            const fullNameInput = row.querySelector("input[name='full_name']");
-            const fullName = fullNameInput ? fullNameInput.value.toLowerCase() : "";
-            const roleSpan = row.querySelector(".role-cell");
-            const roleText = roleSpan ? roleSpan.textContent.replace(/\s+/g, '').toLowerCase() : "";
-            const searchRoleClean = roleFilter.replace(/\s+/g, '');
-            const companySpan = row.querySelector(".company-cell");
-            const companyText = companySpan ? companySpan.textContent.toLowerCase() : "";
+            const fullName = (row.querySelector("input[name='full_name']")?.value || "").toLowerCase();
+            const role = (row.querySelector("select[name='role']")?.value || row.dataset.role || "").toLowerCase();
+
+            const rowCompanyId = row.dataset.companyId || "";
 
             const matchesName = fullName.includes(nameFilter);
-            const matchesCompany = (companyFilter === "") || (companyText === companyFilter);
-            const matchesRole = (roleFilter === "") || (roleText === searchRoleClean);
+            const matchesRole = (roleFilterLower === "") || (role === roleFilterLower);
 
-            if (matchesName && matchesCompany && matchesRole) {
-                row.style.display = "";
-            } else {
-                row.style.display = "none";
-            }
+            const matchesCompany = (!isCompanyTab) || (companyFilterId === "") || (rowCompanyId === companyFilterId);
+
+            row.style.display = (matchesName && matchesRole && matchesCompany) ? "" : "none";
         });
+
+        /* ✅ 5 hide empty blocks */
+        hideEmptyRoleBlocks(isCompanyTab);
     }
 
-    // --- Input Sync & AJAX Triggers ---
     document.addEventListener("DOMContentLoaded", function () {
         document.querySelectorAll(".user-row").forEach(row => {
+            applyRowVisibility(row);
+
             const userId = row.dataset.userId;
 
-            // Select all interactive inputs in the row
-            const ajaxInputs = row.querySelectorAll(".ajax-input");
-            const ajaxCheckboxes = row.querySelectorAll(".ajax-checkbox");
-
-            // For text/email/password: Trigger on BLUR (leaving field)
-            ajaxInputs.forEach(input => {
-                input.addEventListener("blur", () => {
-                    triggerAjaxSave(userId);
-                });
-            });
-
-            // For checkboxes: Trigger on CHANGE
-            ajaxCheckboxes.forEach(checkbox => {
-                checkbox.addEventListener("change", () => {
-                    triggerAjaxSave(userId);
-                });
-            });
-
-            // Keep the original hidden form sync logic (for the manual Save button)
-            const inputs = {
-                full_name: row.querySelector("input[name='full_name']"),
-                email: row.querySelector("input[name='email']"),
-                password: row.querySelector("input[name='password']"),
-                is_active: row.querySelector("input[name='is_active']"),
-                can_edit: row.querySelector("input[name='can_edit']"),
-                can_change_years: row.querySelector("input[name='can_change_years']"),
-            };
-
-            const hiddens = {
-                full_name: document.getElementById(`full_name-${userId}`),
-                email: document.getElementById(`email-${userId}`),
-                password: document.getElementById(`password-${userId}`),
-                is_active: document.getElementById(`hidden-is-active-${userId}`),
-                can_edit: document.getElementById(`hidden-can-edit-${userId}`),
-                can_change_years: document.getElementById(`hidden-can-change-years-${userId}`),
-            };
-
-            if(inputs.full_name) inputs.full_name.addEventListener("input", () => hiddens.full_name.value = inputs.full_name.value);
-            if(inputs.email) inputs.email.addEventListener("input", () => hiddens.email.value = inputs.email.value);
-            if(inputs.password) inputs.password.addEventListener("input", () => hiddens.password.value = inputs.password.value);
-            
-            if(inputs.is_active) {
-                inputs.is_active.addEventListener("change", () => {
-                    hiddens.is_active.value = inputs.is_active.checked ? "true" : "false";
-                });
-            }
-            if(inputs.can_edit) {
-                inputs.can_edit.addEventListener("change", () => {
-                    hiddens.can_edit.value = inputs.can_edit.checked ? "true" : "false";
-                });
-            }
-
-            if(inputs.can_change_years) {
-                inputs.can_change_years.addEventListener("change", () => {
-                    hiddens.can_change_years.value = inputs.can_change_years.checked ? "true" : "false";
-                });
-            }
+            row.querySelectorAll(".ajax-input").forEach(el => el.addEventListener("blur", () => triggerAjaxSave(userId)));
+            row.querySelectorAll(".ajax-checkbox").forEach(el => el.addEventListener("change", () => triggerAjaxSave(userId)));
+            row.querySelectorAll(".ajax-select").forEach(el => el.addEventListener("change", () => {
+                applyRowVisibility(row);
+                triggerAjaxSave(userId);
+                filterAll();
+            }));
         });
-    });
 
-    const scrollTopBtn = document.getElementById("scrollTopBtn");
+        filterAll();
 
-    window.addEventListener('scroll', () => {
-        if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
-            scrollTopBtn.classList.add("show");
-        } else {
-            scrollTopBtn.classList.remove("show");
+        const IS_COMPANY_ADMIN = {{ is_company_admin|yesno:"true,false" }};
+
+        if (IS_COMPANY_ADMIN) {
+            // 1) Hide the top company filter dropdown (whole wrap)
+            const companyFilterWrap = document.getElementById("companyFilterWrap");
+        if (companyFilterWrap) companyFilterWrap.style.display = "none";
+
+            // 2) Hide ALL Company columns (header + td) across all company tables
+            const tabCompany = document.getElementById("tabCompany");
+        if (tabCompany) tabCompany.classList.add("hide-company-col");
+
+            // 3) (Optional but recommended) keep company locked and safe:
+            // If you still render the select in HTML, disable it to prevent edits.
+        tabCompany?.querySelectorAll("select.company-select").forEach(sel => {
+            sel.disabled = true;
+        });
         }
-    });
 
-    scrollTopBtn.addEventListener('click', () => {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-        });
+
     });
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 {% endblock %}

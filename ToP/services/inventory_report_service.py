@@ -7,7 +7,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from django.shortcuts import get_object_or_404
 
-from ..models import Company, CompanyManager
+from ..models import Company, Manager
+
+from ..utils.viewer_permissions import is_company_viewer, viewer_company
 
 
 @dataclass
@@ -31,7 +33,7 @@ class InventoryReportService:
     # =========================================================
     REQUIRED_FIELDS = [
         "city", "project", "unit_type", "area_range", "adj_status",
-        "sellable_area", "psm", "interest_free_unit_price", "building_type",
+        "gross_area", "psm", "interest_free_unit_price", "building_type",
         "grace_period_months", "unit_code", "sales_value", "status",
         "reservation_date", "development_delivery_date",
         "contract_delivery_date", "unit_model",
@@ -40,6 +42,25 @@ class InventoryReportService:
     # =========================================================
     # Role helpers
     # =========================================================
+    
+    @staticmethod
+    def _is_viewer(user) -> bool:
+        return is_company_viewer(user)
+
+    @staticmethod
+    def _resolve_viewer_company(user) -> Tuple[Optional[int], Optional[Company]]:
+        """
+        Viewer behaves like Manager: fixed company from viewer_profile.
+        """
+        if not InventoryReportService._is_viewer(user):
+            return None, None
+
+        c = viewer_company(user)
+        if not c:
+            return None, None
+        return c.id, c
+
+
     @staticmethod
     def _is_manager(user) -> bool:
         return user.groups.filter(name="Manager").exists()
@@ -54,9 +75,9 @@ class InventoryReportService:
             return None, None
 
         try:
-            rel = CompanyManager.objects.select_related("company").get(user=user)
+            rel = Manager.objects.select_related("company").get(user=user)
             return rel.company.id, rel.company
-        except CompanyManager.DoesNotExist:
+        except Manager.DoesNotExist:
             return None, None
 
     # =========================================================
@@ -66,6 +87,9 @@ class InventoryReportService:
     def get_inventory_dashboard_context(*, user) -> ServiceResult:
         companies = Company.objects.all()
         company_id, user_company = InventoryReportService._resolve_manager_company(user)
+        if not company_id:
+            company_id, user_company = InventoryReportService._resolve_viewer_company(user)
+
 
         return ServiceResult(
             success=True,
@@ -74,6 +98,7 @@ class InventoryReportService:
                 "companies": companies,
                 "selected_company_id": company_id,
                 "company": user_company,
+                "is_viewer": InventoryReportService._is_viewer(user),
             },
         )
 

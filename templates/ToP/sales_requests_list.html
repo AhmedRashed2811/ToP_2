@@ -827,11 +827,28 @@
 
     let companyId = null;
 
-    {% if request.user.companycontroller %}
-        companyId = "{{ request.user.companycontroller.company.id }}";
-    {% elif request.user.companyuser %}
-        companyId = "{{ request.user.companyuser.company.id }}";
+    {% if request.user.manager_profile and request.user.manager_profile.company %}
+        companyId = "{{ request.user.manager_profile.company.id }}";
+
+    {% elif request.user.sales_profile and request.user.sales_profile.company %}
+        companyId = "{{ request.user.sales_profile.company.id }}";
+
+    {% elif request.user.sales_head_profile and request.user.sales_head_profile.company %}
+        companyId = "{{ request.user.sales_head_profile.company.id }}";
+
+    {% elif request.user.sales_ops_profile and request.user.sales_ops_profile.company %}
+        companyId = "{{ request.user.sales_ops_profile.company.id }}";
+
+    {% elif request.user.company_admin_profile and request.user.company_admin_profile.company %}
+        companyId = "{{ request.user.company_admin_profile.company.id }}";
+
+    {% elif request.user.viewer_profile and request.user.viewer_profile.company %}
+        companyId = "{{ request.user.viewer_profile.company.id }}";
+
+    {% elif request.user.uploader_profile and request.user.uploader_profile.company %}
+        companyId = "{{ request.user.uploader_profile.company.id }}";
     {% endif %}
+
 
 
     if (companyId) {

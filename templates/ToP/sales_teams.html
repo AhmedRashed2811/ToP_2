@@ -1,0 +1,731 @@
+{% extends 'ToP/base.html' %}
+{% block title %}Sales Teams{% endblock %}
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<style>
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl { max-width: 100%; }
+    }
+    @media (min-width: 576px) {
+        .container, .container-sm { max-width: 100%; }
+    }
+
+
+    :root{
+        --bg:#f6f7fb;
+        --card:#ffffff;
+        --text:#111827;
+        --muted:#6b7280;
+        --border:rgba(0,0,0,.08);
+        --shadow: 0 14px 40px rgba(17, 24, 39, .08);
+        --shadow-sm: 0 10px 25px rgba(17, 24, 39, .06);
+
+        --blue:#2563eb;
+        --green:#16a34a;
+        --red:#dc2626;
+        --slate:#0f172a;
+    }
+
+    body{ background: var(--bg); font-family: 'Times New Roman', Times, serif;}
+    .page{ padding: 18px; width: 100%; }
+
+    .header{
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        padding: 16px;
+        display:flex;
+        align-items:flex-start;
+        justify-content:space-between;
+        gap: 12px;
+        flex-wrap:wrap;
+        margin-bottom: 14px;
+    }
+    .header h1{
+        margin:0;
+        font-weight: 950;
+        color: var(--text);
+        font-size: 20px;
+        letter-spacing: .2px;
+    }
+    .header .sub{
+        margin-top: 6px;
+        font-weight: 750;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.35;
+        max-width: 900px;
+    }
+    .header-actions{
+        display:flex;
+        gap:10px;
+        flex-wrap:wrap;
+        justify-content:flex-end;
+    }
+    .btnx{
+        display:inline-flex;
+        align-items:center;
+        gap:10px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        text-decoration:none;
+        font-weight: 900;
+        box-shadow: var(--shadow-sm);
+        background:#fff;
+        color: var(--slate);
+        transition: transform .08s ease, opacity .2s ease;
+        cursor:pointer;
+        white-space: nowrap;
+    }
+    .btnx:hover{ opacity:.96; transform: translateY(-1px); }
+    .btnx.green{ background: var(--green); color:#fff; border-color: rgba(0,0,0,.06); }
+    .btnx.dark{ background: #111827; color:#fff; border-color: rgba(0,0,0,.06); }
+
+    .toolbar{
+        display:flex;
+        gap: 10px;
+        flex-wrap:wrap;
+        align-items:center;
+        justify-content:space-between;
+        margin-bottom: 14px;
+    }
+    .search{
+        flex: 1 1 280px;
+        max-width: 520px;
+        position: relative;
+    }
+    .search input{
+        width:100%;
+        padding: 10px 12px 10px 38px;
+        border-radius: 12px;
+        border: 1px solid rgba(0,0,0,.14);
+        font-weight: 800;
+        outline:none;
+        background:#fff;
+    }
+    .search i{
+        position:absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+    }
+
+    .grid{
+        display:grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 14px;
+    }
+
+    .team-card{
+        grid-column: span 6;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: var(--shadow-sm);
+        padding: 14px;
+        display:flex;
+        flex-direction:column;
+        gap: 10px;
+        min-height: 165px;
+    }
+    .team-top{
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        gap: 10px;
+    }
+    .team-name{
+        font-weight: 950;
+        color: var(--text);
+        font-size: 16px;
+    }
+    .team-meta{
+        margin-top: 3px;
+        font-weight: 800;
+        color: var(--muted);
+        font-size: 12px;
+    }
+    .pill{
+        display:inline-flex;
+        align-items:center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-weight: 900;
+        font-size: 12px;
+        background: #f8fafc;
+        border: 1px solid rgba(0,0,0,.06);
+        color: #334155;
+        white-space: nowrap;
+    }
+    .counts{
+        display:flex;
+        gap: 10px;
+        flex-wrap:wrap;
+        align-items:center;
+    }
+    .card-actions{
+        margin-top:auto;
+        display:flex;
+        gap: 10px;
+        flex-wrap:wrap;
+    }
+    .mini{
+        border-radius: 12px;
+        padding: 9px 12px;
+        font-weight: 900;
+        border: 1px solid rgba(0,0,0,.08);
+        cursor:pointer;
+        display:inline-flex;
+        align-items:center;
+        gap: 8px;
+        background:#fff;
+        box-shadow: var(--shadow-sm);
+    }
+    .mini:hover{ opacity:.96; transform: translateY(-1px); transition: transform .08s ease; }
+    .mini.danger{ background:#fee2e2; color:#991b1b; border-color: rgba(153,27,27,.18); }
+
+    /* Modal */
+    .modal-content{ border-radius: 16px !important; border: 1px solid rgba(0,0,0,.08); }
+    .modal-title{ font-weight: 950; }
+
+    .form-grid{
+        display:grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    .fg{
+        grid-column: span 1;
+    }
+    .fg.full{ grid-column: 1 / -1; }
+
+    .fg label{
+        display:block;
+        font-weight: 900;
+        font-size: 12px;
+        color:#374151;
+        margin-bottom: 6px;
+    }
+    .fg input, .fg select{
+        width:100%;
+        padding: 10px 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(0,0,0,.14);
+        font-weight: 800;
+        outline:none;
+        background:#fff;
+    }
+
+    /* Dual pickers */
+    .picker-wrap{
+        display:grid;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 10px;
+        align-items: stretch;
+    }
+    .picker{
+        border: 1px solid rgba(0,0,0,.12);
+        border-radius: 14px;
+        background:#fff;
+        padding: 10px;
+        display:flex;
+        flex-direction:column;
+        gap: 8px;
+        min-height: 260px;
+    }
+    .picker h6{
+        margin:0;
+        font-weight: 950;
+        font-size: 12px;
+        color:#334155;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap: 10px;
+    }
+    .picker .small{
+        font-weight: 850;
+        color:#94a3b8;
+        font-size: 12px;
+    }
+    .picker .search-in{
+        position:relative;
+    }
+    .picker .search-in input{
+        padding-left: 34px;
+    }
+    .picker .search-in i{
+        position:absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color:#94a3b8;
+        font-size: 13px;
+    }
+    .picker select{
+        flex:1;
+        min-height: 180px;
+        padding: 10px;
+        border-radius: 12px;
+        font-weight: 850;
+    }
+
+    .picker-actions{
+        display:flex;
+        flex-direction:column;
+        gap: 10px;
+        justify-content:center;
+        align-items:center;
+        padding: 6px 0;
+    }
+    .pick-btn{
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        border: 1px solid rgba(0,0,0,.10);
+        background:#fff;
+        box-shadow: var(--shadow-sm);
+        cursor:pointer;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+    }
+    .pick-btn:hover{ opacity:.96; transform: translateY(-1px); transition: transform .08s ease; }
+    .pick-btn i{ color: var(--blue); font-size: 16px; }
+
+    .hint{
+        font-size: 12px;
+        font-weight: 750;
+        color: var(--muted);
+        margin-top: 6px;
+        line-height: 1.35;
+    }
+
+    @media (max-width: 950px){
+        .team-card{ grid-column: span 12; }
+        .form-grid{ grid-template-columns: 1fr; }
+        .picker-wrap{ grid-template-columns: 1fr; }
+        .picker-actions{ flex-direction:row; }
+    }
+</style>
+
+<div class="page">
+    <div class="header">
+        <div>
+            <h1>Sales Teams</h1>
+            <div class="sub">
+                Create teams per company, assign Heads and Members with an easier selector, and manage your structure.
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <a class="btnx dark" href="{% url 'manage_users' %}">
+                <i class="fa-solid fa-users-gear"></i> Manage Users
+            </a>
+            <button class="btnx green" data-bs-toggle="modal" data-bs-target="#createTeamModal">
+                <i class="fa-solid fa-plus"></i> Create Team
+            </button>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <div class="search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="teamSearch" placeholder="Search teams by name or company..." onkeyup="filterTeams()">
+        </div>
+        <div class="pill">
+            <i class="fa-solid fa-circle-info"></i>
+            Tip: Use “Edit” to assign Heads & Members.
+        </div>
+    </div>
+
+    <div class="grid" id="teamsGrid">
+        {% for t in teams %}
+        <div class="team-card team-item" data-team="{{ t.name|lower }}" data-company="{{ t.company.name|lower }}">
+            <div class="team-top">
+                <div>
+                    <div class="team-name">{{ t.name }}</div>
+                    <div class="team-meta">{{ t.company.name }}</div>
+                </div>
+                <span class="pill"><i class="fa-regular fa-calendar"></i> {{ t.created_at|date:"Y-m-d" }}</span>
+            </div>
+
+            <div class="counts">
+                <span class="pill"><i class="fa-solid fa-user-tie"></i> Heads: {{ t.heads.count }}</span>
+                <span class="pill"><i class="fa-solid fa-user"></i> Members: {{ t.members.count }}</span>
+            </div>
+
+            <div class="card-actions">
+                <button class="mini" data-bs-toggle="modal" data-bs-target="#editTeamModal-{{ t.id }}">
+                    <i class="fa-solid fa-pen-to-square"></i> Edit
+                </button>
+
+                <button class="mini danger" data-bs-toggle="modal" data-bs-target="#deleteTeamModal-{{ t.id }}">
+                    <i class="fa-solid fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+
+        <!-- =========================
+             EDIT TEAM MODAL
+        ========================== -->
+        <div class="modal fade" id="editTeamModal-{{ t.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content">
+                    <form method="POST" onsubmit="selectAllBeforeSubmit('{{ t.id }}')">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update">
+                        <input type="hidden" name="team_id" value="{{ t.id }}">
+
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit Team</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+
+                        <div class="modal-body">
+                            <div class="form-grid">
+                                <div class="fg">
+                                    <label>Company</label>
+                                    <select name="company_id" class="company-picker" data-team="{{ t.id }}" required>
+                                        {% for c in companies %}
+                                            <option value="{{ c.id }}" {% if t.company.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="hint">Changing the company will filter available users.</div>
+                                </div>
+
+                                <div class="fg">
+                                    <label>Team Name</label>
+                                    <input type="text" name="name" value="{{ t.name }}" required>
+                                </div>
+
+                                <!-- Heads Picker -->
+                                <div class="fg full">
+                                    <label>Heads</label>
+
+                                    <div class="picker-wrap"
+                                         data-team="{{ t.id }}"
+                                         data-type="heads">
+
+                                        <!-- Available -->
+                                        <div class="picker">
+                                            <h6>
+                                                Available Heads
+                                                <span class="small">Double click to add</span>
+                                            </h6>
+
+                                            <div class="search-in">
+                                                <i class="fa-solid fa-magnifying-glass"></i>
+                                                <input type="text" placeholder="Search available heads..."
+                                                       onkeyup="filterPicker(this, 'headsAvail-{{ t.id }}')">
+                                            </div>
+
+                                            <select id="headsAvail-{{ t.id }}" size="10" ondblclick="moveSelected('headsAvail-{{ t.id }}','headsSel-{{ t.id }}')">
+                                                {% for h in heads %}
+                                                    {% if not h.team or h.team.id != t.id %}
+                                                    <option value="{{ h.id }}" data-company="{{ h.company.id }}">
+                                                        {{ h.user.full_name }} ({{ h.user.email }})
+                                                    </option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+
+                                            <div class="hint">Shows only heads that are not already assigned to this team.</div>
+                                        </div>
+
+                                        <!-- Buttons -->
+                                        <div class="picker-actions">
+                                            <button type="button" class="pick-btn" onclick="moveSelected('headsAvail-{{ t.id }}','headsSel-{{ t.id }}')" title="Add">
+                                                <i class="fa-solid fa-arrow-right"></i>
+                                            </button>
+                                            <button type="button" class="pick-btn" onclick="moveSelected('headsSel-{{ t.id }}','headsAvail-{{ t.id }}')" title="Remove">
+                                                <i class="fa-solid fa-arrow-left"></i>
+                                            </button>
+                                        </div>
+
+                                        <!-- Selected (THIS is the real field sent to backend) -->
+                                        <div class="picker">
+                                            <h6>
+                                                Selected Heads
+                                                <span class="small">Will be saved</span>
+                                            </h6>
+
+                                            <select id="headsSel-{{ t.id }}" name="head_ids" multiple size="10" ondblclick="moveSelected('headsSel-{{ t.id }}','headsAvail-{{ t.id }}')">
+                                                {% for h in heads %}
+                                                    {% if h.team and h.team.id == t.id %}
+                                                    <option value="{{ h.id }}" data-company="{{ h.company.id }}" selected>
+                                                        {{ h.user.full_name }} ({{ h.user.email }})
+                                                    </option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+
+                                            <div class="hint">Only selected options are submitted.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Members Picker -->
+                                <div class="fg full" style="margin-top: 10px;">
+                                    <label>Members</label>
+
+                                    <div class="picker-wrap"
+                                         data-team="{{ t.id }}"
+                                         data-type="members">
+
+                                        <!-- Available -->
+                                        <div class="picker">
+                                            <h6>
+                                                Available Members
+                                                <span class="small">Double click to add</span>
+                                            </h6>
+
+                                            <div class="search-in">
+                                                <i class="fa-solid fa-magnifying-glass"></i>
+                                                <input type="text" placeholder="Search available members..."
+                                                       onkeyup="filterPicker(this, 'membersAvail-{{ t.id }}')">
+                                            </div>
+
+                                            <select id="membersAvail-{{ t.id }}" size="10" ondblclick="moveSelected('membersAvail-{{ t.id }}','membersSel-{{ t.id }}')">
+                                                {% for s in sales_members %}
+                                                    {% if not s.team or s.team.id != t.id %}
+                                                    <option value="{{ s.id }}" data-company="{{ s.company.id }}">
+                                                        {{ s.user.full_name }} ({{ s.user.email }})
+                                                    </option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+
+                                            <div class="hint">Shows members not already assigned to this team.</div>
+                                        </div>
+
+                                        <!-- Buttons -->
+                                        <div class="picker-actions">
+                                            <button type="button" class="pick-btn" onclick="moveSelected('membersAvail-{{ t.id }}','membersSel-{{ t.id }}')" title="Add">
+                                                <i class="fa-solid fa-arrow-right"></i>
+                                            </button>
+                                            <button type="button" class="pick-btn" onclick="moveSelected('membersSel-{{ t.id }}','membersAvail-{{ t.id }}')" title="Remove">
+                                                <i class="fa-solid fa-arrow-left"></i>
+                                            </button>
+                                        </div>
+
+                                        <!-- Selected (real field) -->
+                                        <div class="picker">
+                                            <h6>
+                                                Selected Members
+                                                <span class="small">Will be saved</span>
+                                            </h6>
+
+                                            <select id="membersSel-{{ t.id }}" name="member_ids" multiple size="10" ondblclick="moveSelected('membersSel-{{ t.id }}','membersAvail-{{ t.id }}')">
+                                                {% for s in sales_members %}
+                                                    {% if s.team and s.team.id == t.id %}
+                                                    <option value="{{ s.id }}" data-company="{{ s.company.id }}" selected>
+                                                        {{ s.user.full_name }} ({{ s.user.email }})
+                                                    </option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+
+                                            <div class="hint">Only selected options are submitted.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="fg full">
+                                    <div class="hint">
+                                        Notes:
+                                        <ul style="margin: 6px 0 0 18px;">
+                                            <li>Heads/Members lists are filtered by the selected company.</li>
+                                            <li>Double click an item to move it quickly.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary" style="font-weight:900;">
+                                <i class="fa-solid fa-floppy-disk"></i> Save
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- =========================
+             DELETE MODAL
+        ========================== -->
+        <div class="modal fade" id="deleteTeamModal-{{ t.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="team_id" value="{{ t.id }}">
+
+                        <div class="modal-header">
+                            <h5 class="modal-title">Delete Team</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+
+                        <div class="modal-body" style="font-weight:800;">
+                            Delete "<b>{{ t.name }}</b>" ({{ t.company.name }})?
+                            <div class="hint">Heads and members will be detached from this team.</div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger" style="font-weight:900;">
+                                <i class="fa-solid fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {% endfor %}
+    </div>
+</div>
+
+<!-- =========================
+     CREATE TEAM MODAL
+========================== -->
+<div class="modal fade" id="createTeamModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Team</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div class="fg">
+                            <label>Company</label>
+                            <select name="company_id" required>
+                                {% if not is_company_admin %}<option value="">—</option>{% endif %}
+                                {% for c in companies %}
+                                    <option value="{{ c.id }}">{{ c.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="fg">
+                            <label>Team Name</label>
+                            <input type="text" name="name" placeholder="e.g. New Cairo Team" required>
+                        </div>
+
+                        <div class="fg full">
+                            <div class="hint">
+                                After creating the team, click <b>Edit</b> to assign Heads and Members.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="font-weight:900;">
+                        <i class="fa-solid fa-plus"></i> Create
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function filterTeams(){
+        const q = (document.getElementById("teamSearch").value || "").toLowerCase();
+        document.querySelectorAll(".team-item").forEach(el => {
+            const t = el.getAttribute("data-team") || "";
+            const c = el.getAttribute("data-company") || "";
+            el.style.display = (!q || t.includes(q) || c.includes(q)) ? "" : "none";
+        });
+    }
+
+    function filterPicker(input, selectId){
+        const q = (input.value || "").toLowerCase();
+        const sel = document.getElementById(selectId);
+        if (!sel) return;
+        [...sel.options].forEach(opt => {
+            const txt = (opt.textContent || "").toLowerCase();
+            opt.hidden = q && !txt.includes(q);
+        });
+    }
+
+    function moveSelected(fromId, toId){
+        const from = document.getElementById(fromId);
+        const to = document.getElementById(toId);
+        if (!from || !to) return;
+
+        const selected = [...from.options].filter(o => o.selected && !o.disabled);
+        selected.forEach(opt => {
+            opt.selected = false;
+            to.appendChild(opt);
+        });
+    }
+
+    // Make sure all options in selected lists are selected before submit
+    // (some browsers only submit selected options in multi-select)
+    function selectAllBeforeSubmit(teamId){
+        const headsSel = document.getElementById(`headsSel-${teamId}`);
+        const membersSel = document.getElementById(`membersSel-${teamId}`);
+        if (headsSel) [...headsSel.options].forEach(o => o.selected = true);
+        if (membersSel) [...membersSel.options].forEach(o => o.selected = true);
+    }
+
+    function applyCompanyFilter(selectEl, companyId){
+        if (!selectEl) return;
+
+        [...selectEl.options].forEach(opt => {
+            const optCompany = opt.getAttribute("data-company");
+            if (!opt.value) return;
+            opt.hidden = (companyId && optCompany && optCompany !== companyId);
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function(){
+        // Filter pickers when company changes
+        document.querySelectorAll(".company-picker").forEach(companySelect => {
+            const teamId = companySelect.getAttribute("data-team");
+
+            const headsAvail = document.getElementById(`headsAvail-${teamId}`);
+            const headsSel = document.getElementById(`headsSel-${teamId}`);
+            const membersAvail = document.getElementById(`membersAvail-${teamId}`);
+            const membersSel = document.getElementById(`membersSel-${teamId}`);
+
+            const run = () => {
+                const companyId = companySelect.value;
+                applyCompanyFilter(headsAvail, companyId);
+                applyCompanyFilter(headsSel, companyId);
+                applyCompanyFilter(membersAvail, companyId);
+                applyCompanyFilter(membersSel, companyId);
+
+                // Optional: if any selected items are hidden due to company mismatch, move them back to available
+                // (comment out if you want to keep them until user removes)
+                // [...headsSel?.options || []].forEach(o => { if (o.hidden) headsAvail.appendChild(o); });
+                // [...membersSel?.options || []].forEach(o => { if (o.hidden) membersAvail.appendChild(o); });
+            };
+
+            companySelect.addEventListener("change", run);
+            run();
+        });
+    });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

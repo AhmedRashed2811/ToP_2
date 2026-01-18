@@ -6,9 +6,9 @@ from .models import *
 
 admin.site.register(User)
 admin.site.register(Project)
-admin.site.register(CompanyController)
-admin.site.register(CompanyUser)
-admin.site.register(CompanyManager)
+admin.site.register(SalesOperation)
+admin.site.register(Sales)
+admin.site.register(Manager)
 admin.site.register(BusinessAnalysisTeam)
 admin.site.register(Company)
 admin.site.register(CTD)

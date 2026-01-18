@@ -1,4 +1,5 @@
-{% load static %}  
+{% load static %} 
+{% load viewer_nav %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -248,23 +249,21 @@
     
         <div class="navbar">
 
+            {% viewer_pages request.user as vpages %}
             
             {% for group in request.user.groups.all %}
-                {% if group.name in 'Client' or group.name in 'Manager'  or group.name in 'Controller' or group.name in 'FinanceManager'%}
+                {% if group.name in  'Sales SalesHead SalesOperation Manager Viewer Uploader'%}
                     <div class="hamburger mobile-menu-toggle" id="hamburger-2">&#9776;</div>
                     <img 
                         src="{{ company.logo.url }}" 
                         alt="Logo" 
                         style="height: 40px; object-fit: contain; margin-right: 20px;"
                     >
-                {% elif group.name in 'Controller' %}
-                    <img 
-                        src="{{ company.logo.url }}" 
-                        alt="Logo" 
-                        style="height: 40px; object-fit: contain; margin-right: 20px;"
-                    >
-                {% else %}
-                    <div class="hamburger mobile-menu-toggle" id="hamburger">&#9776;</div>
+                {% endif %}
+
+                {% if group.name in  'Admin TeamMember'%}
+                    <div class="hamburger mobile-menu-toggle" id="hamburger-2">&#9776;</div>
+
                 {% endif %}
             {% endfor %}
             
@@ -315,6 +314,7 @@
                                 <a class="dropdown-item-2" href="{% url 'inventory_model' %}">Inventory Report</a>
                                 <a class="dropdown-item-2" href="{% url 'sales_performance_analysis' %}">Sales Performance Analysis</a>
                                 <a class="dropdown-item-2" href="{% url 'sales_dashboard' %}">Sales Team Report</a>
+                                <a class="dropdown-item-2" href="{% url 'sales_team_report' %}">Sales Team Performance</a>
 
                             </div>
                         </div>
@@ -401,6 +401,7 @@
                             <div class="dropdown-menu">
                                 <a class="dropdown-item-2" href="{% url 'inventory_model' %}">Inventory Report</a>
                                 <a class="dropdown-item-2" href="{% url 'sales_performance_analysis' %}">Sales Performance Analysis</a>
+                                <a class="dropdown-item-2" href="{% url 'sales_team_report' %}">Sales Team Performance</a>
                                 <a class="dropdown-item-2" href="{% url 'pricing_model' %}">Pricing Model</a>
                             </div>
                         </div>
@@ -421,17 +422,29 @@
                             </div>
                         </div>
 
+                    {% elif group.name in 'Uploader' %}
 
-
-                        {% comment %} <div class="dropdown" style="margin-top: 2%;">
-                            <span class="dropdown-toggle">Services</span>
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Projects</span>
                             <div class="dropdown-menu">
-                                <a class="dropdown-item-2" href="{% url 'upload_csv' %}">Upload Inventory</a>
+                                <a class="dropdown-item-2" href="{% url 'project_dashboard' %}">Manage Projects</a> 
+                                <a class="dropdown-item-2" href="{% url 'unit_mapping' %}">Masterplan Settings</a>
+                                <a class="dropdown-item-2" href="{% url 'dual_payments_input' %}">Payments Input</a>
+                                <a class="dropdown-item-2" href="{% url 'special_offers_input' %}">Special Offer Input</a>
+                                <a class="dropdown-item-2"  href="{% url 'project_web_config' %}">Web Configurations</a>
                             </div>
-                        </div> {% endcomment %}
+                        </div>
 
+                        <div class="dropdown" style="margin-top: 2%;">
+                            <span class="dropdown-toggle">Inventory</span>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item-2" href="{% url 'import_hub' %}">Inventory Hub</a>
+                                <a class="dropdown-item-2" href="{% url 'units_data' %}">Manage Inventory</a>
+                                <a class="dropdown-item-2" href="{% url 'unit_layout_manager' %}">Unit Brochure</a>
+                            </div>
+                        </div>
                         
-                    {% elif group.name == 'Controller' %}
+                    {% elif group.name == 'SalesOperation' %}
                          
                             <a  style="color:#333;" href="{% url 'sales_requests_list' %}">Sales Requests</a>    
                             <a style="color:#333;"  href="{% url 'units_data' %}">Inventory</a>
@@ -470,8 +483,10 @@
                             <div class="dropdown-menu">
                                 <a class="dropdown-item-2" href="{% url 'inventory_model' %}">Inventory Report</a>
                                 <a class="dropdown-item-2" href="{% url 'sales_performance_analysis' %}">Sales Performance Analysis</a>
-                                <a class="dropdown-item-2" href="{% url 'sales_dashboard' %}">Sales Team Report</a>
+                                <a class="dropdown-item-2" href="{% url 'sales_dashboard' %}">Sales Report</a>
                                 <a class="dropdown-item-2" href="{% url 'historical_sales_requests_analysis_page' %}">Approvals History</a>
+                                <a class="dropdown-item-2" href="{% url 'sales_team_report' %}">Sales Team Performance</a>
+
                             </div>
                         </div>
 
@@ -493,23 +508,44 @@
                             </div>
                         </div>
 
-                    {% elif group.name == 'Client' %}
-
-                         {% comment %} <div class="dropdown" style="margin-top: 2%;">
-                            <span class="dropdown-toggle">Sale Unit</span>
-                            <div class="dropdown-menu">
-                                <a class="dropdown-item-2" href="{% url 'home' %}">TOP</a>
-                                <a class="dropdown-item-2" href="{% url 'unit_mapping_read_only' %}">Projects Masterplan</a>
-                            </div>
-                        </div> {% endcomment %}
+                    {% elif group.name in "Sales" %}
                         <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'home' %}">TOP</a>
                         <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'unit_mapping_read_only' %}">Masterplans</a>
                         <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'units_catalog' %}">Catalog</a>
                         <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'historical_sales_requests_analysis_page' %}">History</a>
 
 
+                    {% elif group.name in "SalesHead" %}
+                        <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'home' %}">TOP</a>
+                        <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'unit_mapping_read_only' %}">Masterplans</a>
+                        <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'units_catalog' %}">Catalog</a>
+                        <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'historical_sales_requests_analysis_page' %}">History</a>
+                        <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'sales_team_report' %}">Team Performance</a>
+                    
+                    {% elif group.name == "Viewer" %}
+                        {% viewer_pages request.user as vpages %}
 
+                        {% if "top" in vpages %}
+                            <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'home' %}">TOP</a>
+                        {% endif %}
+                        
+                        {% if "masterplans" in vpages %}
+                            <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'unit_mapping_read_only' %}">Masterplans</a>
+                        {% endif %}
+
+                        {% if "catalog" in vpages %}
+                            <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'units_catalog' %}">Catalog</a>
+                        {% endif %}
+
+                        {% if "inv_report" in vpages %}
+                            <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'inventory_model' %}">Inventory Report</a>
+                        {% endif %}
+
+                        {% if "SPA" in vpages %}
+                            <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'sales_performance_analysis' %}">Sales Performance Analysis</a>
+                        {% endif %}
                     {% endif %}
+
                 {% endfor %}
             </div>
             <div class="navbar-left-items" id="navbar-left-items">
@@ -539,7 +575,7 @@
 
 
     {% with user_groups=request.user.groups.all|join:"," %}
-        <div {% if "Client" not in user_groups and  "Manager" not in user_groups%} class="container" {% else %} class="container-new" {% endif %} >
+        <div {% if "Sales" not in user_groups and  "Manager" not in user_groups and  "SalesHead" not in user_groups and  "Viewer" not in user_groups %} class="container" {% else %} class="container-new" {% endif %} >
             {% block content %}{% endblock %}
         </div>
     {% endwith %} 

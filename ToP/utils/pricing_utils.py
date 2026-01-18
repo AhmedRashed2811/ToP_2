@@ -115,7 +115,7 @@ def build_unit_values_fields() -> List[str]:
         "corners", "accessibility", "special_premiums", "special_discounts",
         "phasing", "base_price", "internal_area", "unit_model", "status",
         "unit_type", "building_number", "building_type", "city", "floor",
-        "status", "sellable_area",
+        "status", "gross_area",
     ]
 
     names = unit_field_names()

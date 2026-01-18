@@ -7,9 +7,10 @@ from ..forms import CompanyForm
 from ..models import (
     Company,
     CompanyType,
-    CompanyUser,
-    CompanyController,
-    CompanyManager,
+    Sales,
+    SalesOperation,
+    Manager,
+    SalesHead
 )
 
 
@@ -208,27 +209,41 @@ class CompanyManagementService:
     @staticmethod
     def _sync_company_users(company):
         """Syncs is_active status to all related users."""
-        for cu in CompanyUser.objects.filter(company=company):
+        for cu in Sales.objects.filter(company=company):
+            cu.user.is_active = company.is_active
+            cu.user.save()
+            
+        for cu in SalesHead.objects.filter(company=company):
             cu.user.is_active = company.is_active
             cu.user.save()
 
-        for cc in CompanyController.objects.filter(company=company):
+        for cc in SalesOperation.objects.filter(company=company):
             cc.user.is_active = company.is_active
             cc.user.save()
 
-        for cm in CompanyManager.objects.filter(company=company):
+        for cm in Manager.objects.filter(company=company):
             cm.user.is_active = company.is_active
             cm.user.save()
 
     @staticmethod
     def _delete_company(company):
         """Deletes company and associated users."""
-        for cu in CompanyUser.objects.filter(company=company):
+        for cu in Sales.objects.filter(company=company):
+            if cu.user:
+                cu.user.delete()
+            cu.delete()
+            
+        for cu in SalesHead.objects.filter(company=company):
+            if cu.user:
+                cu.user.delete()
+            cu.delete()
+            
+        for cu in SalesOperation.objects.filter(company=company):
             if cu.user:
                 cu.user.delete()
             cu.delete()
 
-        for cc in CompanyController.objects.filter(company=company):
+        for cc in Manager.objects.filter(company=company):
             if cc.user:
                 cc.user.delete()
             cc.delete()

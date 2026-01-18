@@ -9,8 +9,8 @@ from django.contrib.auth import get_user_model
 
 from ..models import (
     Company,
-    CompanyManager,
-    CompanyUser,
+    Manager,
+    Sales,
     Project,
     SalesRequestAnalytical,
 )
@@ -43,13 +43,13 @@ class SalesRequestAnalyticalService:
     @staticmethod
     def _resolve_manager_company(user):
         """
-        Manager -> CompanyManager.company
+        Manager -> Manager.company
         Returns company or None.
         """
         try:
-            rel = CompanyManager.objects.select_related("company").get(user=user)
+            rel = Manager.objects.select_related("company").get(user=user)
             return rel.company
-        except CompanyManager.DoesNotExist:
+        except Manager.DoesNotExist:
             return None
 
     # =========================================================
@@ -87,15 +87,15 @@ class SalesRequestAnalyticalService:
         queryset = SalesRequestAnalytical.objects.select_related("sales_man")
 
         if SalesRequestAnalyticalService._is_manager(user):
-            # Your old code used CompanyUser here, but you used CompanyManager in the dashboard.
-            # Best maintainable approach: try CompanyManager first, fallback CompanyUser.
+            company = None
+            
             company = SalesRequestAnalyticalService._resolve_manager_company(user)
-            if not company:
-                try:
-                    cu = CompanyUser.objects.select_related("company").get(user=user)
-                    company = cu.company
-                except CompanyUser.DoesNotExist:
-                    company = None
+            # if not company:
+            #     try:
+            #         cu = Sales.objects.select_related("company").get(user=user)
+            #         company = cu.company
+            #     except Sales.DoesNotExist:
+            #         company = None
 
             if company:
                 queryset = queryset.filter(company=company)
@@ -124,7 +124,7 @@ class SalesRequestAnalyticalService:
         Preserves behavior:
         - company_id from GET unless Manager => override with manager's company
         - projects from Project(company_id)
-        - salesmen from User filtered by CompanyUser(company_id)
+        - salesmen from User filtered by Sakes(company_id)
         """
         # Manager override (preserved intent)
         if SalesRequestAnalyticalService._is_manager(user):
@@ -138,7 +138,14 @@ class SalesRequestAnalyticalService:
 
         projects = list(Project.objects.filter(company_id=company_id).values("id", "name"))
         salesmen = list(
-            User.objects.filter(companyuser__company_id=company_id).values("id", "full_name")
-        )
+                            User.objects.filter(sales_profile__company_id=company_id)
+                            .values("id", "full_name")
+                            .union(
+                                User.objects.filter(sales_head_profile__company_id=company_id)
+                                .values("id", "full_name"),
+                                all=False
+                            )
+                        )
+
 
         return ServiceResult(success=True, status=200, payload={"projects": projects, "salesmen": salesmen})

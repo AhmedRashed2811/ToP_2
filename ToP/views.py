@@ -1,7 +1,9 @@
 import json
 import requests
 import traceback
-import logging
+import logging 
+
+from ToP.utils.utils import _get_uploader_company, _projects_qs_for_user, _get_locked_company_for_uploader
 
 from .services.inventory_sync_service import InventorySyncService
 from .services.top_calculation_service import TopCalculationService
@@ -39,6 +41,7 @@ from .strategies.inventory_strategy import get_inventory_strategy
 from .services.historical_sales_requests_analysis_service import HistoricalSalesRequestsAnalysisService
 from .services.unit_warehouse_service import UnitWarehouseService
 from .services.import_hub_service import ImportHubService
+from .services.sales_team_service import SalesTeamService
 
 from .forms import *
 from .models import *
@@ -47,12 +50,25 @@ from .decorators import *
 
 from django.shortcuts import render, redirect,get_object_or_404
 from django.contrib import messages
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import ValidationError
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie   
 from django.views.decorators.http import require_POST,require_GET, require_http_methods
 from decimal import getcontext
+
+
+
+from .utils.viewer_permissions import (
+    is_company_viewer,
+    viewer_can_access_page,
+    PAGE_ToP,
+    PAGE_INV_REPORT,
+    PAGE_MASTERPLANS,
+    PAGE_SALES_PERFORMANCE_ANALYSIS,
+)
+from django.http import HttpResponseForbidden
+
 
 
 # Set up logging
@@ -218,9 +234,20 @@ def home(request):
     # preserve: auto-unblock runs at the start
     UnitAutoUnblockService.run()
 
-    # preserve: Controller redirect
-    if request.user.groups.filter(name="Controller").exists():
+    # preserve: SalesOperation redirect
+    if request.user.groups.filter(name="SalesOperation").exists():
         return redirect("sales_requests_list")
+    
+    if request.user.groups.filter(name="Uploader").exists():
+        return redirect("project_web_config") 
+    
+    if request.user.groups.filter(name="CompanyAdmin").exists():
+        return redirect("manage_users") 
+    
+    # Viewer gate: must have "TOP" allowed in JSON
+    if is_company_viewer(request.user) and not viewer_can_access_page(request.user, PAGE_ToP):
+        return HttpResponseForbidden("You are not authorized to view this page.")
+
 
     # View owns request handling
     unit_query = request.POST.get("unit_code", "")
@@ -246,16 +273,22 @@ def home(request):
 
 
 @login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Client", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Sales", "Manager", "SalesHead", "Viewer"])
+@viewer_page_required(PAGE_MASTERPLANS)
 def unit_catalog_view(request):
-    context = UnitCatalogService.build_context(
+    # combine GET + POST params safely
+    params = request.GET if request.method == "GET" else request.POST
+
+    ctx = UnitCatalogService.build_context(
         user=request.user,
-        params={
-            **request.GET.dict(),
-            **request.POST.dict(),
-        },
-    ) 
-    return render(request, "ToP/unit_catalog.html", context)
+        params=params,
+    )
+
+    # Optional: show forbidden page message
+    if ctx.get("forbidden"):
+        return HttpResponseForbidden("You are not authorized to access Unit Catalog.")
+
+    return render(request, "ToP/unit_catalog.html", ctx)
 
 
 
@@ -270,7 +303,6 @@ def modification_records_view(request):
 # -------------------------------------------------------------------------------------------------------------------------------- Main Function
 
 
-
 # ---------------------------------------------- Login
 @unauthenticated_user
 def login(request):
@@ -283,7 +315,6 @@ def login(request):
     if result.get("redirect"):
         return redirect(result["redirect"])
 
-    # render
     return render(request, "ToP/login.html", result.get("context", {}))
 
 
@@ -316,7 +347,7 @@ def change_password(request):
 
 # ---------------------------------------------- Create User
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer"])
+@allowed_users(allowed_roles=["Admin", "CompanyAdmin"])
 def create_user(request):
     result = UserManagementService.create_user(
         actor=request.user,
@@ -324,7 +355,6 @@ def create_user(request):
         post_data=request.POST,
     )
 
-    # show collected messages (supports multiple field errors)
     for m in result.get("messages", []):
         getattr(messages, m["level"])(request, m["text"])
 
@@ -336,7 +366,7 @@ def create_user(request):
 
 # ---------------------------------------------- Login As User (Impersonation)
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer"])
+@allowed_users(allowed_roles=["Admin"])  # CompanyAdmin must NEVER access impersonation
 def login_as_user(request):
     result = UserManagementService.login_as_user(
         actor=request.user,
@@ -351,29 +381,50 @@ def login_as_user(request):
     return redirect(result.get("redirect", "manage_users"))
 
 
-
 # ---------------------------------------------- Manage Users
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer"])
+@allowed_users(allowed_roles=["Admin", "CompanyAdmin"])  # ✅ UPDATED
 def manage_users(request):
     result = UserManagementService.manage_users(
         actor=request.user,
         method=request.method,
         post_data=request.POST,
+        request=request,
     )
 
-    for m in result.get("messages", []):
-        getattr(messages, m["level"])(request, m["text"])
+    # If AJAX, the service returns JsonResponse directly:
+    if isinstance(result, JsonResponse):
+        return result
 
+    # ✅ if service says redirect
     if result.get("redirect"):
+        for m in result.get("messages", []):
+            messages.add_message(
+                request,
+                messages.SUCCESS if m["level"] == "success" else
+                messages.WARNING if m["level"] == "warning" else
+                messages.ERROR,
+                m["text"],
+            )
         return redirect(result["redirect"])
 
-    return render(request, "ToP/manage_users.html", result["context"])
+    # ✅ GET (or POST falling through) must render
+    context = result.get("context", {})
+    for m in result.get("messages", []):
+        messages.add_message(
+            request,
+            messages.SUCCESS if m["level"] == "success" else
+            messages.WARNING if m["level"] == "warning" else
+            messages.ERROR,
+            m["text"],
+        )
+
+    return render(request, "ToP/manage_users.html", context)
 
 
-# ---------------------------------------------- Import Company Users (CSV)
+# ---------------------------------------------- Import Sales Users (CSV)
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer"])
+@allowed_users(allowed_roles=["Admin", "CompanyAdmin"])
 @csrf_exempt
 def import_company_users(request):
     result = UserManagementService.import_company_users(
@@ -396,6 +447,23 @@ def revert_impersonation(request):
     return redirect(result.get("redirect", "manage_users"))
 
 
+# ---------------------------------------------- Sales Teams
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "CompanyAdmin"])
+def sales_teams(request):
+    result = SalesTeamService.sales_teams(
+        actor=request.user,
+        method=request.method,
+        post_data=request.POST,
+    )
+
+    for m in result.get("messages", []):
+        getattr(messages, m["level"])(request, m["text"])
+
+    if result.get("redirect"):
+        return redirect(result["redirect"])
+
+    return render(request, "ToP/sales_teams.html", result["context"])
 
 
 
@@ -429,136 +497,53 @@ def upload_csv(request):
 
 
 # ---------------------------------------------- Units Data
-@login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "Controller"])
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "SalesOperation", "Controller", "Uploader"])
 def units_data(request):
-    
     user = request.user
     company = None
-    if request.user.groups.filter(name='Manager').exists():
-        company_controller = CompanyManager.objects.get(user=user)
-        company = company_controller.company
-        
-        
-    elif request.user.groups.filter(name='Controller').exists():
-        company_controller = CompanyController.objects.get(user=user)
-        
-        company = company_controller.company
 
-    
-    """ Render the units table HTML """
-    return render(request, 'ToP/units_data.html', {'company': company})
+    # Treat Uploader exactly like Manager (company-scoped)
+    uploader_company = _get_uploader_company(user)
 
+    if request.user.groups.filter(name="Manager").exists():
+        user_manager = Manager.objects.filter(user=user).first()
+        company = user_manager.company if user_manager else None
 
+    elif uploader_company is not None:
+        company = uploader_company
 
+    elif request.user.groups.filter(name__in=["Controller", "SalesOperation"]).exists():
+        # Preserving your current behavior (Controller uses SalesOperation model)
+        user_ops = SalesOperation.objects.filter(user=user).first()
+        company = user_ops.company if user_ops else None
 
+    editable_fields = []
+    if request.user.groups.filter(name="SalesOperation").exists():
+        ops = SalesOperation.objects.filter(user=request.user).only("editable_unit_fields").first()
+        editable_fields = (ops.editable_unit_fields or []) if ops else []
 
-
-logger = logging.getLogger(__name__)
-
-# ... (Previous views) ...
-
-@login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
-def import_hub(request):
-    """
-    Renders the Import Hub Dashboard.
-    """
-    companies = Company.objects.all()
-    
-    company_configs = {}
-    for c in companies:
-        types = c.comp_type if isinstance(c.comp_type, list) else ([c.comp_type] if c.comp_type else [])
-        
-        company_configs[c.id] = {
-            "has_erp": 'erp' in types or bool(c.erp_url),
-            "has_sheets": 'google_sheets' in types or bool(c.google_sheet_url),
-            "has_csv": True, 
-            "erp_url": c.erp_url,
-            "sheet_url": c.google_sheet_url,
-        }
-
-    context = {
-        "companies": companies,
-        "company_configs": json.dumps(company_configs)
-    }
-    return render(request, "ToP/import_hub.html", context)
-
-
-@login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
-@require_POST
-def trigger_unified_import(request):
-    """
-    AJAX: Triggers import (ERP/Sheet/CSV) via UnitWarehouseService.
-    """
-    try:
-        company_id = request.POST.get("company_id")
-        source_type = request.POST.get("source_type")
-        
-        if not company_id or not source_type:
-            return JsonResponse({"success": False, "error": "Missing parameters"})
-
-        company = get_object_or_404(Company, id=company_id)
-        
-        # Handle CSV file if present
-        csv_file = request.FILES.get('csv_file')
-
-        # Delegate to Service
-        result = UnitWarehouseService.trigger_import(
-            company=company, 
-            source_type=source_type, 
-            file_data=csv_file
-        )
-        
-        return JsonResponse(result)
-
-    except Exception as e:
-        logger.error(f"Import Error: {e}")
-        return JsonResponse({"success": False, "error": str(e)})
-
-
-@login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
-@require_POST
-def delete_hub_units(request):
-    """
-    AJAX: Deletes units via ImportHubService.
-    Expects JSON: { "company_id": 1, "unit_codes": ["U1", "U2"] }
-    """
-    try:
-        data = json.loads(request.body)
-        company_id = data.get("company_id")
-        unit_codes = data.get("unit_codes", [])
-
-        result = ImportHubService.delete_units_bulk(
-            company_id=company_id, 
-            unit_codes=unit_codes
-        )
-
-        return JsonResponse(result)
-
-    except json.JSONDecodeError:
-        return JsonResponse({"success": False, "error": "Invalid JSON"})
-    except ValueError as e:
-        return JsonResponse({"success": False, "error": str(e)})
-    except Exception as e:
-        logger.error(f"Delete Units Error: {e}")
-        return JsonResponse({"success": False, "error": str(e)})
+    return render(
+        request,
+        "ToP/units_data.html",
+        {
+            "company": company,
+            "editable_fields": editable_fields,
+        },
+    )
 
 
 # ---------------------------------------------- Returns all units as JSON for frontend filtering
-@login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "Controller"])
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "SalesOperation", "Controller", "Uploader"])
 def units_list(request):
     data = UnitsManagementService.get_units(user=request.user)
     return JsonResponse(data, safe=False)
 
 
-
 # ---------------------------------------------- Updates a specific field of a unit in the database
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "SalesOperation", "Controller", "Uploader"])
 @csrf_exempt
 @require_POST
 def update_unit(request):
@@ -575,7 +560,132 @@ def update_unit(request):
         return JsonResponse(result["payload"], status=result["status"])
 
     except Exception as e:
+        logger.error(f"update_unit error: {e}")
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+    
+    
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Uploader"])
+def import_hub(request):
+    """
+    Renders the Import Hub Dashboard.
+
+    Behavior:
+    - If user is Uploader with a related company => auto-lock their company
+      and do not expose any other companies.
+    - Else (Admin/Developer/TeamMember) => show all companies and allow selecting.
+    """
+    company = None
+    locked_company = _get_locked_company_for_uploader(request.user)
+    is_uploader = bool(locked_company)
+
+    # Uploader: only their own company
+    if is_uploader:
+        companies = Company.objects.filter(id=locked_company.id)
+        company = companies.first()
+    else:
+        companies = Company.objects.all()
+
+    company_configs = {}
+    for c in companies:
+        types = c.comp_type if isinstance(c.comp_type, list) else ([c.comp_type] if c.comp_type else [])
+
+        company_configs[c.id] = {
+            "has_erp": ("erp" in types) or bool(c.erp_url),
+            "has_sheets": ("google_sheets" in types) or bool(c.google_sheet_url),
+            "has_csv": True,
+            "erp_url": c.erp_url,
+            "sheet_url": c.google_sheet_url,
+        }
+
+    context = {
+        "companies": companies,
+        "company_configs": json.dumps(company_configs),
+        "is_uploader": is_uploader,
+        "company":company, 
+        "locked_company_id": locked_company.id if locked_company else "",
+        "locked_company_name": locked_company.name if locked_company else "",
+    }
+    return render(request, "ToP/import_hub.html", context)
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Uploader"])
+@require_POST
+def trigger_unified_import(request):
+    """
+    AJAX: Triggers import (ERP/Sheet/CSV) via UnitWarehouseService.
+
+    - If user is Uploader => company is auto-locked (ignore posted company_id).
+    - Else => company_id required.
+    """
+    try:
+        source_type = request.POST.get("source_type")
+        if not source_type:
+            return JsonResponse({"success": False, "error": "Missing parameters"})
+
+        locked_company = _get_locked_company_for_uploader(request.user)
+
+        if locked_company:
+            company = locked_company
+        else:
+            company_id = request.POST.get("company_id")
+            if not company_id:
+                return JsonResponse({"success": False, "error": "Missing parameters"})
+            company = get_object_or_404(Company, id=company_id)
+
+        csv_file = request.FILES.get("csv_file")
+
+        result = UnitWarehouseService.trigger_import(
+            company=company,
+            source_type=source_type,
+            file_data=csv_file,
+        )
+        return JsonResponse(result)
+
+    except Exception as e:
+        logger.error(f"Import Error: {e}")
+        return JsonResponse({"success": False, "error": str(e)})
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Uploader"])
+@require_POST
+def delete_hub_units(request):
+    """
+    AJAX: Deletes units via ImportHubService.
+    Expects JSON: { "company_id": 1, "unit_codes": ["U1", "U2"] }
+
+    - If user is Uploader => company is auto-locked (ignore body company_id).
+    - Else => uses provided company_id.
+    """
+    try:
+        data = json.loads(request.body or "{}")
+        unit_codes = data.get("unit_codes", [])
+
+        locked_company = _get_locked_company_for_uploader(request.user)
+
+        if locked_company:
+            company_id = locked_company.id
+        else:
+            company_id = data.get("company_id")
+
+        result = ImportHubService.delete_units_bulk(
+            company_id=company_id,
+            unit_codes=unit_codes,
+        )
+        return JsonResponse(result)
+
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON"})
+    except ValueError as e:
+        return JsonResponse({"success": False, "error": str(e)})
+    except Exception as e:
+        logger.error(f"Delete Units Error: {e}")
+        return JsonResponse({"success": False, "error": str(e)})
+
+
 
 
 
@@ -594,7 +704,7 @@ def sales_requests_demo(request):
 
 
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "Controller", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "SalesOperation", "Manager"])
 def sales_requests_list(request):
     is_impersonating = request.session.get("impersonator_id") is not None
 
@@ -619,7 +729,7 @@ def sales_requests_list(request):
 
 
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "Controller", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "SalesOperation", "Manager"])
 def delete_sales_request(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid request method"}, status=405)
@@ -641,7 +751,7 @@ def delete_sales_request(request):
 
 
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "Controller", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "SalesOperation", "Manager"])
 def apply_discount(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid request method"}, status=405)
@@ -662,7 +772,7 @@ def apply_discount(request):
 
 
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "Controller", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "SalesOperation", "Manager"])
 @require_POST
 def extend_sales_request(request):
     try:
@@ -681,7 +791,7 @@ def extend_sales_request(request):
 
 
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "Controller", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "SalesOperation", "Manager"])
 @require_GET
 def get_timer_status(request):
     result = SalesRequestManagementService.get_timer_status(user=request.user)
@@ -689,7 +799,7 @@ def get_timer_status(request):
 
 
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "Controller", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "SalesOperation", "Manager"])
 def approve_sales_request(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid request method"}, status=405)
@@ -711,7 +821,7 @@ def approve_sales_request(request):
     return JsonResponse(result["payload"], status=result["status"])
 
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "Controller", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "SalesOperation", "Manager"])
 def download_sales_pdf(request):
     # Note: GET parameter is named 'unit_code' but actually carries SalesRequest ID
     request_id = request.GET.get("unit_code")
@@ -720,9 +830,9 @@ def download_sales_pdf(request):
     )
 
 
-
+# ---------------------------------------------- Create Project
 @login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Uploader", "TeamMember"])
 def create_project(request):
     if request.method == 'POST':
         result = ProjectManagementService.create_project(
@@ -750,44 +860,49 @@ def create_project(request):
         else:
             messages.error(request, "Error creating project. Please check the form.")
 
-        # ✅ REPLACED BLOCK (forms + context + render) with ONE line
-        context = ProjectManagementService.build_create_view_context(data=request.POST, files=request.FILES)
+        # Rebuild context (POST-bound), now scoped for uploader if needed
+        context = ProjectManagementService.build_create_view_context(
+            user=request.user,
+            data=request.POST,
+            files=request.FILES
+        )
         return render(request, 'ToP/create_project.html', context)
 
     # GET
-    context = ProjectManagementService.build_create_view_context()
+    context = ProjectManagementService.build_create_view_context(user=request.user)
     return render(request, 'ToP/create_project.html', context)
-
-
-
-
 
 
 # ---------------------------------------------- Project Dashboard
 @login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Uploader", "TeamMember"])
 def project_dashboard(request):
-    projects = Project.objects.all()
-    companies = Company.objects.all()
+    # ✅ Scope by uploader company if applicable
+    projects = ProjectManagementService.get_projects_for_user(request.user)
+    companies = ProjectManagementService.get_companies_for_user(request.user)
+    company = None
 
     # logic: Check if user is in Admin or Developer groups OR is a superuser
-    can_delete = request.user.groups.filter(name__in=["Admin", "Developer"]).exists() or request.user.is_superuser
-
+    can_delete = request.user.groups.filter(name__in=["Admin", "Uploader"]).exists() or request.user.is_superuser
+    is_uploader = request.user.groups.filter(name__in=["Uploader"]).exists()
+    if is_uploader:
+        company = request.user.uploader_profile.company
+        
     context = {
         "projects": projects,
         "companies": companies,
-        "can_delete": can_delete,  # Pass this flag to the template
+        "can_delete": can_delete,
+        "company":company, 
+        # flags used by the template (for hiding company filter, etc.)
+        **ProjectManagementService.get_user_scope_flags(request.user),
     }
     return render(request, "ToP/project_dashboard.html", context)
 
 
-
-
 # ---------------------------------------------- Delete Project
 @login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer"])
+@allowed_users(allowed_roles=["Admin", "Uploader"])
 def delete_project(request, project_id):
-    # Call the service method
     result = ProjectManagementService.delete_project(
         user=request.user,
         project_id=project_id
@@ -798,13 +913,12 @@ def delete_project(request, project_id):
     else:
         messages.error(request, result.get("errors", {}).get("__all__", ["An error occurred"])[0])
 
-    return redirect("project_dashboard") # Redirect after deletion
-
+    return redirect("project_dashboard")
 
 
 # ---------------------------------------------- Update Project
 @login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Uploader", "TeamMember"])
 @csrf_exempt
 def update_project(request, project_id):
     if request.method == "POST":
@@ -820,6 +934,7 @@ def update_project(request, project_id):
                 structured_data = json.loads(request.body)
                 files_to_pass = None
 
+            # ✅ Service enforces uploader scoping (can’t update other companies)
             result = ProjectManagementService.update_project(
                 user=request.user,
                 project_id=project_id,
@@ -837,10 +952,6 @@ def update_project(request, project_id):
             error_msg = f"Invalid JSON data: {str(e)}"
             print(f"DEBUG: JSON Decode Error in update_project: {error_msg}")
             return JsonResponse({"success": False, "error": error_msg}, status=400)
-        except Project.DoesNotExist:
-            error_msg = "Project not found"
-            print(f"DEBUG: Project Not Found Error in update_project: {error_msg}")
-            return JsonResponse({"success": False, "error": error_msg}, status=404)
         except ValidationError as ve:
             error_msg = f"Validation Error: {str(ve)}"
             print(f"DEBUG: ValidationError in update_project: {error_msg}")
@@ -856,11 +967,10 @@ def update_project(request, project_id):
 
 # ---------------------------------------------- Remove Masterplan
 @login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Uploader", "TeamMember"])
 @csrf_exempt
 def remove_masterplan(request, project_id):
     if request.method == "POST":
-        # Call the service method
         result = ProjectManagementService.remove_masterplan(
             user=request.user,
             project_id=project_id
@@ -873,72 +983,58 @@ def remove_masterplan(request, project_id):
     return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
 
 
-
 # ---------------------------------------------- Delete Npv
 @login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Uploader", "TeamMember"])
 @csrf_exempt
 def delete_npv(request, npv_id):
     if request.method == "DELETE":
-        # Call the service method
-        result = ProjectManagementService.delete_npv(
-            user=request.user,
-            npv_id=npv_id
-        )
+        result = ProjectManagementService.delete_npv(user=request.user, npv_id=npv_id)
         if result["success"]:
             return JsonResponse({"success": True, "message": result["message"]})
         else:
             status_code = 404 if "not found" in result["error"].lower() else 400
             return JsonResponse({"success": False, "error": result["error"]}, status=status_code)
     return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
 
 # ---------------------------------------------- Delete Gas Fee
 @login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Uploader", "TeamMember"])
 @csrf_exempt
 def delete_gas_fee(request, fee_id):
     if request.method == "DELETE":
-        # Call the service method
-        result = ProjectManagementService.delete_gas_fee(
-            user=request.user,
-            fee_id=fee_id
-        )
+        result = ProjectManagementService.delete_gas_fee(user=request.user, fee_id=fee_id)
         if result["success"]:
             return JsonResponse({"success": True, "message": result["message"]})
         else:
             status_code = 404 if "not found" in result["error"].lower() else 400
             return JsonResponse({"success": False, "error": result["error"]}, status=status_code)
     return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
 
 # ---------------------------------------------- Delete Gas Offset
 @login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Uploader", "TeamMember"])
 @csrf_exempt
 def delete_gas_offset(request, offset_id):
     if request.method == "DELETE":
-        # Call the service method
-        result = ProjectManagementService.delete_gas_offset(
-            user=request.user,
-            offset_id=offset_id
-        )
+        result = ProjectManagementService.delete_gas_offset(user=request.user, offset_id=offset_id)
         if result["success"]:
             return JsonResponse({"success": True, "message": result["message"]})
         else:
             status_code = 404 if "not found" in result["error"].lower() else 400
             return JsonResponse({"success": False, "error": result["error"]}, status=status_code)
     return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
 
 # ---------------------------------------------- Delete Maintenance Offset
 @login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Uploader", "TeamMember"])
 @csrf_exempt
 def delete_maintenance_offset(request, offset_id):
     if request.method == "DELETE":
-        # Call the service method
-        result = ProjectManagementService.delete_maintenance_offset(
-            user=request.user,
-            offset_id=offset_id
-        )
+        result = ProjectManagementService.delete_maintenance_offset(user=request.user, offset_id=offset_id)
         if result["success"]:
             return JsonResponse({"success": True, "message": result["message"]})
         else:
@@ -946,49 +1042,41 @@ def delete_maintenance_offset(request, offset_id):
             return JsonResponse({"success": False, "error": result["error"]}, status=status_code)
     return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
 
-# ---------------------------------------------- Delete Ctd
+
+# ---------------------------------------------- Delete CTD
 @login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Uploader", "TeamMember"])
 @csrf_exempt
 def delete_ctd(request, ctd_id):
     if request.method == "DELETE":
-        # Call the service method
-        result = ProjectManagementService.delete_ctd(
-            user=request.user,
-            ctd_id=ctd_id
-        )
+        result = ProjectManagementService.delete_ctd(user=request.user, ctd_id=ctd_id)
         if result["success"]:
             return JsonResponse({"success": True, "message": result["message"]})
         else:
             status_code = 404 if "not found" in result["error"].lower() else 400
             return JsonResponse({"success": False, "error": result["error"]}, status=status_code)
     return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
 
 # ---------------------------------------------- Delete Maintenance Schedule
 @login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Uploader", "TeamMember"])
 @csrf_exempt
 def delete_maintenance_schedule(request, schedule_id):
-    if request.method == "POST": 
-        # Call the service method
-        result = ProjectManagementService.delete_maintenance_schedule(
-            user=request.user,
-            schedule_id=schedule_id
-        )
+    if request.method == "POST":
+        result = ProjectManagementService.delete_maintenance_schedule(user=request.user, schedule_id=schedule_id)
         if result["success"]:
             return JsonResponse({"success": True, "message": result["message"]})
         else:
             status_code = 404 if "not found" in result["error"].lower() else 400
             return JsonResponse({"success": False, "error": result["error"]}, status=status_code)
     return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
-
-
 
 
 
 
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "Client", "Controller"])
+@allowed_users(allowed_roles=["Admin", "Developer", "Sales", "SalesOperation", "SalesHead"])
 def send_support_email(request):
     if request.method == "POST":
         sender_email = request.POST.get("sender_email")
@@ -1010,7 +1098,7 @@ def send_support_email(request):
 
 # ---------------------------------------------- Submit Data
 @login_required(login_url='login')
-@allowed_users(allowed_roles=["Client", "Manager", "TeamMember", "Admin", "Developer", "FinanceManager"])
+@allowed_users(allowed_roles=["Sales", "Manager", "TeamMember", "Admin", "Developer", "SalesHead", "Viewer"])
 def submit_data(request):
     if request.method != "POST":
         return redirect("home")
@@ -1034,7 +1122,7 @@ def submit_data(request):
 
 # ---------------------------------------------- Send Hold To Erp
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Client"])
+@allowed_users(allowed_roles=["Sales", "SalesHead"])
 @csrf_exempt
 def send_hold_to_erp(request):
     if request.method != "POST":
@@ -1055,7 +1143,7 @@ def send_hold_to_erp(request):
 
 # ---------------------------------------------- Save Unit To Session
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Client"])
+@allowed_users(allowed_roles=["Sales", "SalesHead"])
 def save_unit_to_session(request):
     if request.method != "POST":
         return redirect("home")
@@ -1089,7 +1177,7 @@ def save_unit_to_session(request):
 
 # ---------------------------------------------- Download All Units Pdf
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "Client"])
+@allowed_users(allowed_roles=["Admin", "Developer", "Sales", "SalesHead"])
 def download_all_units_pdf(request):
     saved_units = request.session.get("saved_units", [])
 
@@ -1111,7 +1199,7 @@ def download_all_units_pdf(request):
 
 # ---------------------------------------------- Clear Saved Units
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "Client"])
+@allowed_users(allowed_roles=["Admin", "Developer", "Sales", "SalesHead"])
 def clear_saved_units(request):
     result = SavedUnitsService.clear_saved_units()
 
@@ -1128,19 +1216,23 @@ def clear_saved_units(request):
 
 
 
+
+
+
 # ---------------------------------------------- Project Web Config (Page)
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer"])
+@allowed_users(allowed_roles=["Admin", "TeamMember", "Uploader"])  # keep as-is (or add "Uploader" if needed)
 def project_web_config(request):
-    # GET context
     selected_project_id = request.GET.get("project")
-    ctx_result = ProjectWebConfigService.get_page_context(selected_project_id=selected_project_id)
+
+    ctx_result = ProjectWebConfigService.get_page_context(
+        user=request.user,
+        selected_project_id=selected_project_id
+    )
 
     if not ctx_result.success:
-        # safe fallback
         return render(request, "ToP/project_web_config_form.html", {})
 
-    # POST save (same as old form behavior)
     if request.method == "POST":
         project_id = request.POST.get("project")
         if not project_id:
@@ -1151,10 +1243,11 @@ def project_web_config(request):
         allowed_years_list = request.POST.getlist("allowed_years_for_sales")
 
         save_result = ProjectWebConfigService.save_config(
+            user=request.user,
             project_id=int(project_id),
             post_dict=request.POST,
             payment_schemes_list=payment_schemes_list,
-            allowed_years_list=allowed_years_list, 
+            allowed_years_list=allowed_years_list,
             redirect_after_save=True,
         )
 
@@ -1164,28 +1257,27 @@ def project_web_config(request):
         if save_result.redirect_url:
             return redirect(save_result.redirect_url)
 
-        # fallback
         return redirect("/project_web_config/")
 
     return render(request, "ToP/project_web_config_form.html", ctx_result.payload)
 
 
-
-
 # ---------------------------------------------- Get Project Web Config (AJAX)
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer"])
+@allowed_users(allowed_roles=["Admin", "TeamMember", "Uploader"])
 def get_project_web_config(request, project_id):
-    result = ProjectWebConfigService.get_config_json(project_id=int(project_id))
+    result = ProjectWebConfigService.get_config_json(
+        user=request.user,
+        project_id=int(project_id)
+    )
     if not result.success:
         return JsonResponse({"success": False, "error": result.error}, status=result.status)
     return JsonResponse(result.payload, status=result.status)
 
 
-
 # ---------------------------------------------- Save Project Web Config (AJAX)
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer"])
+@allowed_users(allowed_roles=["Admin", "TeamMember", "Uploader"])
 @csrf_exempt
 def save_project_web_config(request):
     if request.method != "POST":
@@ -1199,6 +1291,7 @@ def save_project_web_config(request):
     allowed_years_list = request.POST.getlist("allowed_years_for_sales")
 
     result = ProjectWebConfigService.save_config(
+        user=request.user,
         project_id=int(project_id),
         post_dict=request.POST,
         payment_schemes_list=payment_schemes_list,
@@ -1211,79 +1304,6 @@ def save_project_web_config(request):
 
     return JsonResponse(result.payload, status=result.status)
 
-
-
-
-
-
-
-# ---------------------------------------------- Dual Payments Input
-@login_required(login_url='login')
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
-def dual_payments_input(request):
-    projects = Project.objects.all()
-    year_range = range(1, 13)  # Years from 1 to 12
-    return render(request, 'ToP/dual_payments.html', {
-        'projects': projects,
-        'row_range': range(50),
-        'year_range': year_range,
-    })
-
-
-
-
-# ---------------------------------------------- Save Extended Payment Ajax
-
-
-# ---------------------------------------------- Save Extended Payment Ajax
-@login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
-@csrf_exempt
-def save_extended_payment_ajax(request):
-    if request.method != "POST":
-        return JsonResponse({"success": False, "message": "Invalid request"})
-
-    try:
-        payload = json.loads(request.body or "{}")
-    except Exception:
-        return JsonResponse({"success": False, "message": "Invalid JSON"}, status=400)
-
-    result = ProjectExtendedPaymentsService.save(payload=payload)
-    return JsonResponse(result.payload, status=result.status)
-
-
-# ---------------------------------------------- Fetch Extended Payment Ajax
-@login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
-@require_GET
-def fetch_extended_payment_ajax(request):
-    project_id = request.GET.get("project_id")
-    year = int(request.GET.get("year", 1))
-    scheme = request.GET.get("scheme", "flat")
-
-    result = ProjectExtendedPaymentsService.fetch(
-        project_id=int(project_id),
-        year=year,
-        scheme=scheme,
-    )
-    return JsonResponse(result.payload, status=result.status)
-
-
-# ---------------------------------------------- Delete Extended Payment Ajax
-@login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
-@csrf_exempt
-def delete_extended_payment_ajax(request):
-    if request.method != "POST":
-        return JsonResponse({"success": False, "message": "Invalid request"})
-
-    try:
-        payload = json.loads(request.body or "{}")
-    except Exception:
-        return JsonResponse({"success": False, "message": "Invalid JSON"}, status=400)
-
-    result = ProjectExtendedPaymentsService.delete(payload=payload)
-    return JsonResponse(result.payload, status=result.status)
 
 
 
@@ -1322,16 +1342,90 @@ def fetch_standard_payment_ajax(request):
 
 
 
-# ========== SPECIAL OFFERS (Based on Extended Payments Special Offer) ==========
+# ----------------------------------------------
+# Dual Payments Input
+@login_required(login_url='login')
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Uploader"])
+def dual_payments_input(request):
+    projects = _projects_qs_for_user(request.user)
+    year_range = range(1, 13)  # Years from 1 to 12
+
+    return render(request, 'ToP/dual_payments.html', {
+        'projects': projects,
+        'row_range': range(50),
+        'year_range': year_range,
+        # Optional (if you want to show company name in template for uploader)
+        'company': _get_uploader_company(request.user),
+    })
 
 
-
-# ---------------------------------------------- Special Offers Input
+# ----------------------------------------------
+# Save Extended Payment Ajax
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Uploader"])
+@csrf_exempt
+def save_extended_payment_ajax(request):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Invalid request"})
+
+    try:
+        payload = json.loads(request.body or "{}")
+    except Exception:
+        return JsonResponse({"success": False, "message": "Invalid JSON"}, status=400)
+
+    result = ProjectExtendedPaymentsService.save(user=request.user, payload=payload)
+    return JsonResponse(result.payload, status=result.status)
+
+
+# ----------------------------------------------
+# Fetch Extended Payment Ajax
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Uploader"])
+@require_GET
+def fetch_extended_payment_ajax(request):
+    project_id = request.GET.get("project_id")
+    year = int(request.GET.get("year", 1))
+    scheme = request.GET.get("scheme", "flat")
+
+    result = ProjectExtendedPaymentsService.fetch(
+        user=request.user,
+        project_id=int(project_id),
+        year=year,
+        scheme=scheme,
+    )
+    return JsonResponse(result.payload, status=result.status)
+
+
+# ----------------------------------------------
+# Delete Extended Payment Ajax
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Uploader"])
+@csrf_exempt
+def delete_extended_payment_ajax(request):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Invalid request"})
+
+    try:
+        payload = json.loads(request.body or "{}")
+    except Exception:
+        return JsonResponse({"success": False, "message": "Invalid JSON"}, status=400)
+
+    result = ProjectExtendedPaymentsService.delete(user=request.user, payload=payload)
+    return JsonResponse(result.payload, status=result.status)
+
+
+# =========================================================
+# SPECIAL OFFERS
+# =========================================================
+
+# ----------------------------------------------
+# Special Offers Input
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Uploader"])
 def special_offers_input(request):
-    projects = Project.objects.all()
+    projects = _projects_qs_for_user(request.user)
     year_range = range(1, 13)  # 1..12
+
     return render(
         request,
         "ToP/special_offers.html",
@@ -1340,13 +1434,16 @@ def special_offers_input(request):
             "year_range": year_range,
             "row_range": range(50),
             "pmt_range": range(1, 49),
+            # Optional (if you want to show company name in template for uploader)
+            "company": _get_uploader_company(request.user),
         },
     )
 
 
-# ---------------------------------------------- Save Special Offer Payment Ajax
+# ----------------------------------------------
+# Save Special Offer Payment Ajax
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Uploader"])
 @csrf_exempt
 def save_special_offer_payment_ajax(request):
     if request.method != "POST":
@@ -1357,13 +1454,14 @@ def save_special_offer_payment_ajax(request):
     except Exception:
         return JsonResponse({"success": False, "message": "Invalid JSON"}, status=400)
 
-    result = SpecialOffersPaymentsService.save(payload=payload)
+    result = SpecialOffersPaymentsService.save(user=request.user, payload=payload)
     return JsonResponse(result.payload, status=result.status)
 
 
-# ---------------------------------------------- Fetch Special Offer Payment Ajax
+# ----------------------------------------------
+# Fetch Special Offer Payment Ajax
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Uploader"])
 @require_GET
 def fetch_special_offer_payment_ajax(request):
     project_id = request.GET.get("project_id")
@@ -1375,13 +1473,14 @@ def fetch_special_offer_payment_ajax(request):
     except Exception:
         return JsonResponse({"success": False, "message": "Invalid project_id or year"}, status=400)
 
-    result = SpecialOffersPaymentsService.fetch(project_id=project_id, year=year)
+    result = SpecialOffersPaymentsService.fetch(user=request.user, project_id=project_id, year=year)
     return JsonResponse(result.payload, status=result.status)
 
 
-# ---------------------------------------------- Delete Special Offer Payment Ajax
+# ----------------------------------------------
+# Delete Special Offer Payment Ajax
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Uploader"])
 @csrf_exempt
 def delete_special_offer_payment_ajax(request):
     if request.method != "POST":
@@ -1392,8 +1491,9 @@ def delete_special_offer_payment_ajax(request):
     except Exception:
         return JsonResponse({"success": False, "message": "Invalid JSON"}, status=400)
 
-    result = SpecialOffersPaymentsService.delete(payload=payload)
+    result = SpecialOffersPaymentsService.delete(user=request.user, payload=payload)
     return JsonResponse(result.payload, status=result.status)
+
 
 
 
@@ -1434,14 +1534,17 @@ def get_projects_salesmen(request):
 
 # ---------------------------------------------- Inventory Model
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "Viewer"])
 def inventory_model(request):
+    if is_company_viewer(request.user) and not viewer_can_access_page(request.user, PAGE_INV_REPORT):
+        return HttpResponseForbidden("You are not authorized to view this page.")
+
     result = InventoryReportService.get_inventory_dashboard_context(user=request.user)
     return render(request, "ToP/inventory_dashboard.html", result.payload)
 
 
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "Viewer"])
 def get_company_units(request):
     company_id = request.GET.get("company_id")
     try:
@@ -1842,8 +1945,13 @@ def market_charts_view(request):
 
 # ---------------------------------------------- Sales Performance Analysis
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "Viewer"])
 def sales_performance_analysis(request):
+    
+    if is_company_viewer(request.user) and not viewer_can_access_page(request.user, PAGE_SALES_PERFORMANCE_ANALYSIS):
+        return HttpResponseForbidden("You are not authorized to view this page.")
+
+
     result = SalesPerformanceService.get_page_context(user=request.user)
 
     if not result.success:
@@ -1854,8 +1962,13 @@ def sales_performance_analysis(request):
 
 # ---------------------------------------------- Get Company Projects For Sales
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "Viewer"])
 def get_company_projects_for_sales(request):
+    
+    if is_company_viewer(request.user) and not viewer_can_access_page(request.user, PAGE_SALES_PERFORMANCE_ANALYSIS):
+        return HttpResponseForbidden("You are not authorized to view this page.")
+
+
     result = SalesPerformanceService.get_company_projects(request=request)
 
     if not result.success:
@@ -1867,8 +1980,13 @@ def get_company_projects_for_sales(request):
 
 # ---------------------------------------------- Get Sales Analysis Data
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "Viewer"])
 def get_sales_analysis_data(request):
+    
+    if is_company_viewer(request.user) and not viewer_can_access_page(request.user, PAGE_SALES_PERFORMANCE_ANALYSIS):
+        return HttpResponseForbidden("You are not authorized to view this page.")
+
+
     result = SalesPerformanceService.get_sales_analysis_data(request=request)
 
     if not result.success:
@@ -1879,8 +1997,13 @@ def get_sales_analysis_data(request):
 
 # ---------------------------------------------- Get Sales Analysis By Unit Model
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "Viewer"])
 def get_sales_analysis_by_unit_model(request):
+    
+    if is_company_viewer(request.user) and not viewer_can_access_page(request.user, PAGE_SALES_PERFORMANCE_ANALYSIS):
+        return HttpResponseForbidden("You are not authorized to view this page.")
+
+
     result = SalesPerformanceService.get_sales_analysis_by_unit_model(request=request)
 
     if not result.success:
@@ -1891,8 +2014,13 @@ def get_sales_analysis_by_unit_model(request):
 
 # ---------------------------------------------- Get Premium Analysis Data
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "Viewer"])
 def get_premium_analysis_data(request):
+    
+    if is_company_viewer(request.user) and not viewer_can_access_page(request.user, PAGE_SALES_PERFORMANCE_ANALYSIS):
+        return HttpResponseForbidden("You are not authorized to view this page.")
+
+
     result = SalesPerformanceService.get_premium_analysis_data(request=request)
 
     if not result.success:
@@ -1905,9 +2033,10 @@ def get_premium_analysis_data(request):
 
 # ---------------------------------------------- Unit Mapping (Admin)
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "TeamMember", "Developer"])
+@allowed_users(allowed_roles=["Admin", "TeamMember", "Developer", "Uploader"])
 def unit_mapping(request):
-    result = UnitMappingService.get_unit_mapping_page_context()
+    # ✅ MUST pass user so uploader scoping works
+    result = UnitMappingService.get_unit_mapping_page_context(user=request.user)
 
     if not result.success:
         return JsonResponse({"error": result.error, "trace": result.trace}, status=result.status)
@@ -1917,7 +2046,8 @@ def unit_mapping(request):
 
 # ---------------------------------------------- Get Project Masterplan
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "TeamMember", "Developer", "Client", "Manager"])
+@allowed_users(allowed_roles=["Admin", "TeamMember", "Developer", "Sales", "Manager", "SalesHead", "Viewer", "Uploader"])
+@viewer_page_required(PAGE_MASTERPLANS)
 def get_project_masterplan(request, project_id):
     result = UnitMappingService.get_project_masterplan(user=request.user, project_id=project_id)
 
@@ -1927,9 +2057,10 @@ def get_project_masterplan(request, project_id):
     return JsonResponse(result.payload, status=result.status)
 
 
+
 # ---------------------------------------------- Save Unit Position
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "TeamMember", "Developer"])
+@allowed_users(allowed_roles=["Admin", "TeamMember", "Developer", "Uploader"])
 def save_unit_position(request):
     result = UnitMappingService.save_unit_position(request=request, user=request.user)
 
@@ -1939,9 +2070,11 @@ def save_unit_position(request):
     return JsonResponse(result.payload, status=result.status)
 
 
+
 # ---------------------------------------------- Get Unit Details For Masterplan
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "TeamMember", "Developer", "Client", "Manager"])
+@allowed_users(allowed_roles=["Admin", "TeamMember", "Developer", "Sales", "Manager", "SalesHead", "Viewer", "Uploader"])
+@viewer_page_required(PAGE_MASTERPLANS)
 def get_unit_details_for_masterplan(request, unit_code):
     result = UnitMappingService.get_unit_details_for_masterplan(user=request.user, unit_code=unit_code)
 
@@ -1951,9 +2084,10 @@ def get_unit_details_for_masterplan(request, unit_code):
     return JsonResponse(result.payload, status=result.status)
 
 
+
 # ---------------------------------------------- Deletes the entire pin
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "TeamMember", "Developer"])
+@allowed_users(allowed_roles=["Admin", "TeamMember", "Developer", "Uploader"])
 def delete_unit_position(request, position_id):
     result = UnitMappingService.delete_unit_position(request=request, position_id=position_id)
 
@@ -1965,7 +2099,7 @@ def delete_unit_position(request, position_id):
 
 # ---------------------------------------------- Deletes a specific unit from inside a building group
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "TeamMember", "Developer"])
+@allowed_users(allowed_roles=["Admin", "TeamMember", "Developer", "Uploader"])
 def delete_child_unit(request, child_id):
     result = UnitMappingService.delete_child_unit(request=request, child_id=child_id)
 
@@ -1977,7 +2111,8 @@ def delete_child_unit(request, child_id):
 
 # ---------------------------------------------- Unit Mapping Read Only (View)
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "TeamMember", "Developer", "Client", "Manager"])
+@allowed_users(allowed_roles=["Admin", "TeamMember", "Developer", "Sales", "Manager", "SalesHead", "Viewer", "Uploader"])
+@viewer_page_required(PAGE_MASTERPLANS)
 def unit_mapping_read_only(request):
     result = UnitMappingService.get_unit_mapping_read_only_context(user=request.user)
 
@@ -1999,9 +2134,10 @@ def get_unit_pin_data(request, unit_code):
 
 
 
+
 # ---------------------------------------------- Unit Layout Manager (HTML + AJAX)
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "Client"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "Uploader"])
 def unit_layout_manager(request):
     result = UnitMappingService.unit_layout_manager_dispatch(request=request, user=request.user)
 
@@ -2015,19 +2151,18 @@ def unit_layout_manager(request):
     return JsonResponse(result.payload["data"], status=result.status)
 
 
-
-
-
-
 # ---------------------------------------------- Delete Unit Layout
 @login_required(login_url="login")
 @require_POST
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Uploader"])
 def delete_unit_layout(request, layout_id):
     result = UnitMappingService.delete_unit_layout(user=request.user, layout_id=layout_id)
 
     if not result.success:
-        return JsonResponse({"success": False, "error": result.error, "trace": result.trace}, status=result.status)
+        return JsonResponse(
+            {"success": False, "error": result.error, "trace": result.trace},
+            status=result.status
+        )
 
     return JsonResponse(result.payload, status=result.status)
 
@@ -2414,11 +2549,11 @@ def save_unit_premium_totals(request):
 
 
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember","Manager", "Client"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember","Manager", "Sales", "SalesHead"])
 def historical_sales_requests_analysis_page(request):
     result = HistoricalSalesRequestsAnalysisService.build_page_context(user=request.user)
     if not result.success:
-        return render(request, "ToP/403.html", status=result.status)
+        return render(request, "ToP/historical_sales_requests_analysis.html", status=result.status)
 
     payload = result.payload or {}
 
@@ -2435,7 +2570,7 @@ def historical_sales_requests_analysis_page(request):
 
 
 @login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember","Manager", "Client"])
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember","Manager", "Sales", "SalesHead"])
 def historical_sales_requests_analysis_data(request):
     company_id = request.GET.get("company_id")
     try:
@@ -2453,3 +2588,48 @@ def historical_sales_requests_analysis_data(request):
 
     return JsonResponse(result.payload, status=200)
 
+
+
+from .services.sales_team_report_service import SalesTeamReportService
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "SalesHead"])
+def sales_team_report(request):
+    res = SalesTeamReportService.build_page_context(user=request.user)
+    if not res.ok:
+        return JsonResponse({"success": False, "error": res.error}, status=res.status)
+
+    return render(request, "ToP/sales_team_report.html", res.payload)
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "SalesHead"])
+def ajax_sales_teams(request):
+    company_id = request.GET.get("company_id")
+    try:
+        company_id = int(company_id) if company_id else None
+    except Exception:
+        company_id = None
+
+    res = SalesTeamReportService.list_teams_for_user(user=request.user, company_id=company_id)
+    if not res.ok:
+        return JsonResponse({"success": False, "error": res.error}, status=res.status)
+
+    return JsonResponse({"success": True, **(res.payload or {})}, status=res.status)
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Manager", "SalesHead"])
+def ajax_sales_team_report(request):
+    team_id = request.GET.get("team_id")
+    try:
+        team_id = int(team_id)
+    except Exception:
+        return JsonResponse({"success": False, "error": "team_id is required"}, status=400)
+
+    res = SalesTeamReportService.build_team_report(user=request.user, team_id=team_id)
+    if not res.ok:
+        return JsonResponse({"success": False, "error": res.error}, status=res.status)
+
+    return JsonResponse({"success": True, **(res.payload or {})}, status=res.status)

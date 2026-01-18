@@ -309,7 +309,7 @@
                     </th>
 
                     {% for group in request.user.groups.all %}
-                        {% if group.name in 'Admin' or group.name in 'Manager' or group.name in 'Developer' or group.name in 'TeamMember'   %}
+                        {% if group.name in 'Admin' or group.name in 'Manager' or group.name in 'Developer' or group.name in 'TeamMember'  or group.name in 'Viewer'  %}
                             <th id="th-status"> Status
                                 <button class="header-filter-btn" id="btn-status" onclick="toggleFilter(event, 'status')"><i class="fa-solid fa-filter"></i></button>
                                 <div class="custom-dropdown-menu" id="dropdown-status">
@@ -524,10 +524,11 @@
         console.log("System Initialized");
 
         // Role-based visibility
-        if (userGroups.includes("Client") || userGroups.includes("Manager")) {
+        if (userGroups.includes("Sales") || userGroups.includes("Manager") || userGroups.includes("SalesHead") || userGroups.includes("Viewer")) {
             $('#company-filter-row').remove(); 
         }
-        if (userGroups.includes("Client")) {
+
+        if (userGroups.includes("Sales") || userGroups.includes("SalesHead")) {
             $('#unit-status-header').remove(); 
             const idx = filterConfig.findIndex(c => c.key === 'status');
             if(idx > -1) filterConfig.splice(idx, 1);
@@ -555,7 +556,7 @@
 
         // Area Placeholders
         if(hasData) {
-            const areas = rawData.map(u => parseFloat(u.sellable_area) || 0);
+            const areas = rawData.map(u => parseFloat(u.gross_area) || 0);
             if(areas.length > 0) {
                 $('#area-min').attr('placeholder', Math.min(...areas).toFixed(0));
                 $('#area-max').attr('placeholder', Math.max(...areas).toFixed(0));
@@ -693,7 +694,7 @@
                     if (!selected.some(s => String(s) === unitVal)) return false;
                 }
             }
-            const area = parseFloat(unit.sellable_area) || 0;
+            const area = parseFloat(unit.gross_area) || 0;
             if (activeFilters.areaMin !== null && area < activeFilters.areaMin) return false;
             if (activeFilters.areaMax !== null && area > activeFilters.areaMax) return false;
             return true;
@@ -811,7 +812,7 @@
             'unit_model': 'th-model',
             'development_delivery_date': 'th-delivery',
             'finishing_specs': 'th-finishing',
-            'sellable_area': 'th-area',
+            'gross_area': 'th-area',
             'garden_area': 'th-garden',
             'land_area': 'th-land',
             'penthouse_area': 'th-penthouse',
@@ -851,7 +852,7 @@
             tr += `<td><span class="unit-code">${u.unit_code}</span></td>
                    <td><span class="unit-code">${u.project}</span></td>`;
             
-            if (!userGroups.includes("Client") && visibleCols['status']) {
+            if (!(userGroups.includes("Sales") || userGroups.includes("SalesHead"))) {
                 tr += `<td><span class="unit-code">${u.status}</span></td>`;
                 if (visibleCols['sales_phasing']) tr += `<td>${u.sales_phasing||'-'}</td>`;
 
@@ -864,7 +865,7 @@
             if (visibleCols['development_delivery_date']) tr += `<td>${u.development_delivery_date||'-'}</td>`;
             if (visibleCols['finishing_specs']) tr += `<td><span class="badge bg-light text-dark border fw-normal">${u.finishing_specs||'-'}</span></td>`;
             
-            if (visibleCols['sellable_area']) tr += `<td class="fw-bold text-dark">${fmtArea(u.sellable_area)}</td>`;
+            if (visibleCols['gross_area']) tr += `<td class="fw-bold text-dark">${fmtArea(u.gross_area)}</td>`;
             if (visibleCols['garden_area']) tr += `<td>${fmtArea(u.garden_area)}</td>`;
             if (visibleCols['land_area']) tr += `<td>${fmtArea(u.land_area)}</td>`;
             if (visibleCols['penthouse_area']) tr += `<td>${fmtArea(u.penthouse_area)}</td>`;
@@ -1033,7 +1034,7 @@
     function updateDropdowns() {
         // --- NEW: Update Area Range Placeholders based on Filtered Data (availableUnits) ---
         if (availableUnits.length > 0) {
-            const areas = availableUnits.map(u => parseFloat(u.sellable_area) || 0).filter(a => a > 0);
+            const areas = availableUnits.map(u => parseFloat(u.gross_area) || 0).filter(a => a > 0);
             if (areas.length > 0) {
                 const currentMin = Math.min(...areas).toFixed(0);
                 const currentMax = Math.max(...areas).toFixed(0);
@@ -1056,7 +1057,7 @@
             // We do NOT filter a dropdown by itself, otherwise you can't change your mind.
             const validData = rawData.filter(row => {
                 // Check Global Area
-                const area = parseFloat(row.sellable_area) || 0;
+                const area = parseFloat(row.gross_area) || 0;
                 if (activeFilters.areaMin !== null && area < activeFilters.areaMin) return false;
                 if (activeFilters.areaMax !== null && area > activeFilters.areaMax) return false;
 

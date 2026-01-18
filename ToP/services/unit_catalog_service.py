@@ -3,8 +3,9 @@ from django.core.serializers.json import DjangoJSONEncoder
 
 from ..models import (
     Company,
-    CompanyUser,
-    CompanyManager,
+    Sales,
+    SalesHead,
+    Manager,
     Project,
     UnitPosition,
     UnitPositionChild,
@@ -12,25 +13,35 @@ from ..models import (
 )
 from ..strategies.inventory_strategy import get_inventory_strategy
 
+from ..utils.viewer_permissions import (
+    is_company_viewer,
+    viewer_company,
+    viewer_allowed_statuses,
+    viewer_can_access_page,
+    PAGE_CATALOG,
+)
+
 
 class UnitCatalogService:
     """
-    ⚠️ CRITICAL ⚠️
-    Phase 2 – Step 1: Structural refactor ONLY.
-    Logic and behavior are unchanged.
+    Viewer rule:
+      - Viewer is forced to viewer_profile.company
+      - Viewer can only see units whose status is in viewer_allowed_statuses(user)
+      - Viewer is NOT treated as client (active_only=False)
+    Everyone else:
+      - Keep your old behavior exactly
     """
-
-    # ======================================================
-    # PUBLIC ENTRY POINT
-    # ======================================================
 
     @staticmethod
     def build_context(*, user, params):
         user_ctx = UnitCatalogService._resolve_user_context(user, params)
+
         inventory = UnitCatalogService._build_inventory_payload(
             user_ctx["target_company"],
-            user_ctx["is_client"],
+            user_ctx["active_only"],
+            user_ctx["viewer_statuses"],  # None for non-viewers
         )
+
         return UnitCatalogService._finalize_context(user_ctx, inventory)
 
     # ======================================================
@@ -39,22 +50,81 @@ class UnitCatalogService:
 
     @staticmethod
     def _resolve_user_context(user, params):
-        units_list = []
         all_companies = []
         user_company = None
         target_company = None
 
-        is_client = user.groups.filter(name="Client").exists()
-        is_manager = user.groups.filter(name="Manager").exists()
-        is_unbound_user = not (is_client or is_manager)
+        # ---------------------------------
+        # 0) Viewer (company-linked)
+        # ---------------------------------
+        if is_company_viewer(user):
+            if not viewer_can_access_page(user, PAGE_CATALOG):
+                return {
+                    "viewer_mode": True,
+                    "viewer_statuses": set(),
+                    "active_only": False,
+                    "is_client": False,
+                    "is_manager": False,
+                    "is_unbound_user": False,
+                    "user_company": None,
+                    "target_company": None,
+                    "all_companies": [],
+                    "forbidden": True,
+                }
 
-        if is_client:
-            profile = CompanyUser.objects.filter(user=user).first()
+            target_company = viewer_company(user)
+            user_company = target_company
+            statuses = viewer_allowed_statuses(user)
+
+            return {
+                "viewer_mode": True,
+                "viewer_statuses": statuses,     # SET (may be empty)
+                "active_only": False,            # IMPORTANT: viewer is NOT client mode
+                "is_client": False,
+                "is_manager": False,
+                "is_unbound_user": False,
+                "user_company": user_company,
+                "target_company": target_company,
+                "all_companies": [],
+                "forbidden": False,
+            }
+
+        # ---------------------------------
+        # 1) Non-viewers (restore old logic)
+        # ---------------------------------
+        viewer_mode = False
+        viewer_statuses = None  # ✅ KEY FIX: None => no viewer filtering at all
+
+        is_sales = user.groups.filter(name__in=["Sales", "Client"]).exists()
+        is_sales_head = user.groups.filter(name__in=["SalesHead"]).exists()
+        is_manager = user.groups.filter(name="Manager").exists()
+
+        # Admin/Business side (unbound users)
+        # Adjust this list to match your real "admin/business" groups.
+        is_adminish = user.groups.filter(
+            name__in=["Admin", "Developer", "TeamMember", "BusinessTeam"]
+        ).exists()
+
+        # You said: "admins, business team ... choose company"
+        # So treat adminish as unbound.
+        is_unbound_user = is_adminish or (not (is_sales or is_sales_head or is_manager))
+
+        is_client = False
+
+        if is_sales:
+            profile = Sales.objects.filter(user=user).select_related("company").first()
             target_company = profile.company if profile else None
             user_company = target_company
+            is_client = True
+
+        elif is_sales_head:
+            profile = SalesHead.objects.filter(user=user).select_related("company").first()
+            target_company = profile.company if profile else None
+            user_company = target_company
+            is_client = True
 
         elif is_manager:
-            profile = CompanyManager.objects.filter(user=user).first()
+            profile = Manager.objects.filter(user=user).select_related("company").first()
             target_company = profile.company if profile else None
             user_company = target_company
 
@@ -70,21 +140,28 @@ class UnitCatalogService:
                 except Company.DoesNotExist:
                     target_company = None
 
+        # old behavior: active_only = is_client
+        active_only = is_client
+
         return {
+            "viewer_mode": viewer_mode,
+            "viewer_statuses": viewer_statuses,  # ✅ None for non-viewers
+            "active_only": active_only,
             "is_client": is_client,
             "is_manager": is_manager,
             "is_unbound_user": is_unbound_user,
             "user_company": user_company,
             "target_company": target_company,
             "all_companies": all_companies,
+            "forbidden": False,
         }
-        
+
     # ======================================================
-    # STEP 2: INVENTORY AGGREGATION (UNCHANGED LOGIC)
+    # STEP 2: INVENTORY AGGREGATION
     # ======================================================
 
     @staticmethod
-    def _build_inventory_payload(target_company, is_client):
+    def _build_inventory_payload(target_company, active_only: bool, viewer_statuses):
         units_list = []
 
         if not target_company:
@@ -124,13 +201,11 @@ class UnitCatalogService:
                 layout.unit_type,
                 layout.unit_model,
             )
-            if key not in layout_lookup:
-                layout_lookup[key] = []
-            layout_lookup[key].append(layout.image.url)
+            layout_lookup.setdefault(key, []).append(layout.image.url)
 
         # --- D. FETCH INVENTORY ---
         strategy = get_inventory_strategy(target_company)
-        raw_units = strategy.get_all_units(active_only=is_client)
+        raw_units = strategy.get_all_units(active_only=active_only)
 
         export_fields = [
             "unit_code",
@@ -138,7 +213,7 @@ class UnitCatalogService:
             "building_type",
             "unit_type",
             "unit_model",
-            "sellable_area",
+            "gross_area",
             "area_range",
             "status",
             "num_bedrooms",
@@ -152,11 +227,22 @@ class UnitCatalogService:
             "roof_terraces_area",
         ]
 
-        for u in raw_units:
-            unit_dict = {}
+        # ✅ Viewer filtering only if viewer_statuses is NOT None
+        viewer_filter_enabled = viewer_statuses is not None
+        viewer_has_statuses = viewer_filter_enabled and len(viewer_statuses) > 0
 
-            for field in export_fields:
-                unit_dict[field] = getattr(u, field, None)
+        for u in raw_units:
+            unit_dict = {field: getattr(u, field, None) for field in export_fields}
+
+            if viewer_filter_enabled:
+                st = (unit_dict.get("status") or "").strip()
+                if not st:
+                    continue
+                if not viewer_has_statuses:
+                    # viewer exists but has no statuses => sees nothing
+                    continue
+                if st not in viewer_statuses:
+                    continue
 
             unit_dict["company_name"] = target_company.name
 
@@ -179,11 +265,22 @@ class UnitCatalogService:
         return units_list
 
     # ======================================================
-    # STEP 3: FINAL CONTEXT ASSEMBLY
+    # STEP 3: FINAL CONTEXT
     # ======================================================
 
     @staticmethod
     def _finalize_context(user_ctx, units_list):
+        if user_ctx.get("forbidden"):
+            return {
+                "units_json": json.dumps([], cls=DjangoJSONEncoder),
+                "all_companies": [],
+                "is_unbound_user": False,
+                "selected_company_id": None,
+                "company": None,
+                "viewer_mode": True,
+                "forbidden": True,
+            }
+
         target_company = user_ctx["target_company"]
 
         return {
@@ -192,4 +289,6 @@ class UnitCatalogService:
             "is_unbound_user": user_ctx["is_unbound_user"],
             "selected_company_id": target_company.id if target_company else None,
             "company": user_ctx["user_company"],
+            "viewer_mode": user_ctx.get("viewer_mode", False),
+            "forbidden": False,
         }

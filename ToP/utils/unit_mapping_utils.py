@@ -6,11 +6,12 @@ from typing import Any, Dict, List, Tuple, Optional
 
 from ..models import (
     Company,
-    CompanyManager,
-    CompanyUser,
+    Manager,
+    Sales,
     Project,
     Unit,
     UnitLayout,
+    SalesHead
 )
 
 
@@ -30,7 +31,7 @@ def serialize_unit(unit: Unit) -> Dict[str, Any]:
         "num_bedrooms": unit.num_bedrooms or "-",
         "status": raw_status,
         "is_locked": not is_available,  # Locked if not 'Available'
-        "sellable_area": str(unit.sellable_area) if unit.sellable_area else "-",
+        "gross_area": str(unit.gross_area) if unit.gross_area else "-",
         "interest_free_unit_price": str(unit.interest_free_unit_price) if unit.interest_free_unit_price else "-",
         "development_delivery_date": unit.development_delivery_date.strftime("%Y-%m-%d") if unit.development_delivery_date else "-",
         "finishing_specs": unit.finishing_specs or "-",
@@ -50,8 +51,11 @@ def serialize_unit(unit: Unit) -> Dict[str, Any]:
 # ----------------------------------------------
 # Role flags + visibility rules
 # ----------------------------------------------
+from .viewer_permissions import is_company_viewer  # adjust import path if needed
+
 def get_role_flags_for_masterplan(user) -> Tuple[bool, bool]:
-    is_client = user.groups.filter(name="Client").exists()
+    # Treat viewer as "client-ish" (read-only restriction)
+    is_client = user.groups.filter(name__in=["Sales", "SalesHead"]).exists() or is_company_viewer(user)
     is_managerish = user.groups.filter(name__in=["Manager", "Admin", "Developer", "TeamMember"]).exists()
     return is_client, is_managerish
 
@@ -83,7 +87,7 @@ def build_masterplan_unit_data_map(*, project: Project) -> Dict[str, Dict[str, A
         "status",
         "num_bedrooms",
         "finishing_specs",
-        "sellable_area",
+        "gross_area",
         "unit_model",
     )
     
@@ -97,7 +101,7 @@ def build_masterplan_unit_data_map(*, project: Project) -> Dict[str, Dict[str, A
             "is_locked": is_locked,
             "bedrooms": str(u["num_bedrooms"]) if u["num_bedrooms"] is not None else "-",
             "finishing": u["finishing_specs"] or "N/A",
-            "area": float(u["sellable_area"] or 0),
+            "area": float(u["gross_area"] or 0),
             "model": u["unit_model"] or "N/A",
         }
 
@@ -173,8 +177,12 @@ def is_restricted_layout_user(user) -> bool:
 
 
 def build_layout_manager_context(*, user) -> Dict[str, Any]:
+    
     is_manager = user.groups.filter(name="Manager").exists()
-    is_client = user.groups.filter(name="Client").exists()
+    is_sales = user.groups.filter(name="Sales").exists()
+    is_saleshead = user.groups.filter(name="SalesHead").exists()
+    is_sales_or_head = is_sales or is_saleshead
+
     user_company = None
 
     companies: List[Any] = []
@@ -182,20 +190,29 @@ def build_layout_manager_context(*, user) -> Dict[str, Any]:
     is_restricted_user = False
 
     if is_manager:
-        manager_profile = CompanyManager.objects.filter(user=user).select_related("company").first()
+        manager_profile = Manager.objects.filter(user=user).select_related("company").first()
         if manager_profile and manager_profile.company:
             sel_company_id = manager_profile.company.id
             user_company = manager_profile.company
             companies = [manager_profile.company]
             is_restricted_user = True
 
-    elif is_client:
-        client_profile = CompanyUser.objects.filter(user=user).select_related("company").first()
+    elif is_sales_or_head:
+        # ✅ SalesHead has priority if user has both groups
+        client_profile = None
+
+        if is_saleshead:
+            client_profile = SalesHead.objects.filter(user=user).select_related("company").first()
+
+        if not client_profile and is_sales:
+            client_profile = Sales.objects.filter(user=user).select_related("company").first()
+
         if client_profile and client_profile.company:
             sel_company_id = client_profile.company.id
             user_company = client_profile.company
             companies = [client_profile.company]
             is_restricted_user = True
+
 
     else:
         # Admin / Team / Developer

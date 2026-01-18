@@ -175,7 +175,7 @@ class InventorySyncService:
             )
             garden_area = to_decimal(get_from_row(row, ["Garden Area"]))
             land_area = to_decimal(get_from_row(row, ["Land Area"]))
-            sellable_area = to_decimal(get_from_row(row, ["Gross Area"]))
+            gross_area = to_decimal(get_from_row(row, ["Gross Area"]))
             interest_free_unit_price = to_decimal(
                 get_from_row(row, ["Interest Free Unit Price"])
             )
@@ -238,7 +238,7 @@ class InventorySyncService:
             reservation_date=reservation_date,
             contract_delivery_date=contract_delivery_date,
             grace_period_months=grace_period_months,
-            sellable_area=sellable_area,
+            gross_area=gross_area,
             area_range=area_range,
             psm=psm,
             adj_status = adj_status,

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import traceback
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 from django.shortcuts import get_object_or_404
 
-from ..models import Project, ProjectConfiguration, ProjectExtendedPayments
+from ..models import Company, Project, ProjectConfiguration, ProjectExtendedPayments
 from ..utils.payments_plans_utils import (
     normalize_updates,
     apply_dual_payment_updates,
@@ -27,13 +27,34 @@ class ServiceResult:
 class ProjectExtendedPaymentsService:
     """
     Extended payments logic (year + scheme + bulk updates + disable flag).
+    ✅ Uploader users are company-scoped: they can access ONLY their company projects.
     No HttpRequest dependency.
     """
 
+    # =========================================================
+    # Uploader scoping helpers (NEW)
+    # =========================================================
     @staticmethod
-    def save(*, payload: Dict[str, Any]) -> ServiceResult:
+    def _get_uploader_company(user) -> Optional[Company]:
+        uploader_profile = getattr(user, "uploader_profile", None)
+        if uploader_profile and getattr(uploader_profile, "company_id", None):
+            return uploader_profile.company
+        return None
+
+    @staticmethod
+    def _user_can_access_project(user, project: Project) -> bool:
+        uploader_company = ProjectExtendedPaymentsService._get_uploader_company(user)
+        if not uploader_company:
+            return True
+        return project.company_id == uploader_company.id
+
+    # =========================================================
+    # SAVE
+    # =========================================================
+    @staticmethod
+    def save(*, user, payload: Dict[str, Any]) -> ServiceResult:
         """
-        Preserves old save_extended_payment_ajax behavior.
+        Preserves old save_extended_payment_ajax behavior + adds uploader restriction.
         """
         try:
             project_id = int(payload["project_id"])
@@ -41,6 +62,15 @@ class ProjectExtendedPaymentsService:
             scheme = payload.get("scheme", "flat")
 
             project = get_object_or_404(Project, id=project_id)
+
+            # ✅ uploader/company restriction
+            if not ProjectExtendedPaymentsService._user_can_access_project(user, project):
+                return ServiceResult(
+                    success=False,
+                    status=403,
+                    payload={"success": False, "message": "Forbidden"},
+                )
+
             payment, _ = ProjectExtendedPayments.objects.get_or_create(
                 project=project, year=year, scheme=scheme
             )
@@ -65,15 +95,31 @@ class ProjectExtendedPaymentsService:
 
         except Exception as e:
             traceback.print_exc()
-            return ServiceResult(success=False, status=200, payload={"success": False, "message": str(e)})
+            return ServiceResult(
+                success=False,
+                status=200,
+                payload={"success": False, "message": str(e)},
+            )
 
+    # =========================================================
+    # FETCH
+    # =========================================================
     @staticmethod
-    def fetch(*, project_id: int, year: int = 1, scheme: str = "flat") -> ServiceResult:
+    def fetch(*, user, project_id: int, year: int = 1, scheme: str = "flat") -> ServiceResult:
         """
-        Preserves old fetch_extended_payment_ajax behavior.
+        Preserves old fetch_extended_payment_ajax behavior + adds uploader restriction.
         """
         try:
             project = get_object_or_404(Project, id=project_id)
+
+            # ✅ uploader/company restriction
+            if not ProjectExtendedPaymentsService._user_can_access_project(user, project):
+                return ServiceResult(
+                    success=False,
+                    status=403,
+                    payload={"success": False, "message": "Forbidden"},
+                )
+
             payment = ProjectExtendedPayments.objects.filter(project=project, year=year, scheme=scheme).first()
             config = ProjectConfiguration.objects.filter(project=project).first()
 
@@ -88,10 +134,9 @@ class ProjectExtendedPaymentsService:
                     val = getattr(payment, f"installment_{i + 1}", 0) or 0
                     data[f"installment_{i}"] = round(val * 100, 4)
 
-                # flag (preserved)
                 data["disable_additional_discount"] = bool(payment.disable_additional_discount)
             else:
-                data["disable_additional_discount"] = False  # default
+                data["disable_additional_discount"] = False
 
             interest_rate = float(config.interest_rate) if config and config.interest_rate else 0
             data["interest_rate"] = round(interest_rate, 5)
@@ -100,12 +145,19 @@ class ProjectExtendedPaymentsService:
 
         except Exception as e:
             traceback.print_exc()
-            return ServiceResult(success=False, status=200, payload={"success": False, "message": str(e)})
+            return ServiceResult(
+                success=False,
+                status=200,
+                payload={"success": False, "message": str(e)},
+            )
 
+    # =========================================================
+    # DELETE
+    # =========================================================
     @staticmethod
-    def delete(*, payload: Dict[str, Any]) -> ServiceResult:
+    def delete(*, user, payload: Dict[str, Any]) -> ServiceResult:
         """
-        Preserves old delete_extended_payment_ajax behavior.
+        Preserves old delete_extended_payment_ajax behavior + adds uploader restriction.
         """
         try:
             project_id = int(payload.get("project_id"))
@@ -114,6 +166,14 @@ class ProjectExtendedPaymentsService:
 
             project = get_object_or_404(Project, id=project_id)
 
+            # ✅ uploader/company restriction
+            if not ProjectExtendedPaymentsService._user_can_access_project(user, project):
+                return ServiceResult(
+                    success=False,
+                    status=403,
+                    payload={"success": False, "message": "Forbidden"},
+                )
+
             deleted_count, _ = ProjectExtendedPayments.objects.filter(
                 project=project,
                 year=year,
@@ -121,10 +181,22 @@ class ProjectExtendedPaymentsService:
             ).delete()
 
             if deleted_count > 0:
-                return ServiceResult(success=True, status=200, payload={"success": True, "message": "Plan deleted successfully."})
+                return ServiceResult(
+                    success=True,
+                    status=200,
+                    payload={"success": True, "message": "Plan deleted successfully."},
+                )
 
-            return ServiceResult(success=False, status=200, payload={"success": False, "message": "No plan found to delete."})
+            return ServiceResult(
+                success=False,
+                status=200,
+                payload={"success": False, "message": "No plan found to delete."},
+            )
 
         except Exception as e:
             traceback.print_exc()
-            return ServiceResult(success=False, status=200, payload={"success": False, "message": str(e)})
+            return ServiceResult(
+                success=False,
+                status=200,
+                payload={"success": False, "message": str(e)},
+            )

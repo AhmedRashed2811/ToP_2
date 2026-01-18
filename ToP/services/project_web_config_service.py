@@ -1,10 +1,9 @@
-# ToP/services/project_web_config_service.py
-
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, List
 
+from django.contrib.auth.models import User
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 
@@ -24,7 +23,7 @@ class ServiceResult:
     payload: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
     redirect_url: Optional[str] = None
-    message: Optional[str] = None  # used by views for Django messages
+    message: Optional[str] = None
 
 
 class ProjectWebConfigService:
@@ -32,12 +31,8 @@ class ProjectWebConfigService:
     Service layer for Project Web Configuration.
     - No HttpRequest dependency.
     - Views pass primitives (project_id, post_dict, payment_schemes_list).
-    - Preserves original behavior.
     """
 
-    # ---------------------------------------------------------
-    # Fields config (single source of truth)
-    # ---------------------------------------------------------
     PAGE_FIELDS = [
         "show_maintenance",
         "show_gas",
@@ -80,24 +75,62 @@ class ProjectWebConfigService:
         "period_between_DP_and_intsallment",
     ]
 
+    # ---------------------------------------------------------
+    # Internal: uploader scope helpers
+    # ---------------------------------------------------------
+    @staticmethod
+    def _get_uploader_company(user: User) -> Optional[Company]:
+        """
+        If the logged-in user has an Uploader profile, return its company.
+        Otherwise return None (meaning: no uploader scoping).
+        """
+        uploader_profile = getattr(user, "uploader_profile", None)
+        if uploader_profile and getattr(uploader_profile, "company_id", None):
+            return uploader_profile.company
+        return None
+
+    @staticmethod
+    def _user_can_access_project(user: User, project: Project) -> bool:
+        uploader_company = ProjectWebConfigService._get_uploader_company(user)
+        if not uploader_company:
+            return True
+        return project.company_id == uploader_company.id
+
     # =========================================================
     # Public: page context (GET)
     # =========================================================
     @staticmethod
-    def get_page_context(*, selected_project_id: Optional[str]) -> ServiceResult:
-        companies = Company.objects.all()
-        projects = Project.objects.select_related("company").all()
+    def get_page_context(*, user: User, selected_project_id: Optional[str]) -> ServiceResult:
+        company = None
+        uploader_company = ProjectWebConfigService._get_uploader_company(user)
+        if uploader_company:
+            company = uploader_company
+            companies = Company.objects.filter(id=uploader_company.id)
+            projects = Project.objects.select_related("company").filter(company=uploader_company)
+            locked_company_id = uploader_company.id
+        else:
+            companies = Company.objects.all()
+            projects = Project.objects.select_related("company").all()
+            locked_company_id = None
 
-        selected_project = None
-        config = None
+        selected_project: Optional[Project] = None
+        config: Optional[ProjectWebConfiguration] = None
 
         if selected_project_id:
             try:
-                selected_project = Project.objects.get(id=selected_project_id)
-                config = ProjectWebConfiguration.objects.filter(project=selected_project).first()
+                p = Project.objects.select_related("company").get(id=selected_project_id)
+                if ProjectWebConfigService._user_can_access_project(user, p):
+                    selected_project = p
+                    config = ProjectWebConfiguration.objects.filter(project=selected_project).first()
             except Project.DoesNotExist:
-                selected_project = None
-                config = None
+                pass
+
+        # Used by template to auto-set the company dropdown
+        selected_company_id = None
+        if locked_company_id:
+            selected_company_id = locked_company_id
+        elif selected_project:
+            selected_company_id = selected_project.company_id
 
         return ServiceResult(
             success=True,
@@ -110,6 +143,13 @@ class ProjectWebConfigService:
                 "years_range": range(1, 13),
                 "fields": ProjectWebConfigService.PAGE_FIELDS,
                 "payment_scheme_choices": ProjectWebConfiguration.PAYMENT_SCHEME_CHOICES,
+
+                # template helpers
+                "locked_company_id": locked_company_id,
+                "company_locked": bool(locked_company_id),
+                "selected_company_id": selected_company_id,
+                "selected_project_id": selected_project.id if selected_project else "",
+                "company": company 
             },
         )
 
@@ -117,10 +157,13 @@ class ProjectWebConfigService:
     # Public: JSON getter (AJAX)
     # =========================================================
     @staticmethod
-    def get_config_json(*, project_id: int) -> ServiceResult:
-        project = Project.objects.filter(pk=project_id).first()
+    def get_config_json(*, user: User, project_id: int) -> ServiceResult:
+        project = Project.objects.select_related("company").filter(pk=project_id).first()
         if not project:
             return ServiceResult(success=False, status=404, error="Project not found")
+
+        if not ProjectWebConfigService._user_can_access_project(user, project):
+            return ServiceResult(success=False, status=403, error="Forbidden")
 
         config = ProjectWebConfiguration.objects.filter(project=project).first()
         if not config:
@@ -134,13 +177,12 @@ class ProjectWebConfigService:
 
     # =========================================================
     # Public: Save (used by BOTH endpoints)
-    # - project_web_config (form POST with redirect + message)
-    # - save_project_web_config (AJAX POST json response)
     # =========================================================
     @staticmethod
     @transaction.atomic
     def save_config(
         *,
+        user: User,
         project_id: int,
         post_dict: Dict[str, Any],
         payment_schemes_list: List[str],
@@ -148,9 +190,12 @@ class ProjectWebConfigService:
         redirect_after_save: bool,
     ) -> ServiceResult:
         project = get_object_or_404(Project, id=project_id)
+
+        if not ProjectWebConfigService._user_can_access_project(user, project):
+            return ServiceResult(success=False, status=403, error="Forbidden")
+
         config, _ = ProjectWebConfiguration.objects.get_or_create(project=project)
 
-        # Apply POST -> config fields (preserved logic)
         ProjectWebConfigService._apply_post_to_config(
             config=config,
             post_dict=post_dict,
@@ -168,17 +213,13 @@ class ProjectWebConfigService:
                 redirect_url=f"/project_web_config/?project={project.id}",
             )
 
-        return ServiceResult(
-            success=True,
-            status=200,
-            payload={"success": True, "message": "✅ Configuration saved successfully"},
-        )
+        return ServiceResult(success=True, status=200, payload={"success": True, "message": "✅ Configuration saved successfully"})
 
+    # ---------------------------------------------------------
+    # Internal: clean years
+    # ---------------------------------------------------------
     @staticmethod
     def _clean_allowed_years(raw_list: List[str]) -> List[int]:
-        """
-        Keep only ints between 1 and 12, unique, sorted.
-        """
         years: List[int] = []
         seen = set()
 
@@ -194,9 +235,8 @@ class ProjectWebConfigService:
 
         return sorted(years)
 
-
     # =========================================================
-    # Internal: apply POST values to config (single place)
+    # Internal: apply POST values to config
     # =========================================================
     @staticmethod
     def _apply_post_to_config(
@@ -206,23 +246,15 @@ class ProjectWebConfigService:
         payment_schemes_list: List[str],
         allowed_years_list: List[str],
     ) -> None:
-        # 1) Boolean fields (same behavior as bool(request.POST.get(...)))
         for field_name in ProjectWebConfigService.BOOL_FIELDS:
             setattr(config, field_name, post_bool(post_dict, field_name))
 
-        # 2) Optional numeric/text fields stored as string-or-None (preserved)
         for field_name in ProjectWebConfigService.OPTIONAL_STR_FIELDS:
             setattr(config, field_name, post_optional_str(post_dict, field_name))
 
-        # 3) Payment schemes list (preserved)
         config.payment_schemes_to_show = payment_schemes_list or []
-        
         config.allowed_years_for_sales = ProjectWebConfigService._clean_allowed_years(allowed_years_list)
 
-
-        # 4) Additional discount logic (preserved)
-        # If show_additional_discount is True => parse values; invalid => None
-        # else => reset values
         if config.show_additional_discount:
             config.additional_discount = to_decimal_or_none(post_dict.get("additional_discount"))
             config.dp_for_additional_discount = to_int_or_none(post_dict.get("dp_for_additional_discount"))
@@ -235,7 +267,6 @@ class ProjectWebConfigService:
     # =========================================================
     @staticmethod
     def _serialize_config(config: ProjectWebConfiguration) -> Dict[str, Any]:
-        # Keep it explicit and stable (preserved keys)
         return {
             "show_maintenance": config.show_maintenance,
             "show_gas": config.show_gas,

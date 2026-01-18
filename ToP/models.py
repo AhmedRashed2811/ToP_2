@@ -9,58 +9,6 @@ from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
 
-class CustomUserManager(BaseUserManager):
-    def create_user(self, email, password=None, **extra_fields):
-        if not email:
-            raise ValueError('The Email field must be set')
-        email = self.normalize_email(email)
-
-        # Set a default joining_date if not provided
-        if not extra_fields.get('joining_date'):
-            from datetime import date
-            extra_fields['joining_date'] = date.today()
-
-        user = self.model(email=email, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
-
-    def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        
-        return self.create_user(email, password, **extra_fields)
-
-
-# ---------------- Custom User Model ----------------
-class User(AbstractUser):
-    username = None  # Remove username field
-    email = models.EmailField(unique=True)
-    full_name = models.CharField(max_length=255)
-    password = models.TextField()
-    
-    ROLE_CHOICES = [ 
-        ('Admin', 'Admin'),
-        ('CompanyUser', 'Company User'),
-        ('Developer', 'Developer'),
-        ('Manager', 'Company Manager'),
-        ('BusinessTeam', 'Business Team'),
-        ('CompanyController', 'Company Controller'),
-        ('CompanyFinanceManager', 'Company Finance Manager'), 
-
-    ]
-    role = models.CharField(max_length=100, choices=ROLE_CHOICES, default='Company_User')
-    joining_date = models.DateField(null=True, blank=True)  # Allow NULL values
-    is_active = models.BooleanField(default=True)
-
-    objects = CustomUserManager()
-
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['full_name', 'role']
-
-    def __str__(self):
-        return self.email
-
 
 
 
@@ -128,6 +76,7 @@ class Company(models.Model):
         return self.name
 
 
+
 # ---------------- Project Model ----------------
 class Project(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
@@ -138,36 +87,6 @@ class Project(models.Model):
     # Add this method:
     def __str__(self):
         return self.name
-
-
-# ---------------- Company_User (One-to-One with User) ----------------
-class CompanyUser(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
-    can_edit = models.BooleanField(default=False)
-    can_change_years= models.BooleanField(default=False)
-
-
-# ---------------- Company_User (One-to-One with User) ----------------
-class CompanyManager(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
-
-
-
-class CompanyFinanceManager(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
-
-    def __str__(self):
-        return f"{self.user.email} - {self.company.name}"
-    
-    
-# ---------------- Company_Controller (One-to-One with User) ----------------
-class CompanyController(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
-    only_sales_operation = models.BooleanField(default=False) 
 
 
 # ---------------- Project Web Configuration ----------------
@@ -393,11 +312,9 @@ class MaintenancePolicyScheduling(models.Model):
     term_period = models.DecimalField(max_digits=10, decimal_places=2)
     scheduling = models.CharField(max_length=100)
 
-# ---------------- Business Analysis Team ----------------
-class BusinessAnalysisTeam(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    joining_date = models.DateField()
-    job_title = models.CharField(max_length=100)
+
+
+
 
 class Unit(models.Model):
     # Primary Key
@@ -424,7 +341,7 @@ class Unit(models.Model):
     # Areas
     footprint = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     net_area = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    sellable_area = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    gross_area = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     
     # Pricing (Base)
     base_price = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
@@ -625,11 +542,6 @@ class SalesRequestAnalytical(models.Model):
         return f"SalesRequest by {sales_man} for Unit {unit_code}"
 
 
-class ModificationRecords(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    type = models.CharField(max_length=255)
-    description = models.CharField(max_length = 300, null=True, blank=True)
-    timestamp = models.DateTimeField(default=now)  # 👈 added datetime with default
 
 
 class MarketProjectLocation(models.Model):
@@ -889,6 +801,134 @@ class UnitLayout(models.Model):
 
 
 
+
+
+from django.db import models
+from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.utils.timezone import now
+
+# ==========================================
+# 1. Custom User & Manager
+# ==========================================
+
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('The Email field must be set')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        return self.create_user(email, password, **extra_fields)
+
+class User(AbstractUser):
+    username = None 
+    email = models.EmailField(unique=True)
+    full_name = models.CharField(max_length=255)
+    password = models.TextField()
+    is_active = models.BooleanField(default=True)
+
+    objects = CustomUserManager()
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['full_name']
+
+    def __str__(self):
+        return self.email
+
+# ==========================================
+# 2. Sales Team Structure
+# ==========================================
+
+class SalesTeam(models.Model):
+    company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='sales_teams')
+    name = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.company.name}"
+
+# ==========================================
+# 3. User Role Profiles
+# ==========================================
+
+class SalesHead(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='sales_head_profile')
+    company = models.ForeignKey('Company', on_delete=models.CASCADE)
+    team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True, related_name='heads')
+    one_dp_only = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Head: {self.user.email}"
+
+class Sales(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='sales_profile')
+    company = models.ForeignKey('Company', on_delete=models.CASCADE)
+    team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True, related_name='members')
+    can_edit = models.BooleanField(default=False)
+    can_change_years = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Sales: {self.user.email}"
+
+class SalesOperation(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='sales_ops_profile')
+    company = models.ForeignKey('Company', on_delete=models.CASCADE)
+    # Stores list of editable fields e.g., ["price", "status"]
+    editable_unit_fields = models.JSONField(default=list, blank=True, null=True)
+
+    def __str__(self):
+        return f"Ops: {self.user.email}"
+
+class CompanyViewer(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='viewer_profile')
+    company = models.ForeignKey('Company', on_delete=models.CASCADE)
+    # Stores list of allowed pages e.g., ["dashboard", "map"]
+    allowed_pages = models.JSONField(default=list, blank=True, null=True)
+
+    def __str__(self):
+        return f"Viewer: {self.user.email}"
+
+class Manager(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='manager_profile')
+    company = models.ForeignKey('Company', on_delete=models.CASCADE)
+
+class Uploader(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='uploader_profile')
+    company = models.ForeignKey('Company', on_delete=models.CASCADE)
+
+class CompanyAdmin(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='company_admin_profile')
+    company = models.ForeignKey('Company', on_delete=models.CASCADE)
+
+class Admin(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
+    joining_date = models.DateField(default=now)
+
+class BusinessAnalysisTeam(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='business_team_profile')
+    joining_date = models.DateField(default=now)
+    job_title = models.CharField(max_length=100)
+    
+    
+
+# --- Signal to Auto-Delete File from Storage ---
+@receiver(post_delete, sender=UnitLayout)
+def delete_layout_file(sender, instance, **kwargs):
+    """Deletes the file from filesystem when the database record is deleted."""
+    if instance.image:
+        if os.path.isfile(instance.image.path):
+            try:
+                os.remove(instance.image.path)
+            except Exception as e:
+                print(f"Error deleting file: {e}")
+                
+                
 # ---------------- Attendance Logic ----------------
 class AttendanceLog(models.Model):
     ACTION_CHOICES = (
@@ -911,13 +951,8 @@ class AttendanceLog(models.Model):
 
 
 
-# --- Signal to Auto-Delete File from Storage ---
-@receiver(post_delete, sender=UnitLayout)
-def delete_layout_file(sender, instance, **kwargs):
-    """Deletes the file from filesystem when the database record is deleted."""
-    if instance.image:
-        if os.path.isfile(instance.image.path):
-            try:
-                os.remove(instance.image.path)
-            except Exception as e:
-                print(f"Error deleting file: {e}")
+class ModificationRecords(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    type = models.CharField(max_length=255)
+    description = models.CharField(max_length = 300, null=True, blank=True)
+    timestamp = models.DateTimeField(default=now)  # 👈 added datetime with default

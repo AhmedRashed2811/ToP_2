@@ -20,6 +20,9 @@ from ..utils.home_utils import (
     enforce_client_unit_rules_and_limits,
 )
 
+from ..utils.viewer_permissions import is_company_viewer, viewer_allowed_statuses
+
+
 
 class TOPHomeService:
     """
@@ -42,15 +45,13 @@ class TOPHomeService:
         # 1) Initial context (same keys)
         context = init_home_context(session=session)
 
-        # 2) Determine user scope (CompanyUser / Manager / FinanceManager / else)
+        # 2) Determine user scope (Sales / Manager / else)
         scope = resolve_user_scope(user=user, session=session)
         context.update(scope.context_updates)
 
         user_company = scope.user_company
         is_client_user = scope.is_client_user
         
-        # Check if user is a finance manager (flag set in resolve_user_scope)
-        is_finance_manager = context.get("is_finance_manager", False)
 
         # --- NEW: Pass is_client_user to context for Template Logic ---
         context["is_client_user"] = is_client_user 
@@ -89,20 +90,31 @@ class TOPHomeService:
             strategy = get_inventory_strategy(user_company)
 
             # A) units - UPDATED to pass exclude_blocked
-            units_obj = strategy.get_all_units(
-                active_only=is_client_user,
-                exclude_blocked=is_finance_manager
-            )
+            # Viewer: do NOT force Available-only, use JSON statuses instead
+            if is_company_viewer(user):
+                allowed_statuses = viewer_allowed_statuses(user)
+                units_obj = strategy.get_all_units(active_only=False)
+                if allowed_statuses:
+                    # filter in python (no strategy changes required)
+                    units_obj = [u for u in units_obj if getattr(u, "status", None) in allowed_statuses]
+                    
+                else:
+                    # if viewer has no statuses saved -> show nothing
+                    units_obj = []
+            else:
+                # existing behavior unchanged for sales/saleshead
+                units_obj = strategy.get_all_units(active_only=is_client_user)
+                
             context["units"] = units_obj
 
             # B) units_json serialization (same rules)
             context["units_json"] = serialize_units_for_js(units_obj=units_obj, project_map=project_map)
 
+            print(f'context["units_json"] = {context["units_json"]}') 
             # C) unit search (same behavior) - only when POST has unit_query
             if unit_query:
                 found_unit = strategy.get_unit(unit_query)
                 
-                is_fin_mgr = context.get("is_finance_manager", False)
 
                 enforcement = enforce_client_unit_rules_and_limits(
                     user=user,
@@ -111,7 +123,6 @@ class TOPHomeService:
                     found_unit=found_unit,
                     messages_api=messages_api,
                     request_for_messages=request_for_messages,
-                    is_finance_manager=is_fin_mgr,
                 )
 
                 if enforcement.get("redirect_home"):
@@ -174,7 +185,7 @@ class TOPHomeService:
         # 5) Render rules for inactive client company (same)
         if (
             scope.is_client_user
-            and scope.user_role == "CompanyUser"
+            and scope.user_role in ["Sales","SalesHead", "Client"]
             and not context.get("is_company_active")
         ):
             return {

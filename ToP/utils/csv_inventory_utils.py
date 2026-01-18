@@ -74,7 +74,7 @@ def progress_get(task_id: Optional[str]):
         return {"status": "pending", "progress": 0}
     return cache.get(task_id, {"status": "pending", "progress": 0})
 
-
+ 
 def progress_set_processing(task_id: str, *, index: int, total_rows: int, every: int = 10, timeout: int = 300):
     if total_rows <= 0:
         cache.set(task_id, {"status": "processing", "progress": 0}, timeout=timeout)

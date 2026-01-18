@@ -320,7 +320,7 @@
             if (showBase) {
                 // Helper to hide m2 if no data
                 const landDisp = (r.land_area) ? `${fmtNumber(r.land_area)} <small class="text-muted">m²</small>` : "-";
-                const sellableDisp = (r.sellable_area) ? `${fmtNumber(r.sellable_area)} <small class="text-muted">m²</small>` : "-";
+                const sellableDisp = (r.gross_area) ? `${fmtNumber(r.gross_area)} <small class="text-muted">m²</small>` : "-";
                 
                 nativeFieldsTds = `
                     <td class="text-nowrap text-end ">${landDisp}</td>

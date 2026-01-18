@@ -715,7 +715,7 @@
 
 
 {% with user_groups=request.user.groups.all|join:"," %}
-    {% if "Client" in user_groups or "Controller" in user_groups or "Manager" in user_groups %}
+    {% if "Sales" in user_groups or "Controller" in user_groups or "Manager" in user_groups  or "SalesHead" in user_groups  or "Viewer" in user_groups%}
         <!-- Customer Support Button -->
         <img 
             id="customerSupportBtn"
@@ -820,7 +820,9 @@
 </div>
 
 {% if is_company_active is not None %}
+
     {% if is_company_active %}
+    
         <!-- Combined Search Form -->
         <div  class="div1" style="text-align: left;">
             <form id="searchForm2" method="POST" class="search-form" style="gap: 10px; align-items: center;">
@@ -883,7 +885,7 @@
             value="{{ unit.unit_code }}"
         >
         <datalist id="unitCodeOptionsNew">
-            {% if units.exists %}
+            {% if units %}
                 {% for unit in units %}
                     <option 
                         value="{{ unit.unit_code }}" 
@@ -975,7 +977,7 @@
                 </div>
 
                 {% with user_groups=request.user.groups.all|join:"," %}
-                    {% if "Client" in user_groups  or "Manager" in user_groups%}  
+                    {% if "Sales" in user_groups or "SalesHead" in user_groups  or "Manager" in user_groups or "Viewer" in user_groups%}  
                         <div class="PoweredBy" id="PoweredBy">
                                 <span style="margin-left: 4%;font-size: initial;">Powered By</span>
                                 <img 
@@ -1162,7 +1164,7 @@
 
 {% with user_groups=request.user.groups.all|join:"," %}
     <!-- Main Content -->
-    {% if "Client" not in user_groups and "Manager"  not in user_groups %} 
+    {% if "Sales" not in user_groups and "Manager"  not in user_groups  and "SalesHead" not in user_groups and "Viewer" not in user_groups %} 
         <!-- Combined Search Form -->
         
         <div style="text-align: left;">
@@ -1384,9 +1386,9 @@
     </div>
 
 
-    <div {% if "Client" not in user_groups and "Manager" not in user_groups %} class="flex-container-new" {% else %} class="flex-container" {% endif %}>
+    <div {% if "Sales" not in user_groups and "Manager" not in user_groups and "SalesHead" not in user_groups and "Viewer" not in user_groups%} class="flex-container-new" {% else %} class="flex-container" {% endif %}>
         <!-- Input Container -->
-        <div class="input-container {% if 'Client' not in user_groups and 'Manager' not in user_groups %}responsive-container{% endif %}" id="input-container">
+        <div class="input-container {% if 'Sales' not in user_groups and 'Manager' not in user_groups and 'SalesHead' not in user_groups and 'Viewer' not in user_groups %}responsive-container{% endif %}" id="input-container">
 
         <div class="grouped-row">
             <div class="group group-1">
@@ -1396,7 +1398,7 @@
                 </div>
 
 
-                {% if "Client" not in user_groups%}
+                {% if "Sales" not in user_groups or "SalesHead" not in user_groups or "Viewer" not in user_groups%}
                     <div class="input-group">
                         <label for="status">Status</label>
                         <input type="text" name="status" id="status" readonly value="{{ unit.status }}" style="background-color: transparent; border: none; color: #000; font-weight: bold;text-align: left;" class="uniform-input">
@@ -1439,10 +1441,10 @@
             <div class="group group-2">
     
                 {# Gross Area #}
-                {% if unit.sellable_area %}
+                {% if unit.gross_area %}
                     <div class="input-group">
                         <label for="net_area">Gross Area</label>
-                        <input type="text" name="net_area" id="net_area" readonly value="{{ unit.sellable_area }}" style="background-color: transparent; border: none; color: #000; font-weight: bold;text-align: left;" class="uniform-input">
+                        <input type="text" name="net_area" id="net_area" readonly value="{{ unit.gross_area }}" style="background-color: transparent; border: none; color: #000; font-weight: bold;text-align: left;" class="uniform-input">
                     </div>
                 {% endif %}
 
@@ -1908,7 +1910,7 @@
                     </div>
 
                 {% with user_groups=request.user.groups.all|join:"," %}
-                    {% if "Client" not in user_groups and "FinanceManager" not in user_groups %}
+                    {% if "Sales" not in user_groups and "SalesHead" not in user_groups %}
                         {% if project_web_config.show_standerd_price %}
                             <div class="input-group" id="discount-input-group">
                                 <label for="price_discount">Price Discount</label>
@@ -1985,34 +1987,7 @@
         <div class="button-container">
             
             {% with user_groups=request.user.groups.all|join:"," %}
-                {% if "Client" in user_groups %}         
-                    {% comment %} {% if is_not_native_company  %}
-                        <button type="button" class="submit-button" onclick="openHoldModal()" id="hold-button" style="
-                                                                                                                        display: none;
-                                                                                                                        padding: 11px 26px; 
-                                                                                                                        background-color: rgb(156, 156, 156); 
-                                                                                                                        color: white; 
-                                                                                                                        border: none; 
-                                                                                                                        border-radius: 4px; 
-                                                                                                                        cursor: pointer; 
-                                                                                                                        font-size: 15px; 
-                                                                                                                        height: fit-content; 
-                                                                                                                        margin-top: auto;
-                                                                                                                        transition: all 0.3s ease; 
-                                                                                                                        display: none;
-                                                                                                                        margin-right: 25px;
-                                                                                                                        width: 48%;
-                                                                                                                        "
-                            onmouseover="this.style.backgroundColor='rgb(120, 120, 120)'; this.style.transform='scale(1.05)';"
-
-                        onmouseout="this.style.backgroundColor='rgb(156, 156, 156)'; this.style.transform='scale(1)';">
-
-                    
-
-                            Hold
-                        </button>
-                        
-                    {% endif %} {% endcomment %}
+                {% if "Sales" in user_groups  or "SalesHead" in user_groups%}         
 
 
                         <button type="button" class="submit-button" onclick="openHoldModal()" id="hold-button" style="

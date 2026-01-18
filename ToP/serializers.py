@@ -19,7 +19,7 @@ class UnitSerializer(serializers.ModelSerializer):
             "development_delivery_date",
             "num_bedrooms",
             "finishing_specs",
-            "sellable_area",
+            "gross_area",
             "garden_area",
             "penthouse_area",
             "uncovered_terraces",
@@ -78,7 +78,7 @@ class UnitSerializer(serializers.ModelSerializer):
         model = Unit
         fields = [
             'unit_code', 'city', 'project_name', 'unit_type', 'area_range',
-            'adj_status', 'sellable_area', 'psm', 'sales_value',
+            'adj_status', 'gross_area', 'psm', 'sales_value',
             'status', 'company_name'
         ]
 

@@ -36,8 +36,8 @@
 
     .tabulator .tabulator-footer .tabulator-paginator {
         position: sticky !important;
-        left: 10px !important; /* Distance from the left edge of the screen */
-        background-color: inherit; /* Matches footer color */
+        left: 10px !important;
+        background-color: inherit;
         padding: 2px 10px;
         border-radius: 4px;
         display: inline-flex !important;
@@ -45,7 +45,6 @@
         z-index: 10;
     }
 
-    /* Optional: Ensure page size selector and buttons look clean on mobile */
     @media (max-width: 768px) {
         .tabulator .tabulator-footer .tabulator-page-size {
             margin-right: 10px;
@@ -56,6 +55,9 @@
     {% for group in request.user.groups.all %}
         {% if group.name == 'Manager'%}
             #unitsTable { min-width: 1489px; margin-top: 6%; margin-left: 0%; }
+            @media (max-width: 1024px) { #unitsTable { margin-top: 10%; width: 100%; margin-left: 0%; overflow-x: auto; } .buttons { margin-left: 25%; } .column-controls { top: 120px; right: 10px; width: 220px; } .toggle-columns-btn { top: 120px; right: 10px; } .filter-controls { top: 120px; left: 10px; width: 250px; } .toggle-filters-btn { top: 120px; left: 10px; } }
+        {% elif group.name == 'SalesOperation' %}
+            #unitsTable { min-width: 1489px; margin-top: 6%; margin-left: 0%;}
             @media (max-width: 1024px) { #unitsTable { margin-top: 10%; width: 100%; margin-left: 0%; overflow-x: auto; } .buttons { margin-left: 25%; } .column-controls { top: 120px; right: 10px; width: 220px; } .toggle-columns-btn { top: 120px; right: 10px; } .filter-controls { top: 120px; left: 10px; width: 250px; } .toggle-filters-btn { top: 120px; left: 10px; } }
         {% else %}
             #unitsTable { min-width: 1489px; margin-top: 6%; margin-left: -8%; }
@@ -100,11 +102,14 @@
     <button id="exportExcelBtn" class="submit-button" style="background-color: #26bc35ff;">
         <i class="fas fa-file-excel"></i> Excel
     </button>
-    {% if "Controller" not in user_groups and "Manager" not in user_groups %}
-    <a href="{% url 'upload_csv' %}" class="submit-button" style="background-color: #007bff;; color: white; padding: 10px 16px; border: none; border-radius: 4px; text-decoration: none; display: inline-block; margin-left: 10px;">
-        <i class="fas fa-upload"></i> Upload
-    </a>
+
+    {# Upload hidden for Controller, Manager, SalesOperation #}
+    {% if "Controller" not in user_groups and "Manager" not in user_groups and "SalesOperation" not in user_groups and "Uploader" not in user_groups %}
+        <a href="{% url 'upload_csv' %}" class="submit-button" style="background-color: #007bff;; color: white; padding: 10px 16px; border: none; border-radius: 4px; text-decoration: none; display: inline-block; margin-left: 10px;">
+            <i class="fas fa-upload"></i> Upload
+        </a>
     {% endif %}
+
     <button id="toggleColumnsBtn" class="toggle-columns-btn" title="Show/Hide Columns"><i class="fas fa-columns"></i></button>
     <button id="toggleFiltersBtn" class="toggle-filters-btn" title="Show/Hide Filters"><i class="fas fa-filter"></i></button>
 </div>
@@ -135,22 +140,57 @@
 <script>
     let allUnits = [], filteredUnits = [], table, columnVisibility = {}, allColumns = [], activeFilters = {}, filterTimeout;
 
-    const isController = {% if "Controller" in user_groups %}true{% else %}false{% endif %};
+    const isController = {% if "Controller" in user_groups and "SalesOperation" not in user_groups %}true{% else %}false{% endif %};
     const isManager = {% if "Manager" in user_groups %}true{% else %}false{% endif %};
-    const hideCompany = isController || isManager;
-    
+    const isSalesOperation = {% if "SalesOperation" in user_groups %}true{% else %}false{% endif %};
+    const isUploader = {% if "Uploader" in user_groups %}true{% else %}false{% endif %};
+
+
+    // Editable fields for SalesOperation come from backend context:
+    // Make sure your view passes: editable_fields (list)
+    const editableFields = isSalesOperation ? ({{ editable_fields|default:"[]"|safe }}) : [];
+    const canEditField = (field) => !isSalesOperation || (Array.isArray(editableFields) && editableFields.includes(field));
+
+    // Hide company column for Controller/Manager/SalesOperation (usually company-scoped)
+    const hideCompany = isController || isManager || isSalesOperation || isUploader;
+
+    console.log("user_groups string:", "{{ user_groups }}");
+    console.log("flags:", { isController, isManager, isSalesOperation });
+    console.log("editableFields raw:", editableFields, "type:", typeof editableFields, "isArray:", Array.isArray(editableFields));
+    console.log("canEdit(status):", canEditField("status"));
+
+    // Base editors (then we will strip editors for SalesOperation fields not allowed)
     const rowEditor = isController ? null : "input";
     const numEditor = isController ? null : "number";
     const areaEditor = isController ? null : "textarea";
 
+    // --- NEW: Status Options ---
+    const statusOptions = [
+        "Available", 
+        "Blocked Development", 
+        "Blocked Sales", 
+        "Contracted", 
+        "Hold", 
+        "Partner", 
+        "Reserved"
+    ];
+
     document.addEventListener("DOMContentLoaded", function () {
         document.querySelectorAll("input").forEach(input => input.setAttribute("autocomplete", "off"));
         initializeTable();
+
         document.addEventListener('click', function(event) {
-            const cc = document.getElementById('columnControls'), fc = document.getElementById('filterControls');
-            const tb = document.getElementById('toggleColumnsBtn'), fb = document.getElementById('toggleFiltersBtn');
-            if (cc.style.display === 'block' && !cc.contains(event.target) && !tb.contains(event.target)) { cc.style.display = 'none'; tb.classList.remove('active'); }
-            if (fc.style.display === 'block' && !fc.contains(event.target) && !fb.contains(event.target)) { fc.style.display = 'none'; fb.classList.remove('active'); }
+            const cc = document.getElementById('columnControls'),
+                  fc = document.getElementById('filterControls');
+            const tb = document.getElementById('toggleColumnsBtn'),
+                  fb = document.getElementById('toggleFiltersBtn');
+
+            if (cc.style.display === 'block' && !cc.contains(event.target) && !tb.contains(event.target)) {
+                cc.style.display = 'none'; tb.classList.remove('active');
+            }
+            if (fc.style.display === 'block' && !fc.contains(event.target) && !fb.contains(event.target)) {
+                fc.style.display = 'none'; fb.classList.remove('active');
+            }
         });
     });
 
@@ -160,22 +200,38 @@
             .then(data => {
                 allUnits = data;
                 filteredUnits = [...allUnits];
-                
-                const rawColumns = [
+
+                let rawColumns = [
                     { title: "Company", field: "company", headerFilter: "input" },
+
                     { title: "Project", field: "project", headerFilter: "input", editor: rowEditor },
                     { title: "City", field: "city", headerFilter: "input", editor: rowEditor },
                     { title: "Building Number", field: "building_number", editor: rowEditor, headerFilter: "input" },
                     { title: "Unit Type", field: "unit_type", editor: rowEditor, headerFilter: "input" },
                     { title: "Unit Code", field: "unit_code", headerFilter: "input", editor: rowEditor },
                     { title: "Sales Phasing", field: "sales_phasing", editor: rowEditor, headerFilter: "input" },
-                    { title: "Status", field: "status", editor: rowEditor, headerFilter: "input" },
+                    
+                    // --- CHANGED: Status Dropdown ---
+                    { 
+                        title: "Status", 
+                        field: "status", 
+                        editor: isController ? null : "list", 
+                        editorParams: {
+                            values: statusOptions,
+                            autocomplete: true,
+                            listOnEmpty: true,
+                            clearable: false
+                        },
+                        headerFilter: "input" 
+                    },
+
                     { title: "Interest Free Unit Price", field: "interest_free_unit_price", editor: numEditor, headerFilter: "number", formatter: "money" },
-                    { title: "Sellable Area", field: "sellable_area", editor: numEditor, headerFilter: "number" },
+                    { title: "Sellable Area", field: "gross_area", editor: numEditor, headerFilter: "number" },
                     { title: "Development Delivery Date", field: "development_delivery_date", editor: rowEditor, headerFilter: "input" },
                     { title: "Sales Value", field: "sales_value", editor: numEditor, headerFilter: "number", formatter: "money" },
                     { title: "Reservation Date", field: "reservation_date", editor: rowEditor, headerFilter: "input" },
                     { title: "Total Premium %", field: "total_premium_percent", editor: numEditor, headerFilter: "number" },
+
                     { title: "Construction Phasing", field: "construction_phasing", editor: rowEditor, headerFilter: "input" },
                     { title: "Handover Phasing", field: "handover_phasing", editor: rowEditor, headerFilter: "input" },
                     { title: "Phasing", field: "phasing", editor: areaEditor, headerFilter: "input" },
@@ -190,6 +246,7 @@
                     { title: "SAP Code", field: "sap_code", editor: rowEditor, headerFilter: "input" },
                     { title: "Bathrooms", field: "num_bathrooms", editor: numEditor, headerFilter: "number" },
                     { title: "Parking Slots", field: "num_parking_slots", editor: numEditor, headerFilter: "number" },
+
                     { title: "Footprint", field: "footprint", editor: numEditor, headerFilter: "number" },
                     { title: "Net Area", field: "net_area", editor: numEditor, headerFilter: "number" },
                     { title: "Internal Area", field: "internal_area", editor: numEditor, headerFilter: "number" },
@@ -201,10 +258,12 @@
                     { title: "Common Area", field: "common_area", editor: numEditor, headerFilter: "number" },
                     { title: "Roof Pergola Area", field: "roof_pergola_area", editor: numEditor, headerFilter: "number" },
                     { title: "Roof Terraces Area", field: "roof_terraces_area", editor: numEditor, headerFilter: "number" },
+
                     { title: "BUA", field: "bua", editor: numEditor, headerFilter: "number" },
                     { title: "Land Area", field: "land_area", editor: numEditor, headerFilter: "number" },
                     { title: "Garden Area", field: "garden_area", editor: numEditor, headerFilter: "number" },
                     { title: "Total Area", field: "total_area", editor: numEditor, headerFilter: "number" },
+
                     { title: "Net Area PSM", field: "net_area_psm", editor: numEditor, headerFilter: "number" },
                     { title: "Covered Terraces PSM", field: "covered_terraces_psm", editor: numEditor, headerFilter: "number" },
                     { title: "Uncovered Terraces PSM", field: "uncovered_terraces_psm", editor: numEditor, headerFilter: "number" },
@@ -217,18 +276,22 @@
                     { title: "Land PSM", field: "land_psm", editor: numEditor, headerFilter: "number" },
                     { title: "Garden PSM", field: "garden_psm", editor: numEditor, headerFilter: "number" },
                     { title: "Base PSM", field: "base_psm", editor: numEditor, headerFilter: "number" },
+
                     { title: "Base Price", field: "base_price", editor: numEditor, headerFilter: "number", formatter: "money" },
                     { title: "Cash Price", field: "cash_price", editor: numEditor, headerFilter: "number", formatter: "money" },
                     { title: "Final Price", field: "final_price", editor: numEditor, headerFilter: "number", formatter: "money" },
                     { title: "Discount", field: "discount", editor: numEditor, headerFilter: "number" },
+
                     { title: "Maintenance %", field: "maintenance_percent", editor: numEditor, headerFilter: "number" },
                     { title: "Maintenance Value", field: "maintenance_value", editor: numEditor, headerFilter: "number" },
                     { title: "Gas", field: "gas", editor: numEditor, headerFilter: "number" },
                     { title: "Parking Price", field: "parking_price", editor: numEditor, headerFilter: "number" },
                     { title: "PSM", field: "psm", editor: numEditor, headerFilter: "number" },
                     { title: "Total Premium Value", field: "total_premium_value", editor: numEditor, headerFilter: "number" },
+
                     { title: "Special Premiums", field: "special_premiums", editor: areaEditor, headerFilter: "input" },
                     { title: "Special Discounts", field: "special_discounts", editor: areaEditor, headerFilter: "input" },
+
                     { title: "Main View", field: "main_view", editor: rowEditor, headerFilter: "input" },
                     { title: "Secondary Views", field: "secondary_views", editor: rowEditor, headerFilter: "input" },
                     { title: "Levels", field: "levels", editor: rowEditor, headerFilter: "input" },
@@ -236,6 +299,7 @@
                     { title: "Corners", field: "corners", editor: rowEditor, headerFilter: "input" },
                     { title: "Accessibility", field: "accessibility", editor: rowEditor, headerFilter: "input" },
                     { title: "Finishing Specs", field: "finishing_specs", editor: rowEditor, headerFilter: "input" },
+
                     { title: "Interest Free PSM", field: "interest_free_psm", editor: numEditor, headerFilter: "number" },
                     { title: "Interest Free Years", field: "interest_free_years", editor: numEditor, headerFilter: "number" },
                     { title: "Down Payment %", field: "down_payment_percent", editor: numEditor, headerFilter: "number" },
@@ -244,44 +308,62 @@
                     { title: "Contract Payment", field: "contract_payment", editor: numEditor, headerFilter: "number" },
                     { title: "Delivery %", field: "delivery_percent", editor: numEditor, headerFilter: "number" },
                     { title: "Delivery Payment", field: "delivery_payment", editor: numEditor, headerFilter: "number" },
+
                     { title: "Club", field: "club", editor: rowEditor, headerFilter: "input" },
                     { title: "Blocking Reason", field: "blocking_reason", editor: rowEditor, headerFilter: "input" },
                     { title: "Release Date", field: "release_date", editor: rowEditor, headerFilter: "input" },
                     { title: "Blocking Date", field: "blocking_date", editor: rowEditor, headerFilter: "input" },
+
                     { title: "Contract Payment Plan", field: "contract_payment_plan", editor: rowEditor, headerFilter: "input" },
                     { title: "Contract Value", field: "contract_value", editor: numEditor, headerFilter: "number", formatter: "money" },
                     { title: "Collected Amount", field: "collected_amount", editor: numEditor, headerFilter: "number", formatter: "money" },
                     { title: "Collected %", field: "collected_percent", editor: numEditor, headerFilter: "number" },
+
                     { title: "Contract Delivery Date", field: "contract_delivery_date", editor: rowEditor, headerFilter: "input" },
                     { title: "Grace Period Months", field: "grace_period_months", editor: numEditor, headerFilter: "number" },
                     { title: "Construction Delivery Date", field: "construction_delivery_date", editor: rowEditor, headerFilter: "input" },
                     { title: "Client Handover Date", field: "client_handover_date", editor: rowEditor, headerFilter: "input" },
+
                     { title: "Delivery Date", field: "delivery_date", editor: rowEditor, headerFilter: "input" },
                     { title: "Creation Date", field: "creation_date", editor: rowEditor, headerFilter: "input" },
                     { title: "Contract Date", field: "contract_date", editor: rowEditor, headerFilter: "input" },
+
                     { title: "Contractor Type", field: "contractor_type", editor: rowEditor, headerFilter: "input" },
                     { title: "Contractor", field: "contractor", editor: rowEditor, headerFilter: "input" },
                     { title: "Customer", field: "customer", editor: rowEditor, headerFilter: "input" },
                     { title: "Broker", field: "broker", editor: rowEditor, headerFilter: "input" },
                     { title: "Bulks", field: "bulks", editor: rowEditor, headerFilter: "input" },
                     { title: "Direct/Indirect Sales", field: "direct_indirect_sales", editor: rowEditor, headerFilter: "input" },
+
                     { title: "Area Range", field: "area_range", editor: rowEditor, headerFilter: "input" },
                     { title: "Release Year", field: "release_year", editor: numEditor, headerFilter: "number" },
                     { title: "Sales Year", field: "sales_year", editor: numEditor, headerFilter: "number" },
-                    { title: "Adj Status 2", field: "adj_status", editor: rowEditor, headerFilter: "input" },
-                    { title: "Adj Contract Payment Plan", field: "contract_payment_plan", editor: rowEditor, headerFilter: "input" },
+                    { title: "Adj Status", field: "adj_status", editor: rowEditor, headerFilter: "input" },
                     { title: "AMS", field: "ams", editor: rowEditor, headerFilter: "input" },
                 ];
 
+                // SalesOperation restriction: strip any editor for fields not in editableFields.
+                console.log("status col BEFORE restriction:", rawColumns.find(c => c.field === "status"));
+
+                if (isSalesOperation && Array.isArray(editableFields)) {
+                rawColumns = rawColumns.map(col => {
+                    if (!col || !col.field || !("editor" in col) || !col.editor) return col;
+                    if (!canEditField(col.field)) return { ...col, editor: null };
+                    return col;
+                });
+                }
+
+                console.log("status col AFTER restriction:", rawColumns.find(c => c.field === "status"));
+
+
                 allColumns = hideCompany ? rawColumns.filter(c => c.field !== "company") : rawColumns;
                 allColumns.forEach((col, idx) => columnVisibility[col.field] = idx < 12);
-                
-                // 🚨 FIXED TYPO HERE
+
                 const visibleColumns = allColumns.filter(c => columnVisibility[c.field]);
 
                 table = new Tabulator("#unitsTable", {
                     data: filteredUnits,
-                    layout: "fitDataFill", 
+                    layout: "fitDataFill",
                     downloadDataFormatter: (data) => {
                         data.forEach(row => {
                             Object.keys(row).forEach(key => {
@@ -301,18 +383,45 @@
                     renderComplete: function(){ table.redraw(true); }
                 });
 
+                table.on("cellClick", function(e, cell){
+                    const def = cell.getColumn().getDefinition();
+                    console.log("cellClick:", cell.getField(), "value:", cell.getValue(), "editor:", def.editor);
+                });
+
+                table.on("cellEditing", function(cell){
+                    console.log("cellEditing:", cell.getField());
+                });
+
+                table.on("cellEditCancelled", function(cell){
+                    console.log("cellEditCancelled:", cell.getField());
+                });
+
+
                 populateColumnControls(allColumns);
                 populateFilterControls(allColumns, allUnits);
 
                 table.on("cellEdited", function(cell) {
+                    // Controller: no edits at all
                     if (isController) { cell.restoreOldValue(); return; }
+
+                    // SalesOperation: block edits if field not allowed (extra UX guard; backend also enforces)
+                    if (isSalesOperation && !canEditField(cell.getField())) {
+                        cell.restoreOldValue();
+                        return;
+                    }
+
                     const updatedData = cell.getRow().getData();
                     fetch("{% url 'update_unit' %}", {
                         method: "POST",
                         headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
-                        body: JSON.stringify({ unit_code: updatedData.unit_code, field: cell.getField(), value: cell.getValue() })
+                        body: JSON.stringify({
+                            unit_code: updatedData.unit_code,
+                            field: cell.getField(),
+                            value: cell.getValue()
+                        })
                     })
-                    .then(r => r.json()).then(d => { if (!d.success) cell.restoreOldValue(); })
+                    .then(r => r.json())
+                    .then(d => { if (!d.success) cell.restoreOldValue(); })
                     .catch(() => cell.restoreOldValue());
                 });
             });
@@ -337,9 +446,12 @@
             const item = document.createElement("div"); item.className = "filter-item";
             const lbl = document.createElement("label"); lbl.textContent = c.title;
             const select = document.createElement("select"); select.id = `filter-${c.field}`; select.className = "filter-select"; select.multiple = true;
+
             const vals = [...new Set(data.map(i => i[c.field]))].filter(v => v !== null && v !== undefined && v !== '');
             vals.sort().forEach(v => { const opt = new Option(v, v); select.add(opt); });
+
             item.appendChild(lbl); item.appendChild(select); list.appendChild(item);
+
             $(select).select2({ placeholder: `Select ${c.title}`, allowClear: true, width: '100%' });
             $(select).on('change', () => { clearTimeout(filterTimeout); filterTimeout = setTimeout(() => applyFilters(), 300); });
         });
@@ -353,7 +465,7 @@
         } else {
             table.setColumns(vis);
         }
-        table.redraw(true); 
+        table.redraw(true);
     }
 
     function applyFilters() {
@@ -362,8 +474,13 @@
             const f = s.id.replace('filter-', ''), v = $(s).val();
             if (v && v.length > 0) activeFilters[f] = v;
         });
+
         updateFilterDropdownOptions();
-        filteredUnits = Object.keys(activeFilters).length === 0 ? [...allUnits] : allUnits.filter(u => Object.keys(activeFilters).every(f => activeFilters[f].map(String).includes(String(u[f]))));
+
+        filteredUnits = Object.keys(activeFilters).length === 0
+            ? [...allUnits]
+            : allUnits.filter(u => Object.keys(activeFilters).every(f => activeFilters[f].map(String).includes(String(u[f]))));
+
         table.setData(filteredUnits);
     }
 
@@ -371,8 +488,10 @@
         document.querySelectorAll('.filter-select').forEach(s => {
             const field = s.id.replace('filter-', ''), current = $(s).val() || [];
             const cf = { ...activeFilters }; delete cf[field];
+
             const rows = allUnits.filter(u => Object.keys(cf).every(k => cf[k].map(String).includes(String(u[k]))));
             const av = new Set(rows.map(u => u[field]).filter(v => v !== null && v !== undefined && v !== ''));
+
             const $s = $(s); $s.empty();
             Array.from(av).sort().forEach(v => $s.append(new Option(v, v, current.includes(String(v)), current.includes(String(v)))));
             $s.trigger('change.select2');
@@ -383,34 +502,61 @@
         const inp = document.getElementById('columnSearch');
         if (inp) inp.addEventListener('input', () => {
             const term = inp.value.toLowerCase();
-            document.querySelectorAll('.column-item').forEach(i => i.style.display = i.querySelector('label').textContent.toLowerCase().includes(term) ? 'flex' : 'none');
+            document.querySelectorAll('.column-item').forEach(i => {
+                i.style.display = i.querySelector('label').textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+            });
         });
     }
 
-    function clearFilters() { document.querySelectorAll('.filter-select').forEach(s => $(s).val(null).trigger('change')); activeFilters = {}; }
+    function clearFilters() {
+        document.querySelectorAll('.filter-select').forEach(s => $(s).val(null).trigger('change'));
+        activeFilters = {};
+    }
 
-    document.getElementById("toggleColumnsBtn").addEventListener("click", e => { e.stopPropagation(); const c = document.getElementById("columnControls"); c.style.display = c.style.display === "block" ? "none" : "block"; document.getElementById("toggleColumnsBtn").classList.toggle('active'); });
-    document.getElementById("toggleFiltersBtn").addEventListener("click", e => { e.stopPropagation(); const c = document.getElementById("filterControls"); c.style.display = c.style.display === "block" ? "none" : "block"; document.getElementById("toggleFiltersBtn").classList.toggle('active'); });
-    document.getElementById("selectAllColumns").addEventListener("click", () => { Object.keys(columnVisibility).forEach(f => columnVisibility[f] = true); applyColumnVisibility(); });
-    document.getElementById("deselectAllColumns").addEventListener("click", () => { Object.keys(columnVisibility).forEach(f => columnVisibility[f] = false); applyColumnVisibility(); });
+    document.getElementById("toggleColumnsBtn").addEventListener("click", e => {
+        e.stopPropagation();
+        const c = document.getElementById("columnControls");
+        c.style.display = c.style.display === "block" ? "none" : "block";
+        document.getElementById("toggleColumnsBtn").classList.toggle('active');
+    });
+
+    document.getElementById("toggleFiltersBtn").addEventListener("click", e => {
+        e.stopPropagation();
+        const c = document.getElementById("filterControls");
+        c.style.display = c.style.display === "block" ? "none" : "block";
+        document.getElementById("toggleFiltersBtn").classList.toggle('active');
+    });
+
+    document.getElementById("selectAllColumns").addEventListener("click", () => {
+        Object.keys(columnVisibility).forEach(f => columnVisibility[f] = true);
+        applyColumnVisibility();
+    });
+
+    document.getElementById("deselectAllColumns").addEventListener("click", () => {
+        Object.keys(columnVisibility).forEach(f => columnVisibility[f] = false);
+        applyColumnVisibility();
+    });
+
     document.getElementById("clearFilters").addEventListener("click", clearFilters);
 
     function getCookie(n) {
-        let v = null; if (document.cookie && document.cookie !== "") {
+        let v = null;
+        if (document.cookie && document.cookie !== "") {
             const cs = document.cookie.split(";");
-            for (let i = 0; i < cs.length; i++) { const c = cs[i].trim(); if (c.substring(0, n.length + 1) === (n + "=")) { v = decodeURIComponent(c.substring(n.length + 1)); break; } }
-        } return v;
+            for (let i = 0; i < cs.length; i++) {
+                const c = cs[i].trim();
+                if (c.substring(0, n.length + 1) === (n + "=")) {
+                    v = decodeURIComponent(c.substring(n.length + 1));
+                    break;
+                }
+            }
+        }
+        return v;
     }
 
     document.getElementById("exportExcelBtn").addEventListener("click", () => {
         if (!table) return;
-        const data = table.getData(), exportData = [];
-        let curComp = null, curProj = null;
-        data.forEach(r => {
-            if (r.company !== curComp) { curComp = r.company; curProj = null; }
-            if (r.project !== curProj) { curProj = r.project; const h = {}; allColumns.forEach(c => h[c.field] = c.title); h.__rowType = 'column_header'; exportData.push(h); }
-            exportData.push({ ...r, __rowType: 'data' });
-        });
+        // keeping your existing download call:
         table.download("xlsx", "units_data.xlsx", { sheetName: "Units Data" });
     });
 </script>

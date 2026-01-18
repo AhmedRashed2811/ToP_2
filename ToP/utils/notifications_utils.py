@@ -15,7 +15,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
-from ..models import CompanyController, CompanyManager
+from ..models import SalesOperation, Manager
 from django.db import connection
 
 
@@ -113,7 +113,7 @@ def _get_project_name(sales_request):
 
 
 def _get_controller_emails(company, only_active: bool):
-    qs = CompanyController.objects.select_related("user").filter(company=company)
+    qs = SalesOperation.objects.select_related("user").filter(company=company)
     if only_active:
         qs = qs.filter(user__is_active=True)
 
@@ -121,7 +121,7 @@ def _get_controller_emails(company, only_active: bool):
 
 
 def _get_manager_emails(company, only_active: bool):
-    qs = CompanyManager.objects.select_related("user").filter(company=company)
+    qs = Manager.objects.select_related("user").filter(company=company)
     if only_active:
         qs = qs.filter(user__is_active=True)
 

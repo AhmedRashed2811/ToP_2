@@ -13,7 +13,7 @@ def get_unit_details(sales_request):
     if sales_request.unit:
         return {
             "bedrooms": getattr(sales_request.unit, "num_bedrooms", "N/A"),
-            "area": getattr(sales_request.unit, "sellable_area", "N/A"),
+            "area": getattr(sales_request.unit, "gross_area", "N/A"),
             "finishing": getattr(sales_request.unit, "finishing_specs", "N/A"),
             "garden_area": getattr(sales_request.unit, "garden_area", "N/A"),
             "delivery_date": getattr(sales_request.unit, "development_delivery_date", "N/A"),
