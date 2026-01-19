@@ -303,10 +303,6 @@ def create_hold_request_pdf(company, sales_request, unit_code, project_name, cli
         story.append(Paragraph("Payment Schedule", heading_style))
 
         if cached_data:
-            if DEBUG_VERBOSE_PDF:
-                print("\n" * 3)
-                print(f"cached_data from pdf builder = {cached_data}")
-                print("\n" * 3)
 
             payments = cached_data.get("payments") or []
             amounts = cached_data.get("amount") or []

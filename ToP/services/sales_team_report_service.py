@@ -196,7 +196,7 @@ class SalesTeamReportService:
                     "fake_requests": int(a.get("fake", 0) or 0),
                     "last_request": last_dt.isoformat() if last_dt else None,
                     "sum_base_price": float(a.get("sum_base") or 0),
-                    "sum_final_price": float(a.get("sum_final") or 0),
+                    "approved_sum_final_price": float(a.get("sum_final") or 0),
                 }
 
             heads_rows = [row_for(h.user) for h in head_profiles]

@@ -282,10 +282,10 @@
         <th>Active</th>
         <th>Type</th>
         
-        <th class="desktop-hidden">ERP URL</th>
-        <th class="desktop-hidden">ERP URL Key</th>
-        <th class="desktop-hidden">ERP Units URL</th>
-        <th class="desktop-hidden">ERP Units URL Key</th>
+        <th class="desktop-hidden">ERP Unit\s URL</th>
+        <th class="desktop-hidden">ERP Unit\s URL Key</th>
+        <th class="desktop-hidden">Approve Request URL</th>
+        <th class="desktop-hidden">Approve Request URL Key</th>
         <th class="desktop-hidden">ERP Hold Unit URL</th>
         <th class="desktop-hidden">ERP Hold Unit URL Key</th>
         <th class="desktop-hidden">ERP Leads URL</th>
@@ -347,23 +347,23 @@
             </div>
         </td>
 
-        <td data-label="ERP URL" class="erp-col desktop-hidden">
+        <td data-label="ERP Unit\s URL" class="erp-col desktop-hidden">
           <input type="text" data-field="erp_url" value="{{ company.erp_url|default_if_none:'' }}" placeholder="https://..." {% if is_team_member %}disabled{% endif %}>
         </td>
-        <td data-label="ERP Key" class="erp-col desktop-hidden">
+        <td data-label="ERP Unit\s Key" class="erp-col desktop-hidden">
           <input type="text" data-field="erp_url_key" value="{{ company.erp_url_key|default_if_none:'' }}" placeholder="Key" {% if is_team_member %}disabled{% endif %}>
         </td>
-        <td data-label="Units URL" class="erp-col desktop-hidden">
-          <input type="text" data-field="erp_url_units" value="{{ company.erp_url_units|default_if_none:'' }}" placeholder="https://..." {% if is_team_member %}disabled{% endif %}>
+        <td data-label="Approve Request URL" class="erp-col desktop-hidden">
+          <input type="text" data-field="erp_approve_url" value="{{ company.erp_approve_url|default_if_none:'' }}" placeholder="https://..." {% if is_team_member %}disabled{% endif %}>
         </td>
-        <td data-label="Units Key" class="erp-col desktop-hidden">
-          <input type="text" data-field="erp_url_units_key" value="{{ company.erp_url_units_key|default_if_none:'' }}" placeholder="Key" {% if is_team_member %}disabled{% endif %}>
+        <td data-label="Approve Request URL Key" class="erp-col desktop-hidden">
+          <input type="text" data-field="erp_approve_url_key" value="{{ company.erp_approve_url_key|default_if_none:'' }}" placeholder="Key" {% if is_team_member %}disabled{% endif %}>
         </td>
         <td data-label="Hold URL" class="erp-col desktop-hidden">
-          <input type="text" data-field="erp_url_unit" value="{{ company.erp_url_unit|default_if_none:'' }}" placeholder="https://..." {% if is_team_member %}disabled{% endif %}>
+          <input type="text" data-field="erp_hold_url" value="{{ company.erp_hold_url|default_if_none:'' }}" placeholder="https://..." {% if is_team_member %}disabled{% endif %}>
         </td>
         <td data-label="Hold Key" class="erp-col desktop-hidden">
-          <input type="text" data-field="erp_url_unit_key" value="{{ company.erp_url_unit_key|default_if_none:'' }}" placeholder="Key" {% if is_team_member %}disabled{% endif %}>
+          <input type="text" data-field="erp_hold_url_key" value="{{ company.erp_hold_url_key|default_if_none:'' }}" placeholder="Key" {% if is_team_member %}disabled{% endif %}>
         </td>
         <td data-label="Leads URL" class="erp-col desktop-hidden">
           <input type="text" data-field="erp_url_leads" value="{{ company.erp_url_leads|default_if_none:'' }}" placeholder="https://..." {% if is_team_member %}disabled{% endif %}>
@@ -401,10 +401,10 @@
 
             <input type="hidden" name="erp_url" id="hidden-erp_url-{{ company.id }}" value="{{ company.erp_url|default_if_none:'' }}">
             <input type="hidden" name="erp_url_key" id="hidden-erp_url_key-{{ company.id }}" value="{{ company.erp_url_key|default_if_none:'' }}">
-            <input type="hidden" name="erp_url_units" id="hidden-erp_url_units-{{ company.id }}" value="{{ company.erp_url_units|default_if_none:'' }}">
-            <input type="hidden" name="erp_url_units_key" id="hidden-erp_url_units_key-{{ company.id }}" value="{{ company.erp_url_units_key|default_if_none:'' }}">
-            <input type="hidden" name="erp_url_unit" id="hidden-erp_url_unit-{{ company.id }}" value="{{ company.erp_url_unit|default_if_none:'' }}">
-            <input type="hidden" name="erp_url_unit_key" id="hidden-erp_url_unit_key-{{ company.id }}" value="{{ company.erp_url_unit_key|default_if_none:'' }}">
+            <input type="hidden" name="erp_approve_url" id="hidden-erp_approve_url-{{ company.id }}" value="{{ company.erp_approve_url|default_if_none:'' }}">
+            <input type="hidden" name="erp_approve_url_key" id="hidden-erp_approve_url_key-{{ company.id }}" value="{{ company.erp_approve_url_key|default_if_none:'' }}">
+            <input type="hidden" name="erp_hold_url" id="hidden-erp_hold_url-{{ company.id }}" value="{{ company.erp_hold_url|default_if_none:'' }}">
+            <input type="hidden" name="erp_hold_url_key" id="hidden-erp_hold_url_key-{{ company.id }}" value="{{ company.erp_hold_url_key|default_if_none:'' }}">
             <input type="hidden" name="erp_url_leads" id="hidden-erp_url_leads-{{ company.id }}" value="{{ company.erp_url_leads|default_if_none:'' }}">
             <input type="hidden" name="erp_url_leads_key" id="hidden-erp_url_leads_key-{{ company.id }}" value="{{ company.erp_url_leads_key|default_if_none:'' }}">
 
@@ -500,16 +500,16 @@
 
                 <div class="tab-pane fade" id="erp-{{ company.id }}" role="tabpanel">
                     <div class="row">
-                        <div class="col-6"><label class="form-label">Main URL</label><input type="text" class="form-control modal-input" data-field="erp_url" value="{{ company.erp_url|default_if_none:'' }}"></div>
-                        <div class="col-6"><label class="form-label">Main Key</label><input type="text" class="form-control modal-input" data-field="erp_url_key" value="{{ company.erp_url_key|default_if_none:'' }}"></div>
+                        <div class="col-6"><label class="form-label">ERP Unit\s URL</label><input type="text" class="form-control modal-input" data-field="erp_url" value="{{ company.erp_url|default_if_none:'' }}"></div>
+                        <div class="col-6"><label class="form-label">ERP Unit\s  Key</label><input type="text" class="form-control modal-input" data-field="erp_url_key" value="{{ company.erp_url_key|default_if_none:'' }}"></div>
                     </div>
                     <div class="row">
-                        <div class="col-6"><label class="form-label">Units URL</label><input type="text" class="form-control modal-input" data-field="erp_url_units" value="{{ company.erp_url_units|default_if_none:'' }}"></div>
-                        <div class="col-6"><label class="form-label">Units Key</label><input type="text" class="form-control modal-input" data-field="erp_url_units_key" value="{{ company.erp_url_units_key|default_if_none:'' }}"></div>
+                        <div class="col-6"><label class="form-label">Approve Reques URL</label><input type="text" class="form-control modal-input" data-field="erp_approve_url" value="{{ company.erp_approve_url|default_if_none:'' }}"></div>
+                        <div class="col-6"><label class="form-label">Units Key</label><input type="text" class="form-control modal-input" data-field="erp_approve_url_key" value="{{ company.erp_approve_url_key|default_if_none:'' }}"></div>
                     </div>
                     <div class="row">
-                        <div class="col-6"><label class="form-label">Hold Unit URL</label><input type="text" class="form-control modal-input" data-field="erp_url_unit" value="{{ company.erp_url_unit|default_if_none:'' }}"></div>
-                        <div class="col-6"><label class="form-label">Hold Unit Key</label><input type="text" class="form-control modal-input" data-field="erp_url_unit_key" value="{{ company.erp_url_unit_key|default_if_none:'' }}"></div>
+                        <div class="col-6"><label class="form-label">Hold Unit URL</label><input type="text" class="form-control modal-input" data-field="erp_hold_url" value="{{ company.erp_hold_url|default_if_none:'' }}"></div>
+                        <div class="col-6"><label class="form-label">Hold Unit Key</label><input type="text" class="form-control modal-input" data-field="erp_hold_url_key" value="{{ company.erp_hold_url_key|default_if_none:'' }}"></div>
                     </div>
                     <div class="row">
                         <div class="col-6"><label class="form-label">Leads URL</label><input type="text" class="form-control modal-input" data-field="erp_url_leads" value="{{ company.erp_url_leads|default_if_none:'' }}"></div>

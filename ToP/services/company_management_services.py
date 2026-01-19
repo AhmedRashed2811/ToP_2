@@ -190,12 +190,12 @@ class CompanyManagementService:
         # 1. ERP Fields
         if data.get("erp_url"):
             company.erp_url = (data.get("erp_url") or "").strip()
-            company.erp_url_units = (data.get("erp_url_units") or "").strip()
-            company.erp_url_unit = (data.get("erp_url_unit") or "").strip()
+            company.erp_hold_url = (data.get("erp_hold_url") or "").strip()
+            company.erp_approve_url = (data.get("erp_approve_url") or "").strip()
             company.erp_url_leads = (data.get("erp_url_leads") or "").strip()
             company.erp_url_key = (data.get("erp_url_key") or "").strip()
-            company.erp_url_units_key = (data.get("erp_url_units_key") or "").strip()
-            company.erp_url_unit_key = (data.get("erp_url_unit_key") or "").strip()
+            company.erp_hold_url_key = (data.get("erp_hold_url_key") or "").strip()
+            company.erp_approve_url_key = (data.get("erp_approve_url_key") or "").strip()
             company.erp_url_leads_key = (data.get("erp_url_leads_key") or "").strip()
 
         # 2. Google Sheet Fields

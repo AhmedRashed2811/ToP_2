@@ -161,11 +161,7 @@ class TopCalculationService:
                 "unit_maintenance_percent"
             ),
             "unit_code": data.get("unit_code"),
-            "annual_min": data.get("project_constraints_annual_min"),
             "currency_rate": data.get("currency_rate"),
-            "first_year_min": data.get(
-                "project_constraints_first_year_min"
-            ),
             "selected_tenor_years": float(
                 data.get("tenor_years")
             ),
@@ -236,15 +232,6 @@ class TopCalculationService:
         if data["delivery_date"]:
             return data["delivery_date"]
 
-        if project_config.variable_delivery_date > 0:
-            contract_date = datetime.strptime(
-                data["contract_date"], "%Y-%m-%d"
-            )
-            delivery_date = contract_date + relativedelta(
-                months=project_config.variable_delivery_date
-            )
-            return delivery_date.strftime("%B %d, %Y")
-
         return None
 
     # =====================================================
@@ -256,9 +243,6 @@ class TopCalculationService:
         tenor_years, max_tenor_years = calculate_max_tenor_years(
             project_config,
             data["selected_tenor_years"],
-            data["base_tenor_years"],
-            data["first_year_min"],
-            data["annual_min"],
         )
 
         tenor_years = float(tenor_years)

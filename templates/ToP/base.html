@@ -279,14 +279,6 @@
                                 <a class="dropdown-item-2" href="{% url 'sales_requests_demo' %}">Approvals</a>
                             </div>
                         </div>
-
-                        <div class="dropdown" style="margin-top: 2%;">
-                            <span class="dropdown-toggle">Approvals</span>
-                            <div class="dropdown-menu">
-                                <a class="dropdown-item-2" href="{% url 'sales_requests_demo' %}">Approvals</a>
-                                <a class="dropdown-item-2" href="{% url 'historical_sales_requests_analysis_page' %}">Approvals History</a>
-                            </div>
-                        </div>
                         
                         <div class="dropdown" style="margin-top: 2%;">
                             <span class="dropdown-toggle">Projects</span>
@@ -313,7 +305,8 @@
                             <div class="dropdown-menu">
                                 <a class="dropdown-item-2" href="{% url 'inventory_model' %}">Inventory Report</a>
                                 <a class="dropdown-item-2" href="{% url 'sales_performance_analysis' %}">Sales Performance Analysis</a>
-                                <a class="dropdown-item-2" href="{% url 'sales_dashboard' %}">Sales Team Report</a>
+                                <a class="dropdown-item-2" href="{% url 'sales_dashboard' %}">Sales Report</a>
+                                <a class="dropdown-item-2" href="{% url 'historical_sales_requests_analysis_page' %}">Approvals History</a>
                                 <a class="dropdown-item-2" href="{% url 'sales_team_report' %}">Sales Team Performance</a>
 
                             </div>
@@ -328,12 +321,12 @@
                             </div>
                         </div>
                         
-                        <div class="dropdown" style="margin-top: 2%;">
+                        {% comment %} <div class="dropdown" style="margin-top: 2%;">
                             <span class="dropdown-toggle">Pricing</span>
                             <div class="dropdown-menu">
                                 <a class="dropdown-item-2" href="{% url 'pricing_model' %}">Pricing Model</a>
                             </div>
-                        </div>
+                        </div> {% endcomment %}
                         
 
                         
@@ -464,7 +457,6 @@
                             <span class="dropdown-toggle">Approvals</span>
                             <div class="dropdown-menu">
                                 <a class="dropdown-item-2" href="{% url 'sales_requests_list' %}">Approvals</a>
-                                <a class="dropdown-item-2" href="{% url 'historical_sales_requests_analysis_page' %}">Approvals History</a>
                             </div>
                         </div>
 
@@ -491,22 +483,13 @@
                         </div>
 
 
-
+                        
                         {% comment %} <div class="dropdown" style="margin-top: 2%;">
-                            <span class="dropdown-toggle">Inventory</span>
-                            <div class="dropdown-menu">
-                                <a class="dropdown-item-2" href="{% url 'units_data' %}">Full Data</a>
-                            </div>
-                        </div>
-                         {% endcomment %}
-                        
-                        
-                        <div class="dropdown" style="margin-top: 2%;">
                             <span class="dropdown-toggle">Market Research</span>
                             <div class="dropdown-menu">
                                 <a class="dropdown-item-2" href="{% url 'market_explorer' %}">Market Explorer</a>
                             </div>
-                        </div>
+                        </div> {% endcomment %}
 
                     {% elif group.name in "Sales" %}
                         <a style="background-color: #bbb5ae;" class="dropdown-item-2" href="{% url 'home' %}">TOP</a>

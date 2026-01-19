@@ -328,9 +328,7 @@
                                          value="{{ project.projectconfiguration.maximum_requests_per_sales|default:'' }}">
                                 </td>
                               </tr>
-                              
-                            <tr><th style="text-align: center;">Hours Until Auto Unblock</th><td><input type="number" id="days-until-unblocking-{{ project.id }}" value="{{ project.projectconfiguration.days_until_unblocking }}"></td></tr>
-                            <tr><th style="text-align: center;">Months of Delivery After Reservation</th><td><input type="number" id="variable-delivery-date-{{ project.id }}" value="{{ project.projectconfiguration.variable_delivery_date }}"></td></tr>
+
                             <tr>
                                 <th style="text-align: center;">Payment Frequency</th>
                                 <td>
@@ -521,12 +519,6 @@
                     {% if project.projectconfiguration.constraints %}
                     <table class="table" style="margin-bottom: 50px;">
                         <tr><th style="text-align: center;">DP Min</th><td><input type="number" id="dp-min-{{ project.id }}" value="{{ project.projectconfiguration.constraints.dp_min|floatmultiply:100|floatformat:2}}"></td></tr>
-                        <tr><th style="text-align: center;">DP+1st Pmt</th><td><input type="number" id="dp-plus-first-{{ project.id }}" value="{{ project.projectconfiguration.constraints.dp_plus_first_pmt|floatmultiply:100|floatformat:2}}"></td></tr>
-                        <tr><th style="text-align: center;">DP+1st+2nd Pmt</th><td><input type="number" id="dp-plus-first-plus-second-{{ project.id }}" value="{{ project.projectconfiguration.constraints.dp_plus_first_plus_second_pmt|floatmultiply:100|floatformat:2}}"></td></tr>
-                        <tr><th style="text-align: center;">DP+1st+2nd+3rd Pmt</th><td><input type="number" id="dp-plus-first-plus-second-plus-third-{{ project.id }}" value="{{ project.projectconfiguration.constraints.dp_plus_first_plus_second_plus_third_pmt|floatmultiply:100|floatformat:2}}"></td></tr>
-                        <tr><th style="text-align: center;">DP+1st+2nd+3rd+4th Pmt</th><td><input type="number" id="dp-plus-first-plus-second-plus-third-plus-forth-{{ project.id }}" value="{{ project.projectconfiguration.constraints.dp_plus_first_plus_second_plus_third_plus_forth_pmt|floatmultiply:100|floatformat:2}}"></td></tr>
-                        <tr><th style="text-align: center;">First Year Min</th><td><input type="number" id="first-year-min-{{ project.id }}" value="{{ project.projectconfiguration.constraints.first_year_min|floatmultiply:100|floatformat:2}}"></td></tr>
-                        <tr><th style="text-align: center;">Annual Min</th><td><input type="number" id="annual-min-{{ project.id }}" value="{{ project.projectconfiguration.constraints.annual_min|floatmultiply:100|floatformat:2}}"></td></tr>
                         <tr><th style="text-align: center;">Max Discount</th><td><input type="number" id="max-discount-{{ project.id }}" value="{{ project.projectconfiguration.constraints.max_discount|floatmultiply:100|floatformat:2}}"></td></tr>
                         <tr><th style="text-align: center;">Max Exception Disc</th><td><input type="number" id="max-exception-discount-{{ project.id }}" value="{{ project.projectconfiguration.constraints.max_exception_discount|floatmultiply:100|floatformat:2}}"></td></tr>
                     </table>
@@ -1130,8 +1122,6 @@
                 base_dp: document.getElementById(`base-dp-${projectId}`)?.value || "",
                 base_tenor_years: document.getElementById(`tenor-${projectId}`)?.value || "",
                 max_tenor_years: document.getElementById(`max-tenor-${projectId}`)?.value || "",
-                days_until_unblocking: document.getElementById(`days-until-unblocking-${projectId}`)?.value || "",
-                variable_delivery_date: document.getElementById(`variable-delivery-date-${projectId}`)?.value || "",
                 payment_frequency: document.getElementById(`payment-frequency-${projectId}`)?.value || "",
                 default_scheme: document.getElementById(`default-scheme-${projectId}`)?.value || "",
                 use_static_base_npv: document.getElementById(`use-static-${projectId}`)?.checked || false,
@@ -1139,12 +1129,6 @@
             },
             constraints: {
                 dp_min: document.getElementById(`dp-min-${projectId}`)?.value || "",
-                dp_plus_first_pmt: document.getElementById(`dp-plus-first-${projectId}`)?.value || "",
-                dp_plus_first_plus_second_pmt: document.getElementById(`dp-plus-first-plus-second-${projectId}`)?.value || "",
-                dp_plus_first_plus_second_plus_third_pmt: document.getElementById(`dp-plus-first-plus-second-plus-third-${projectId}`)?.value || "",
-                dp_plus_first_plus_second_plus_third_plus_forth_pmt: document.getElementById(`dp-plus-first-plus-second-plus-third-plus-forth-${projectId}`)?.value || "",
-                first_year_min: document.getElementById(`first-year-min-${projectId}`)?.value || "",
-                annual_min: document.getElementById(`annual-min-${projectId}`)?.value || "",
                 max_discount: document.getElementById(`max-discount-${projectId}`)?.value || "",
                 max_exception_discount: document.getElementById(`max-exception-discount-${projectId}`)?.value || "",
             },

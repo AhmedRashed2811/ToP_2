@@ -56,13 +56,14 @@ class Company(models.Model):
         return self.name
 
     # ===== ERP fields (only for company_type='erp') =====
-    erp_url = models.CharField(max_length=120, blank=True, null=True)
-    erp_url_units = models.CharField(max_length=120, blank=True, null=True)
-    erp_url_unit = models.CharField(max_length=120, blank=True, null=True)
-    erp_url_leads = models.CharField(max_length=120, blank=True, null=True)
+    erp_url = models.CharField(max_length=120, blank=True, null=True)          # Unit\s
+    erp_hold_url = models.CharField(max_length=120, blank=True, null=True)    
+    erp_approve_url = models.CharField(max_length=120, blank=True, null=True)  # Approve Request
+    erp_url_leads = models.CharField(max_length=120, blank=True, null=True)    # Leads
+    
     erp_url_key = models.CharField(max_length=120, blank=True, null=True)
-    erp_url_units_key = models.CharField(max_length=120, blank=True, null=True)
-    erp_url_unit_key = models.CharField(max_length=120, blank=True, null=True)
+    erp_hold_url_key = models.CharField(max_length=120, blank=True, null=True)
+    erp_approve_url_key = models.CharField(max_length=120, blank=True, null=True)
     erp_url_leads_key = models.CharField(max_length=120, blank=True, null=True)
 
     # ===== Google Sheets fields (only for company_type='google_sheets') =====
@@ -173,25 +174,6 @@ class ProjectExtendedPayments(models.Model):
 
 
 
-class ProjectStanderdPayments(models.Model):
-    project = models.OneToOneField('Project', on_delete=models.CASCADE)
-
-    dp1 = models.FloatField(null=True, blank=True)
-    dp2 = models.FloatField(null=True, blank=True)
-
-    cumulative_dp1 = models.FloatField(null=True, blank=True)
-    cumulative_dp2 = models.FloatField(null=True, blank=True)
-
-    for i in range(1, 49):
-        locals()[f'installment_{i}'] = models.FloatField(null=True, blank=True)
-        locals()[f'cumulative_{i}'] = models.FloatField(null=True, blank=True)
-
-    def __str__(self):
-        return f"Standerd Payments for {self.project.name}"
-
-
-
-
 class ProjectExtendedPaymentsSpecialOffer(models.Model):
     project = models.ForeignKey('Project', on_delete=models.CASCADE)
     year = models.PositiveIntegerField(default=1)
@@ -225,8 +207,6 @@ class ProjectConfiguration(models.Model):
     base_dp = models.DecimalField(max_digits=10, decimal_places=5,null=True, blank=True)
     base_tenor_years = models.IntegerField(null=True, blank=True)
     max_tenor_years = models.IntegerField(null=True, blank=True)
-    days_until_unblocking = models.IntegerField(null=True, blank=True)
-    variable_delivery_date = models.IntegerField(null=True, blank=True)
     base_payment_frequency = models.CharField(max_length=100)
     use_static_base_npv = models.BooleanField(default=False)
     # 👇 NEW FIELD
@@ -272,12 +252,6 @@ class GasPolicyOffsets(models.Model):
 class Constraints(models.Model):
     project_config = models.OneToOneField(ProjectConfiguration, on_delete=models.CASCADE)
     dp_min = models.DecimalField(max_digits=10, decimal_places=5, null=True, blank=True)
-    dp_plus_first_pmt = models.DecimalField(max_digits=10, decimal_places=5, null=True, blank=True)
-    dp_plus_first_plus_second_pmt = models.DecimalField(max_digits=10, decimal_places=5, null=True, blank=True)
-    dp_plus_first_plus_second_plus_third_pmt = models.DecimalField(max_digits=10, decimal_places=5, null=True, blank=True)
-    dp_plus_first_plus_second_plus_third_plus_forth_pmt = models.DecimalField(max_digits=10, decimal_places=5, null=True, blank=True)
-    first_year_min = models.DecimalField(max_digits=10, decimal_places=5, null=True, blank=True)
-    annual_min = models.DecimalField(max_digits=10, decimal_places=5, null=True, blank=True)
     max_discount = models.DecimalField(max_digits=10, decimal_places=5, null=True, blank=True)
     max_exception_discount = models.DecimalField(max_digits=10, decimal_places=5, null=True, blank=True)
 
@@ -403,7 +377,7 @@ class Unit(models.Model):
     
     # Views & Orientation
     main_view = models.CharField(max_length=255, null=True, blank=True)
-    secondary_views = models.CharField(max_length=255, null=True, blank=True)
+    secondary_view = models.CharField(max_length=255, null=True, blank=True)
     levels = models.CharField(max_length=255, null=True, blank=True)
     north_breeze = models.CharField(max_length=255, null=True, blank=True)
     corners = models.CharField(max_length=255, null=True, blank=True)

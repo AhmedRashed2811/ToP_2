@@ -76,15 +76,6 @@ class SalesRequestManagementService:
 
         return None
 
-    @staticmethod
-    def _build_erp_headers(company):
-        headers = {"Content-Type": "application/json"}
-        try:
-            if company.erp_url_unit_key:
-                headers["Authorization"] = f"Bearer {company.erp_url_unit_key}"
-        except Exception:
-            pass
-        return headers
     
     @staticmethod
     def _is_module_active(company, module_name):
@@ -166,14 +157,22 @@ class SalesRequestManagementService:
 
             # --- 2. ERP SYNC (If Connected) ---
             # Check comp_type for 'erp' and ensure URL exists
-            if SalesRequestManagementService._is_module_active(company, "erp") and company.erp_url_unit:
-                headers = SalesRequestManagementService._build_erp_headers(company)
+            if SalesRequestManagementService._is_module_active(company, "erp") and company.erp_hold_url:
+                headers = {}
+                try:
+                    if company.erp_hold_url_key:
+                        headers = {"Content-Type": "application/json"}
+                        headers["Authorization"] = f"Bearer {company.erp_hold_url}"
+                        
+                except Exception:
+                    pass
+    
                 try:
                     code_to_send = unit.unit_code if unit else ""
                     if code_to_send:
                         # Direct request - Fixed the missing POST execution
                         requests.post(
-                            company.erp_url_unit,
+                            company.erp_hold_url,
                             json={"ced_name": code_to_send, "status_reason": "unblock"},
                             headers=headers,
                             timeout=15
@@ -568,16 +567,16 @@ class SalesRequestManagementService:
 
             # --- 2. ERP SYNC (If Connected) ---
             # Fix: Direct POST execution without relying on passed func
-            if SalesRequestManagementService._is_module_active(company, "erp") and company.erp_url:
+            if SalesRequestManagementService._is_module_active(company, "erp") and company.erp_approve_url:
                 headers = {"Content-Type": "application/json"}
                 try:
-                    if company.erp_url_key:
-                        headers["Authorization"] = f"Bearer {company.erp_url_key}"
+                    if company.erp_approve_url_key:
+                        headers["Authorization"] = f"Bearer {company.erp_approve_url_key}"
                 except Exception:
                     pass
 
                 try:
-                    requests.post(company.erp_url, json=cached_data, headers=headers, timeout=30)
+                    requests.post(company.erp_approve_url, json=cached_data, headers=headers, timeout=30)
                 except Exception as e:
                     print(f"ERP Post Error: {e}")
 

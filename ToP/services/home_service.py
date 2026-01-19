@@ -110,7 +110,6 @@ class TOPHomeService:
             # B) units_json serialization (same rules)
             context["units_json"] = serialize_units_for_js(units_obj=units_obj, project_map=project_map)
 
-            print(f'context["units_json"] = {context["units_json"]}') 
             # C) unit search (same behavior) - only when POST has unit_query
             if unit_query:
                 found_unit = strategy.get_unit(unit_query)
@@ -138,6 +137,7 @@ class TOPHomeService:
             if is_client_user:
                 leads_data = strategy.get_leads(user.email)
                 context["clients"] = json.dumps(leads_data) if leads_data else "{}"
+                
 
             # E) limits (post-load; preserves helper call behavior)
             if is_client_user:

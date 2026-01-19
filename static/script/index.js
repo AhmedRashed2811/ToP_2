@@ -1333,8 +1333,6 @@ function sendInstallmentData() {
     appendFormData(formData, "unit_maintenance_percent",document.getElementById("unit_maintenance_value").value);
     appendFormData(formData, "currency_rate");
     appendFormData(formData, "unit_contract_date");
-    appendFormData(formData, "project_constraints_annual_min");
-    appendFormData(formData, "project_constraints_first_year_min");
     try{
         let special_offer = document.getElementById("special_offers").value;
         const match = special_offer.match(/(\d+)\s*years/i);

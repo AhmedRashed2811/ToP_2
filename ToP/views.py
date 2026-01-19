@@ -23,7 +23,6 @@ from .services.saved_units_service import SavedUnitsService
 from .services.attendance_service import AttendanceActionService, AttendanceQueryService
 from .services.project_web_config_service import ProjectWebConfigService
 from .services.extended_payments_service import ProjectExtendedPaymentsService
-from .services.standard_payments_service import ProjectStandardPaymentsService
 from .services.special_offers_service import SpecialOffersPaymentsService
 from .services.sales_request_analytical_service import SalesRequestAnalyticalService
 from .services.inventory_report_service import InventoryReportService
@@ -1310,34 +1309,6 @@ def save_project_web_config(request):
 
 
 # ========== STANDARD ==========
-
-
-# ---------------------------------------------- Save Standard Payment Ajax
-@login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
-@csrf_exempt
-def save_standard_payment_ajax(request):
-    if request.method != "POST":
-        return JsonResponse({"success": False, "message": "Invalid request"})
-
-    try:
-        payload = json.loads(request.body or "{}")
-    except Exception:
-        return JsonResponse({"success": False, "message": "Invalid JSON"}, status=400)
-
-    result = ProjectStandardPaymentsService.save(payload=payload)
-    return JsonResponse(result.payload, status=result.status)
-
-
-# ---------------------------------------------- Fetch Standard Payment Ajax
-@login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
-@require_GET
-def fetch_standard_payment_ajax(request):
-    project_id = request.GET.get("project_id")
-    result = ProjectStandardPaymentsService.fetch(project_id=int(project_id))
-    return JsonResponse(result.payload, status=result.status)
-
 
 
 

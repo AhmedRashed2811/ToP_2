@@ -145,11 +145,11 @@ class InventorySyncService:
             building_number = to_str(get_from_row(row, ["Building Number"]))
             unit_position = to_str(get_from_row(row, ["Unit Number", "Unit Position"]))
             finishing_specs = to_str(
-                get_from_row(row, ["Finishing Specs.", "Finishing Specs", "Finishing"])
+                get_from_row(row, ["Finishing Specs", "Finishing"])
             )
-            num_bedrooms = to_str(get_from_row(row, ["No. of Bed Rooms"]))
+            num_bedrooms = to_str(get_from_row(row, ["Num Bedrooms"]))
             main_view = to_str(get_from_row(row, ["Main View"]))
-            secondary_views = to_str(get_from_row(row, ["Secondary View"]))
+            secondary_view = to_str(get_from_row(row, ["Secondary View"]))
             levels = to_str(get_from_row(row, ["Levels"]))
             north_breeze = to_str(get_from_row(row, ["North Breeze"]))
             corners = to_str(get_from_row(row, ["Corners"]))
@@ -162,7 +162,7 @@ class InventorySyncService:
             )
             status = to_str(get_from_row(row, ["Available", "Status"]))
             contract_payment_plan = to_str(
-                get_from_row(row, ["Adj Contract Payment Plan"])
+                get_from_row(row, ["Contract Payment Plan"])
             )
             area_range = to_str(get_from_row(row, ["Area Range"]))
 
@@ -217,7 +217,7 @@ class InventorySyncService:
             finishing_specs=finishing_specs,
             num_bedrooms=num_bedrooms,
             main_view=main_view,
-            secondary_views=secondary_views,
+            secondary_view=secondary_view,
             levels=levels,
             north_breeze=north_breeze,
             corners=corners,

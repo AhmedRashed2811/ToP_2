@@ -6,12 +6,6 @@ from django.core.exceptions import ValidationError
 import re
 
 
-# class CompanyForm(forms.ModelForm):
-#     class Meta:
-#         model = Company
-#         fields = ['name', 'is_native', 'erp_url', 'erp_url_key', 'logo', 'erp_url_units', 'erp_url_units_key', 'erp_url_unit', 'erp_url_unit_key','erp_url_leads', 'erp_url_leads_key']
-
-
 # forms.py
 from django import forms
 from .models import Company, CompanyType
@@ -25,8 +19,8 @@ class CompanyForm(forms.ModelForm):
             "joining_date",
             "is_active",
             "erp_url", "erp_url_key",
-            "erp_url_units", "erp_url_units_key",
-            "erp_url_unit", "erp_url_unit_key",
+            "erp_hold_url", "erp_hold_url_key",
+            "erp_approve_url", "erp_approve_url_key",
             "erp_url_leads", "erp_url_leads_key",
             "google_sheet_url", "google_sheet_gid", "google_sheet_title",
             "logo",
@@ -117,8 +111,6 @@ class ProjectConfigurationForm(forms.ModelForm):
             'base_dp',
             'base_tenor_years',
             'max_tenor_years',
-            'variable_delivery_date',
-            'days_until_unblocking',
             'base_payment_frequency',
             'default_scheme',                 # ✅ ensure default_scheme is included
             'use_static_base_npv',
@@ -127,8 +119,6 @@ class ProjectConfigurationForm(forms.ModelForm):
         labels = {
             'base_dp': 'Down Payment',
             'max_tenor_years': "Maximum Tenor Years",
-            'days_until_unblocking': 'Hours Until Auto Unblock',
-            'variable_delivery_date': 'Months of Delivery After Reservation',
             'maximum_requests_per_sales': 'Max Requests per Sales',
         }
 
@@ -176,23 +166,17 @@ class ProjectConfigurationForm(forms.ModelForm):
 class ConstraintsForm(forms.ModelForm):
     class Meta:
         model = Constraints
-        fields = ['dp_min', 'dp_plus_first_pmt','dp_plus_first_plus_second_pmt','dp_plus_first_plus_second_plus_third_pmt', 'dp_plus_first_plus_second_plus_third_plus_forth_pmt', 'first_year_min', 'annual_min', 'max_discount','max_exception_discount']
+        fields = ['dp_min', 'max_discount','max_exception_discount']
 
         labels = {
                 'dp_min': 'Minimum DP',  # 👈 Change label here
-                'dp_plus_first_pmt': 'DP+1st PMT',  # 👈 Change label here
-                'dp_plus_first_plus_second_pmt': 'DP+1st+2nd PMT',  # 👈 Change label here
-                'dp_plus_first_plus_second_plus_third_pmt': 'DP+1st +2nd +3rd PMT',  # 👈 Change label 
-                'dp_plus_first_plus_second_plus_third_plus_forth_pmt': 'DP+1st+2nd+3rd+4th PMT',  # 👈 Change label here 
-                'first_year_min': 'Minimum 1st Year + DP',  # 👈 Change label here
-                'annual_min': 'Minimum Annual',  # 👈 Change label here
                 'max_discount': 'Maximum Discount',  # 👈 Change label here
                 'max_exception_discount': 'Maximum Exception Disc.',  # 👈 Change label here
             }
 
     def clean(self):
         cleaned_data = super().clean()
-        fields_to_divide = ['dp_min', 'dp_plus_first_pmt','dp_plus_first_plus_second_pmt','dp_plus_first_plus_second_plus_third_pmt', 'first_year_min', 'annual_min', 'max_discount','max_exception_discount']
+        fields_to_divide = ['dp_min', 'max_discount','max_exception_discount']
 
         for field in fields_to_divide:
             value = cleaned_data.get(field)

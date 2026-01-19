@@ -111,7 +111,7 @@ def build_unit_values_fields() -> List[str]:
     Rebuilds the exact base_fields logic from your view, plus optional fields.
     """
     base_fields = [
-        "unit_code", "main_view", "secondary_views", "levels", "north_breeze",
+        "unit_code", "main_view", "secondary_view", "levels", "north_breeze",
         "corners", "accessibility", "special_premiums", "special_discounts",
         "phasing", "base_price", "internal_area", "unit_model", "status",
         "unit_type", "building_number", "building_type", "city", "floor",
@@ -148,7 +148,7 @@ def build_unit_values_fields() -> List[str]:
 # ----------------------------
 DEFAULT_GROUP_TO_FIELD_MAPPING: Dict[str, str] = {
     "main view": "main_view",
-    "secondary views": "secondary_views",
+    "secondary view": "secondary_view",
     "levels": "levels",
     "north breeze": "north_breeze",
     "corners": "corners",

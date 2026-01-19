@@ -1063,7 +1063,7 @@
         </script>
         
         
-        {% if user_company.erp_url_units %}
+        {% if user_company.erp_url_leads %}
             <!-- 🟠 Hold Modal -->
             <div id="holdModal">
                 <div class="hold-modal">
@@ -1369,13 +1369,7 @@
         <span class="hidden">{{ project_config.use_static_base_npv|yesno:"Yes,No" }}</span>
     {% endif %}
 
-    {% if project_constraints %}
-        <span class="hidden">{{ project_constraints.dp_min|default:"-" }}</span>
-        <span class="hidden">{{ project_constraints.dp_plus_first_pmt|default:"-" }}</span>
-        <span class="hidden">{{ project_constraints.first_year_min|default:"-" }}</span>
-        <span class="hidden">{{ project_constraints.annual_min|default:"-" }}</span>
-        <span class="hidden">{{ project_constraints.max_discount|default:"-" }}</span>
-    {% endif %}
+
 
     {% if base_npv %}
         <span class="hidden">{{ base_npv.term_period|default:"-" }}</span>
@@ -2170,7 +2164,7 @@
             
 
 
-            {% if user_company.erp_url_units %}
+            {% if user_company.erp_url_leads %}
 
 
                 <!-- Client ID Modal -->
@@ -2729,9 +2723,6 @@
         <input type="hidden" id="project_config_default_scheme" name="project_config_default_scheme" value="{{ project_config.default_scheme }}">
         <input type="hidden" id="project_config_static_npv" name="project_config_static_npv" value="{{ project_config.use_static_base_npv }}">
         <input type="hidden" id="project_constraints_dp_min" name="project_constraints_dp_min" value="{{ project_constraints.dp_min }}">
-        <input type="hidden" id="project_constraints_dp_plus_first" name="project_constraints_dp_plus_first" value="{{ project_constraints.dp_plus_first_pmt }}">
-        <input type="hidden" id="project_constraints_first_year_min" name="project_constraints_first_year_min" value="{{ project_constraints.first_year_min }}">
-        <input type="hidden" id="project_constraints_annual_min" name="project_constraints_annual_min" value="{{ project_constraints.annual_min }}">
         <input type="hidden" id="project_constraints_max_discount" name="project_constraints_max_discount" value="{{ project_constraints.max_discount }}">
         <input type="hidden" id="currency_rate" name="currency_rate">
         <input type="hidden" id="base_npv_term_period" name="base_npv_term_period" value="{{ base_npv.term_period }}">
@@ -2745,7 +2736,7 @@
 {% endif %}
 
     <script>
-        {% if user_company.erp_url_units %}
+        {% if user_company.erp_url_leads %}
             let isCompanyERPUnits = true
             
                 clients = [
@@ -3572,7 +3563,7 @@
 
             }
                 
-            // console.log(payload)
+            console.log(payload)
         }
 
 
@@ -3860,11 +3851,14 @@
                 const fmtPrice = (val) => (val && val !== "-" && val !== "null") ? val : null;
                 const fmtDisc = (val) => (val && val !== "-" && val !== "null") ? val + "%" : null;
                 
-                // Get raw values for calculation
-                const baseP = parseFloat(getVal("basic_price"));
-                const finalP = parseFloat(getVal("final_price"));
+                // Remove commas (and any other currency formatting) before parsing
+                const cleanBase = getVal("basic_price").replace(/,/g, '');
+                const cleanFinal = getVal("final_price").replace(/,/g, '');
 
-                // Calculate Discount Percentage: ((Base - Final) / Base) * 100
+                const baseP = parseFloat(cleanBase);
+                const finalP = parseFloat(cleanFinal);
+
+                // Your existing logic remains the same
                 let discountVal = null;
                 if (!isNaN(baseP) && !isNaN(finalP) && baseP > 0) {
                     const diff = baseP - finalP;
@@ -3872,6 +3866,7 @@
                         discountVal = ((diff / baseP) * 100).toFixed(1) + "%";
                     }
                 }
+
 
                 // Prepare Data for Info Table
                 // Define all potential rows
@@ -4525,6 +4520,8 @@ App.init();
 
         // 2. Receive the Clients JSON (since we cleaned that up too)
         var clients = {{ clients|safe }};
+
+        console.log(clients)
 
         // 3. Receive Project Data (restored in the view)
         var project_data = {{ project_data|safe }};

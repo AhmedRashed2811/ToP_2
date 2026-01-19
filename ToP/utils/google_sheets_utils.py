@@ -127,7 +127,7 @@ def update_google_sheet_sales_data(company, sales_request, cached_data):
             "Client Phone Number": sales_request.client_phone_number or "",
             "Sales Value": cached_data.get("final_price", ""),
             "Currency": cached_data.get("selected_currency_name", ""),
-            "Adj Contract Payment Plan": contract_payment_plan,
+            "Contract Payment Plan": contract_payment_plan,
             "Reservation Date": reservation_date
         }
 

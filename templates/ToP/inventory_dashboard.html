@@ -1519,7 +1519,7 @@
             </div>
             <div class="chart-card">
                 <div class="chart-header">
-                    <h3>Sellable Area Range (sqm)</h3>
+                    <h3>Gross Area Range (sqm)</h3>
                     <div class="chart-actions">
                         <!-- Optional: Add download/expand buttons if needed -->
                         <button class="chart-btn"><i class="fas fa-download"></i></button>
@@ -2022,8 +2022,8 @@
               </tr>
               <tr>
                 <th></th>
-                <th>%</th><th>No. of Units</th><th>Sellable Area</th><th>Sales Value</th><th>Min PSM</th><th>Avg PSM</th><th>Max PSM</th><th>Min Unit Price</th><th>Avg Unit Price</th><th>Max Unit Price</th>
-                <th>%</th><th>No. of Units</th><th>Sellable Area</th><th>Sales Value</th><th>Min PSM</th><th>Avg PSM</th><th>Max PSM</th><th>Min Unit Price</th><th>Avg Unit Price</th><th>Max Unit Price</th>
+                <th>%</th><th>No. of Units</th><th>Gross Area</th><th>Sales Value</th><th>Min PSM</th><th>Avg PSM</th><th>Max PSM</th><th>Min Unit Price</th><th>Avg Unit Price</th><th>Max Unit Price</th>
+                <th>%</th><th>No. of Units</th><th>Gross Area</th><th>Sales Value</th><th>Min PSM</th><th>Avg PSM</th><th>Max PSM</th><th>Min Unit Price</th><th>Avg Unit Price</th><th>Max Unit Price</th>
               </tr>
             </thead>
             <tbody>
@@ -3282,7 +3282,7 @@
               'contractPaymentPlanChart': 'Contract Payment Plan',
               'unitPriceChart': 'Unit Price Range',
               'unitPSMChart': 'Price per Square Meter Range',
-              'unitAreaChart': 'Sellable Area Range'
+              'unitAreaChart': 'Gross Area Range'
           };
           return titleMap[canvasId] || 'Chart';
         }
@@ -5768,7 +5768,7 @@
           renderUnitMetricsChart('unitPriceChart', units, 'sales_value', 'Unit Price Range (Sales Value)', '#D2691E');
           
           renderUnitMetricsChart('unitPSMChart', units, 'psm', 'Price per Square Meter (PSM)', '#D2691E');
-          renderUnitMetricsChart('unitAreaChart', units, 'gross_area', 'Sellable Area (sqm)', '#D2691E');
+          renderUnitMetricsChart('unitAreaChart', units, 'gross_area', 'Gross Area (sqm)', '#D2691E');
       }
 
       // Example: Call updateUnitMetricsCharts when dashboard filters change

@@ -261,18 +261,6 @@
     <div id="payments-section" style="display: none;">
         <div class="payments-wrapper">
             
-            <div class="payment-box" id="standard-section" style="display: none;">
-                <h3>Standard Payments</h3>
-                <input type="number" id="std-rate" step="0.00001" value="28.25" style="display: none;">
-                <div id="std-npv"><strong>NPV: 0.00%</strong></div>
-                <table>
-                    <thead>
-                        <tr><th>Label</th><th>Value (%)</th><th>Cumulative (%)</th></tr>
-                    </thead>
-                    <tbody id="std-table-body">
-                        </tbody>
-                </table>
-            </div>
 
             <div class="payment-box" id="extended-section">
                 <h3>Extended Payments</h3>
@@ -715,9 +703,6 @@
                             if (prefix === 'ext' && data.data.interest_rate) {
                                 document.getElementById('ext-rate').value = data.data.interest_rate;
                             }
-                            if (prefix === 'std' && data.data.interest_rate) {
-                                document.getElementById('std-rate').value = data.data.interest_rate;
-                            }
 
                             inputs.forEach((input, i) => {
                                 let val = 0;
@@ -741,9 +726,6 @@
         let { loadFromServer: loadExtended, updateInputs: updateExtInputs } =
             setupPaymentSystem('ext', 'ext-value', '{% url "save_extended_payment_ajax" %}', '{% url "fetch_extended_payment_ajax" %}', 'ext-npv');
 
-        let { loadFromServer: loadStandard, updateInputs: updateStdInputs } =
-            setupPaymentSystem('std', 'std-value', '{% url "save_standard_payment_ajax" %}', '{% url "fetch_standard_payment_ajax" %}', 'std-npv');
-
         // UPDATED reloadPayments function
         function reloadPayments() {
             let pid = projectSelect.value;
@@ -762,21 +744,16 @@
             let years = parseInt(yearSelect.value) || 0;
             let rowCount = Math.max(2, Math.min(years * 4 + 2, MAX_ROWS)); 
 
-            createPaymentRows(document.getElementById('std-table-body'), 'std', rowCount);
             createPaymentRows(document.getElementById('ext-table-body'), 'ext', rowCount);
 
             let { loadFromServer: newLoadExtended, updateInputs: newUpdateExtInputs } =
                 setupPaymentSystem('ext', 'ext-value', '{% url "save_extended_payment_ajax" %}', '{% url "fetch_extended_payment_ajax" %}', 'ext-npv');
 
-            let { loadFromServer: newLoadStandard, updateInputs: newUpdateStdInputs } =
-                setupPaymentSystem('std', 'std-value', '{% url "save_standard_payment_ajax" %}', '{% url "fetch_standard_payment_ajax" %}', 'std-npv');
 
             updateExtInputs = newUpdateExtInputs;
-            updateStdInputs = newUpdateStdInputs;
 
             if (pid) {
                 newLoadExtended(pid);
-                newLoadStandard(pid);
             }
         }
 

@@ -60,8 +60,6 @@ urlpatterns = [
     path('delete_extended_payment_ajax/', views.delete_extended_payment_ajax, name='delete_extended_payment_ajax'),
 
     # Standard AJAX
-    path('standard-payments/ajax/save/', views.save_standard_payment_ajax, name='save_standard_payment_ajax'),
-    path('standard-payments/ajax/fetch/', views.fetch_standard_payment_ajax, name='fetch_standard_payment_ajax'),
 
     path('sales-dashboard/', views.sales_dashboard, name='sales_dashboard'),
     path('api/sales-data/', views.sales_data_api, name='api_sales_data'),

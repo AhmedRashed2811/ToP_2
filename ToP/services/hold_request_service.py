@@ -233,7 +233,7 @@ class HoldRequestsManagementService:
             }
 
         # 3. ERP Synchronization (Middleman Logic)
-        is_erp_enabled = bool(getattr(company, "erp_url_units", False))
+        is_erp_enabled = bool(getattr(company, "erp_hold_url", False))
         
         if is_erp_enabled:
             # 3a. Check if we already have a pending request for this (prevent double submission)
@@ -310,14 +310,14 @@ class HoldRequestsManagementService:
         Returns {"success": True} or error dict.
         """
         headers = {}
-        if company.erp_url_units_key:
-            headers["Authorization"] = f"Bearer {company.erp_url_units_key}"
+        if company.erp_hold_url_key:
+            headers["Authorization"] = f"Bearer {company.erp_hold_url_key}"
 
         # A. Fetch Info
         try:
             # Assuming GET /units/{code}
             response = requests.get(
-                f"{company.erp_url_units}{unit_code}",
+                f"{company.erp_url}{unit_code}", 
                 headers=headers,
                 timeout=30,
             )
@@ -343,14 +343,14 @@ class HoldRequestsManagementService:
 
         # B. Send Block Command
         post_headers = {"Content-Type": "application/json"}
-        if company.erp_url_unit_key:
-            post_headers["Authorization"] = f"Bearer {company.erp_url_unit_key}"
+        if company.erp_hold_url_key:
+            post_headers["Authorization"] = f"Bearer {company.erp_hold_url_key}"
 
         try:
             # Assuming POST /unit/status/update or similar based on existing config
-            # Using 'erp_url_unit' from model which usually points to the update endpoint
+            # Using 'erp_hold_url' from model which usually points to the update endpoint
             block_response = requests.post(
-                company.erp_url_unit,
+                company.erp_hold_url,
                 json={"ced_name": unit_code, "status_reason": "block"},
                 headers=post_headers,
                 timeout=30

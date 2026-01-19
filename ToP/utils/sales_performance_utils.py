@@ -8,7 +8,7 @@ from django.db.models import Q
 
 PREMIUM_FIELD_MAPPING: Dict[str, str] = {
     "main_view": "main_view",
-    "secondary_views": "secondary_views",
+    "secondary_view": "secondary_view",
     "north_breeze": "north_breeze",
     "corners": "corners",
     "accessibility": "accessibility",

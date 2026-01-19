@@ -454,8 +454,6 @@ class ProjectManagementService:
             config.base_dp = float(structured_data["project_config"].get("base_dp", config.base_dp)) / 100
             config.base_tenor_years = structured_data["project_config"].get("base_tenor_years", config.base_tenor_years)
             config.max_tenor_years = structured_data["project_config"].get("max_tenor_years", config.max_tenor_years)
-            config.days_until_unblocking = structured_data["project_config"].get("days_until_unblocking", config.days_until_unblocking)
-            config.variable_delivery_date = structured_data["project_config"].get("variable_delivery_date", config.variable_delivery_date)
             config.base_payment_frequency = structured_data["project_config"].get("payment_frequency", config.base_payment_frequency)
             config.default_scheme = structured_data["project_config"].get("default_scheme", config.default_scheme)
             config.use_static_base_npv = structured_data["project_config"].get("use_static_base_npv", config.use_static_base_npv)
@@ -465,12 +463,6 @@ class ProjectManagementService:
             # ✅ Update or Create Constraints
             constraints, _ = Constraints.objects.get_or_create(project_config=config)
             constraints.dp_min = float(structured_data["constraints"].get("dp_min", constraints.dp_min)) / 100
-            constraints.dp_plus_first_pmt = float(structured_data["constraints"].get("dp_plus_first_pmt", constraints.dp_plus_first_pmt)) / 100
-            constraints.dp_plus_first_plus_second_pmt = float(structured_data["constraints"].get("dp_plus_first_plus_second_pmt", constraints.dp_plus_first_plus_second_pmt)) / 100
-            constraints.dp_plus_first_plus_second_plus_third_pmt = float(structured_data["constraints"].get("dp_plus_first_plus_second_plus_third_pmt", constraints.dp_plus_first_plus_second_plus_third_pmt)) / 100
-            constraints.dp_plus_first_plus_second_plus_third_plus_forth_pmt = float(structured_data["constraints"].get("dp_plus_first_plus_second_plus_third_plus_forth_pmt", constraints.dp_plus_first_plus_second_plus_third_plus_forth_pmt)) / 100
-            constraints.first_year_min = float(structured_data["constraints"].get("first_year_min", constraints.first_year_min)) / 100
-            constraints.annual_min = float(structured_data["constraints"].get("annual_min", constraints.annual_min)) / 100
             constraints.max_discount = float(structured_data["constraints"].get("max_discount", constraints.max_discount)) / 100
             constraints.max_exception_discount = float(structured_data["constraints"].get("max_exception_discount", constraints.max_exception_discount)) / 100
             constraints.save()

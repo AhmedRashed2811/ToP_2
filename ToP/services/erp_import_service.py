@@ -94,14 +94,14 @@ class ERPImportService:
         mapped['unit_type'] = get_val("unit_type", "unitType", "Unit Type", "type")
 
         # Specs
-        mapped['num_bedrooms'] = get_val("num_bedrooms", "bedrooms", "No. of Bed Rooms", "Bedrooms")
-        mapped['num_bathrooms'] = get_val("num_bathrooms", "bathrooms", "No. of Bathrooms", "Bathrooms")
+        mapped['num_bedrooms'] = get_val("num_bedrooms", "bedrooms", "Num Bedrooms", "Bedrooms")
+        mapped['num_bathrooms'] = get_val("num_bathrooms", "bathrooms", "Num Bathrooms", "Bathrooms")
         mapped['num_parking_slots'] = get_val("num_parking_slots", "parking_slots", "No. of Parking Slots")
 
         # Areas
         mapped['footprint'] = get_val("footprint", "Foot print")
         mapped['net_area'] = get_val("net_area", "netArea", "Unit Area (Net Area)")
-        mapped['gross_area'] = get_val("gross_area", "sellableArea", "Gross Area", "Sellable Area")
+        mapped['gross_area'] = get_val("sellable_area"", gross_area", "sellableArea", "Gross Area", "Sellable Area")
         mapped['total_area'] = get_val("total_area", "totalArea", "Total Area")
         mapped['internal_area'] = get_val("internal_area", "internalArea", "Internal Area")
         mapped['covered_terraces'] = get_val("covered_terraces", "coveredTerraces", "Covered Terraces")
@@ -161,7 +161,7 @@ class ERPImportService:
 
         # Views & Orientation
         mapped['main_view'] = get_val("main_view", "mainView", "Main View")
-        mapped['secondary_views'] = get_val("secondary_views", "secondaryViews", "Secondary Views")
+        mapped['secondary_view'] = get_val("secondary_view", "secondaryView", "Secondary View")
         mapped['levels'] = get_val("levels", "Levels")
         mapped['north_breeze'] = get_val("north_breeze", "northBreeze", "North Breeze")
         mapped['corners'] = get_val("corners", "Corners")

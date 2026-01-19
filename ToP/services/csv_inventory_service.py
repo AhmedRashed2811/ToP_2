@@ -213,9 +213,9 @@ class CsvInventoryService:
                 'floor': row.get('Floor', None),
                 'sap_code': row.get('SAP Code', None),
 
-                'finishing_specs': row.get('Finishing Specs.', None),
-                'num_bedrooms': clean_numeric(row.get('No. of Bed Rooms', '0')),
-                'num_bathrooms': clean_numeric(row.get('No. of Bathrooms', '0')),
+                'finishing_specs': row.get('Finishing Specs', None),
+                'num_bedrooms': clean_numeric(row.get('Num bedrooms', '0')),
+                'num_bathrooms': clean_numeric(row.get('Num bathrooms', '0')),
                 'num_parking_slots': clean_numeric(row.get('No. of Parking Slots', '0')),
 
                 'footprint': float(row.get('Foot print', 0)) if row.get('Foot print') else None,
@@ -227,8 +227,7 @@ class CsvInventoryService:
                 'basement_area': float(row.get('Basement Area', 0)) if row.get('Basement Area') else None,
                 'net_area': float(row.get('Unit Area (Net Area)', 0)) if row.get('Unit Area (Net Area)') else None,
                 'common_area': float(row.get('Common Area', 0)) if row.get('Common Area') else None,
-                'gross_area': float(row.get('Sellable Area without Roof (Gross Area)', 0))
-                    if row.get('Sellable Area without Roof (Gross Area)') else None,
+                'gross_area': float(row.get('Gross Area', 0)) if row.get('Gross Area') else None,
                 'roof_pergola_area': float(row.get('Roof Pergola Area', 0)) if row.get('Roof Pergola Area') else None,
                 'roof_terraces_area': float(row.get('Roof Terraces Area', 0)) if row.get('Roof Terraces Area') else None,
                 'bua': float(row.get('BUA', 0)) if row.get('BUA') else None,
@@ -252,7 +251,7 @@ class CsvInventoryService:
                 'base_psm': float(row.get('Base PSM', 0)) if row.get('Base PSM') else None,
 
                 'main_view': row.get('Main View', None),
-                'secondary_views': row.get('Secondary Views', None),
+                'secondary_view': row.get('Secondary View', None),
                 'levels': row.get('Levels', None),
                 'north_breeze': row.get('North Breeze', None),
                 'corners': row.get('Corners', None),

@@ -49,7 +49,7 @@ class UnitAutoUnblockService:
             config = ProjectConfiguration.objects.filter(project=project).first()
             web_config = ProjectWebConfiguration.objects.filter(project=project).first()
 
-            if not config or config.days_until_unblocking is None or not web_config:
+            if not config or not web_config:
                 continue
 
             # --- 3. Check Timer Expiration ---
@@ -73,16 +73,16 @@ class UnitAutoUnblockService:
             unit.save()
 
             # B. Sync with ERP (if configured)
-            if company.erp_url_unit:
+            if company.erp_hold_url:
                 try:
                     headers = {"Content-Type": "application/json"}
-                    if company.erp_url_unit_key:
-                        headers["Authorization"] = f"Bearer {company.erp_url_unit_key}"
+                    if company.erp_hold_url_key:
+                        headers["Authorization"] = f"Bearer {company.erp_hold_url_key}"
 
                     code_to_unblock = unit.unit_code
                     
                     requests.post(
-                        company.erp_url_unit,
+                        company.erp_hold_url,
                         json={"ced_name": code_to_unblock, "status_reason": "unblock"},
                         headers=headers,
                         timeout=10 # Short timeout for background task

@@ -52,7 +52,6 @@ COLUMN_MAPPING = {
     'Cash discount': 'cash_discount',
     'Delivery Date': 'delivery_date',
     'Finishing Specs': 'finishing_specs',
-    'Finishing Specs.': 'finishing_specs',
     'Maintenance': 'maintenance',
     'Phase': 'phase',
     'Date of Update': 'date_of_update',
