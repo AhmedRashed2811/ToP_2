@@ -182,6 +182,13 @@ class CompanyManagementService:
             posted_types = [CompanyType.NATIVE]
             
         company.comp_type = posted_types
+        
+        
+        company.auto_sync = (data.get("auto_sync", "false").lower() == "true")
+        try:
+            company.auto_sync_timer = int(data.get("auto_sync_timer") or 0)
+        except ValueError:
+            company.auto_sync_timer = 0
 
         # --------------------------------------------------------
         # INDEPENDENT FIELD SAVING

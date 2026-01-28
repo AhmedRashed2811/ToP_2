@@ -106,6 +106,7 @@ class UnitsManagementService:
                     "Partner",
                     "Blocked Development",
                     "Blocked Sales",
+                    "Blocked Cancellation"
                 ],
             ) if company else Unit.objects.none()
 
@@ -145,7 +146,7 @@ class UnitsManagementService:
             "development_delivery_date", "client_handover_date", "contractor_type",
             "contractor", "customer", "broker", "bulks", "direct_indirect_sales",
             "area_range", "release_year", "sales_year", "adj_status",
-            "ams",
+            "ams","owner", 
             "project_company__name",
         ]
 

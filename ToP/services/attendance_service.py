@@ -91,7 +91,7 @@ class AttendanceQueryService:
             if key not in grouped_data:
                 grouped_data[key] = {
                     'user_name': log.user.full_name,
-                    'user_role': log.user.role,
+                    'user_role': "Business Team",
                     'date_obj': log_date, 
                     'date_str': log_date.strftime('%d/%m/%Y'), 
                     'filter_date': date_str, 

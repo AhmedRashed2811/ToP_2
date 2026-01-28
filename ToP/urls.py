@@ -79,15 +79,6 @@ urlpatterns = [
     path('import-csv/', views.import_csv_for_model, name='import_csv_for_model'),
     
     
-    path('market-units/', views.market_unit_data_list, name='market_unit_data_list'),
-    path('market-units/update/', views.update_market_unit_field, name='update_market_unit_field'),
-    path('market-units/create/', views.create_market_unit, name='create_market_unit'),
-    path('delete_market_unit/', views.delete_market_unit, name='delete_market_unit'),    
-    path('import-market-units/', views.import_market_units, name='import_market_units'),
-    
-    
-    
-    
     path('market-research/', views.market_research_report, name='market_research_report'),
     path('market-data/', views.get_market_data, name='get_market_data'),
     path('save-project-location/', views.save_project_location, name='save_project_location'),
@@ -175,14 +166,43 @@ urlpatterns = [
     path('import-hub/', views.import_hub, name='import_hub'),
     path('import-hub/trigger/', views.trigger_unified_import, name='trigger_unified_import'),
     path('import-hub/delete-units/', views.delete_hub_units, name='delete_hub_units'),
+    path('import-hub/rename/', views.rename_hub_units, name='rename_hub_units'),
+    
+    
     path("sales-teams/", views.sales_teams, name="sales_teams"),
-    
-    
     path("sales-team-report/", views.sales_team_report, name="sales_team_report"),
     path("ajax/sales-teams/", views.ajax_sales_teams, name="ajax_sales_teams"),
     path("ajax/sales-team-report/", views.ajax_sales_team_report, name="ajax_sales_team_report"),
+    
+    path("unit-reservation-cancellation/", views.unit_reservation_cancellation, name="unit_reservation_cancellation"),
 
+    path("market-units/", views.market_unit_data_list, name="market_unit_data_list"),
+    path("market-units/update/", views.update_market_unit_field, name="update_market_unit_field"),
+    path("market-units/create/", views.create_market_unit, name="create_market_unit"),
+    path("market-units/delete/", views.delete_market_unit, name="delete_market_unit"),
+    path("market-units/import/", views.import_market_units, name="import_market_units"),
+    path("market-units/clear-all/", views.clear_all_market_units, name="clear_all_market_units"),
+    
+    path("market/units/analysis/data/", views.market_units_analysis_data, name="market_units_analysis_data"),
+    
+    path("clear-market-projects/", views.clear_market_projects, name="clear_market_projects"),
+    path("clear-market-locations/", views.clear_market_locations, name="clear_market_locations"),
+    path("clear-market-developers/", views.clear_market_developers, name="clear_market_developers"),
+    path("clear-market-units/", views.clear_market_units, name="clear_market_units"),
+    
+    path("market-units/report/",views.market_units_performance_report,name="market_units_performance_report"),
+    
+    path("pivot/units/", views.pivot_units_builder, name="pivot_units_builder"),
+    path("pivot/units/data/<int:company_id>/", views.pivot_units_data, name="pivot_units_data"),
+    path("pivot/units/send-managers/<int:company_id>/", views.pivot_units_send_managers, name="pivot_units_send_managers"),
 
+    path("pivot/units/managers/", views.pivot_units_managers, name="pivot_units_managers"),
+    path("pivot/units/managers/data/<int:company_id>/", views.pivot_units_snapshot_data, name="pivot_units_snapshot_data"),
+
+    
+    path("erp-unit-mapping/", views.erp_unit_mapping_manager, name="erp_unit_mapping"),
+    path("erp-leads-mapping/", views.erp_leads_mapping_manager, name="erp_leads_mapping"),
+    path("erp-hold-post-mapping/", views.erp_hold_post_mapping_manager, name="erp_hold_post_mapping"),
 
 ] 
  

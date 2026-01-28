@@ -83,6 +83,17 @@
             {{ form.is_active }}
         </div>
 
+        <div class="section">
+            <label for="{{ form.auto_sync.id_for_label }}">Auto Sync?</label>
+            {{ form.auto_sync }}
+        </div>
+
+        <div class="section">
+            <label for="{{ form.auto_sync_timer.id_for_label }}">Auto Sync Timer:</label>
+            {{ form.auto_sync_timer }}
+        </div>
+
+
         <div id="erp-section" class="section" style="display:none;">
             <h3>ERP Configuration</h3>
             <div>

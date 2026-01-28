@@ -36,7 +36,7 @@ class InventoryReportService:
         "gross_area", "psm", "interest_free_unit_price", "building_type",
         "grace_period_months", "unit_code", "sales_value", "status",
         "reservation_date", "development_delivery_date",
-        "contract_delivery_date", "unit_model",
+        "contract_delivery_date", "unit_model","owner", 
     ]
 
     # =========================================================

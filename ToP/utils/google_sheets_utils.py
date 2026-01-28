@@ -151,3 +151,87 @@ def update_google_sheet_sales_data(company, sales_request, cached_data):
     except Exception as e:
         logger.error(f"Failed to update Google Sheet for company {company.name}: {str(e)}")
         raise
+
+
+def cancel_google_sheet_reservation(company, unit_code, interest_free_price):
+    """
+    Search in the Google Sheet for the unit code and update status to 
+    'Blocked Cancellation' while clearing reservation details.
+    """
+    if not company.google_sheet_url:
+        logger.warning(f"Company {company.name} has no Google Sheet URL configured")
+        return
+
+    if not unit_code:
+        logger.warning("No unit code provided for cancellation")
+        return
+
+    try:
+        # 1. Get Google Sheets client
+        gc = gspread_client(company)
+
+        # 2. Open the company's spreadsheet
+        sh = gc.open_by_url(company.google_sheet_url)
+        ws = resolve_worksheet(sh, company.google_sheet_gid, company.google_sheet_title)
+
+        # 3. Get all data and headers
+        all_data = ws.get_all_records()
+        headers = ws.row_values(1)  # header row
+
+        # 4. Find the target unit row
+        found_row = None
+        # start=2 because sheet rows are 1-based and header is row 1
+        for row_idx, row_data in enumerate(all_data, start=2):
+            sheet_unit_code = (
+                row_data.get("Unit Code")
+                or row_data.get("Unit Code ")
+                or row_data.get("UnitCode")
+                or row_data.get("unit_code")
+                or row_data.get("Code")
+            )
+            # Compare as strings to be safe
+            if str(sheet_unit_code).strip() == str(unit_code).strip():
+                found_row = row_idx
+                break
+
+        if not found_row:
+            logger.warning(f"Unit '{unit_code}' not found in company '{company.name}' Google Sheet")
+            return
+
+        # 5. Define updates
+        updates = {
+            "Status": "Blocked Cancellation",
+            "Salesman Name": "",
+            "Salesman Email": "",
+            "Client Id": "",
+            "Client Phone Number": "",
+            "Sales Value": interest_free_price if interest_free_price is not None else "",
+            "Currency": "",
+            "Contract Payment Plan": "",
+            "Reservation Date": ""
+        }
+
+        # 6. Apply updates
+        for column_name, new_value in updates.items():
+            col_index = None
+            
+            # Find column index for this specific field
+            for idx, header in enumerate(headers):
+                if header.strip() == column_name:
+                    col_index = idx + 1  # gspread is 1-based
+                    break
+            
+            if col_index:
+                ws.update_cell(found_row, col_index, new_value)
+                logger.debug(f"Cancelled: Updated {column_name} to '{new_value}' for unit {unit_code}")
+            else:
+                # Log a debug message if a column is missing (e.g., 'Currency' might not exist in all sheets)
+                logger.debug(f"Column '{column_name}' not found in sheet headers (skipped).")
+
+        logger.info(f"✅ Successfully cancelled unit '{unit_code}' in Google Sheet for '{company.name}'")
+
+    except Exception as e:
+        logger.error(f"Failed to cancel unit in Google Sheet for company {company.name}: {str(e)}")
+        # Re-raise if you want the main transaction to fail, otherwise suppress.
+        # usually for external APIs we might want to log only:
+        raise e

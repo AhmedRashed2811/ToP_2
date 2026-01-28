@@ -1,13 +1,13 @@
 # ToP/services/market_research_master_data_service.py
-
 from __future__ import annotations
 
 import csv
+import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Type, Tuple, List
 
 from django.db import transaction
-from django.db.models import QuerySet
 
 from ..models import (
     MarketProjectLocation,
@@ -33,6 +33,7 @@ class MarketResearchMasterDataService:
     - Views must not use utils.
     - Service does not accept HttpRequest.
     - Preserves original logic (critical).
+    - Adds robust Unicode normalization for Arabic/non-English inputs (create + CSV import).
     """
 
     # =========================================================
@@ -40,12 +41,12 @@ class MarketResearchMasterDataService:
     # =========================================================
     @staticmethod
     def get_master_data_context() -> ServiceResult:
-        locations = MarketProjectLocation.objects.all()
-        developers = MarketProjectDeveloper.objects.all()
-        projects = MarketProject.objects.select_related("developer", "location")
-        unit_types = MarketUnitType.objects.all()
-        finishing_specs = MarketUnitFinishingSpec.objects.all()
-        asset_types = MarketUnitAssetType.objects.all()
+        locations = MarketProjectLocation.objects.all().order_by("name")
+        developers = MarketProjectDeveloper.objects.all().order_by("name")
+        projects = MarketProject.objects.select_related("developer", "location").order_by("name")
+        unit_types = MarketUnitType.objects.all().order_by("name")
+        finishing_specs = MarketUnitFinishingSpec.objects.all().order_by("name")
+        asset_types = MarketUnitAssetType.objects.all().order_by("name")
 
         return ServiceResult(
             success=True,
@@ -71,12 +72,12 @@ class MarketResearchMasterDataService:
         if not model_name:
             return ServiceResult(success=False, status=400, error="Model name not provided")
 
+        # ---- Project (preserve original shape, but normalize name) ----
         if model_name == "project":
-            # Original logic: value is dict with name/developer_id/location_id
             if not isinstance(value, dict):
                 return ServiceResult(success=False, status=400, error="Invalid value for project")
 
-            name = (value.get("name") or "").strip()
+            name = MarketResearchMasterDataService._normalize_name(value.get("name"))
             developer_id = value.get("developer_id")
             location_id = value.get("location_id")
 
@@ -92,7 +93,6 @@ class MarketResearchMasterDataService:
             except Exception as e:
                 return ServiceResult(success=False, status=400, error=str(e))
 
-            # Preserve original response shape
             return ServiceResult(
                 success=True,
                 status=200,
@@ -104,17 +104,22 @@ class MarketResearchMasterDataService:
                 },
             )
 
-        # Simple models: location, developer, unit_type, finishing_spec, asset_type
+        # ---- Simple master tables ----
         model_class = model_map.get(model_name)
         if not model_class:
             return ServiceResult(success=False, status=400, error="Invalid model")
 
-        name = (str(value).strip() if value is not None else "")
+        name = MarketResearchMasterDataService._normalize_name(value)
         if not name:
             return ServiceResult(success=False, status=400, error="Value is required")
 
         try:
-            obj, _created = model_class.objects.get_or_create(name=name)
+            # Prevent duplicates caused by different case/spacing/Unicode forms
+            existing = model_class.objects.filter(name__iexact=name).first()
+            if existing:
+                return ServiceResult(success=True, status=200, payload={"id": existing.id, "name": existing.name})
+
+            obj = model_class.objects.create(name=name)
             return ServiceResult(success=True, status=200, payload={"id": obj.id, "name": obj.name})
         except Exception as e:
             return ServiceResult(success=False, status=400, error=str(e))
@@ -153,8 +158,7 @@ class MarketResearchMasterDataService:
     @staticmethod
     @transaction.atomic
     def save_project_location(*, project_id: Any, latitude: Any, longitude: Any) -> ServiceResult:
-        # Preserve original validation:
-        # if not all([project_id, latitude, longitude]) => error
+        # Preserve original validation behavior
         if not project_id or latitude is None or longitude is None:
             return ServiceResult(success=False, status=400, error="Missing required fields")
 
@@ -174,7 +178,7 @@ class MarketResearchMasterDataService:
             return ServiceResult(success=False, status=400, error=str(e))
 
     # =========================================================
-    # PUBLIC: Import CSV For Model
+    # PUBLIC: Import CSV For Model (Arabic-safe decoding + normalization)
     # =========================================================
     @staticmethod
     @transaction.atomic
@@ -198,26 +202,26 @@ class MarketResearchMasterDataService:
 
         try:
             if model_name == "location":
-                # Original: MarketProjectLocation.objects.update_or_create(name=row['name'].strip())
                 for row in reader:
-                    name = (row.get("name") or "").strip()
+                    name = MarketResearchMasterDataService._normalize_name(row.get("name"))
                     if not name:
                         continue
                     MarketProjectLocation.objects.update_or_create(name=name)
                     count += 1
 
             elif model_name == "developer":
-                # Original expects: row['Developer Name']
                 for row in reader:
-                    name = (row.get("Developer Name") or "").strip()
+                    name = MarketResearchMasterDataService._normalize_name(
+                        row.get("Developer Name") or row.get("developer") or row.get("name")
+                    )
                     if not name:
                         continue
                     MarketProjectDeveloper.objects.update_or_create(name=name)
                     count += 1
 
-            elif model_name == "unit_type":
+            elif model_name in ("unit_type", "type"):
                 for row in reader:
-                    name = (row.get("name") or "").strip()
+                    name = MarketResearchMasterDataService._normalize_name(row.get("name"))
                     if not name:
                         continue
                     MarketUnitType.objects.update_or_create(name=name)
@@ -225,7 +229,7 @@ class MarketResearchMasterDataService:
 
             elif model_name == "asset_type":
                 for row in reader:
-                    name = (row.get("name") or "").strip()
+                    name = MarketResearchMasterDataService._normalize_name(row.get("name"))
                     if not name:
                         continue
                     MarketUnitAssetType.objects.update_or_create(name=name)
@@ -233,19 +237,23 @@ class MarketResearchMasterDataService:
 
             elif model_name == "finishing_spec":
                 for row in reader:
-                    name = (row.get("name") or "").strip()
+                    name = MarketResearchMasterDataService._normalize_name(row.get("name"))
                     if not name:
                         continue
                     MarketUnitFinishingSpec.objects.update_or_create(name=name)
                     count += 1
 
             elif model_name == "project":
-                # Original expects keys:
-                # developer_name = row['Developer Name'], location_name = row['Location'], project_name = row['Project Name ']
                 for row in reader:
-                    developer_name = (row.get("Developer Name") or "").strip()
-                    location_name = (row.get("Location") or "").strip()
-                    project_name = (row.get("Project Name ") or "").strip()  # NOTE: trailing space preserved
+                    developer_name = MarketResearchMasterDataService._normalize_name(
+                        row.get("Developer Name") or row.get("Developer") or row.get("developer")
+                    )
+                    location_name = MarketResearchMasterDataService._normalize_name(
+                        row.get("Location") or row.get("location")
+                    )
+                    project_name = MarketResearchMasterDataService._normalize_name(
+                        row.get("Project Name ") or row.get("Project Name") or row.get("project")
+                    )  # preserve trailing-space-key compatibility
 
                     if not developer_name or not location_name or not project_name:
                         continue
@@ -268,14 +276,16 @@ class MarketResearchMasterDataService:
             return ServiceResult(success=False, status=400, error=str(e))
 
     # =========================================================
-    # INTERNAL: Model map
+    # INTERNAL: Model map (adds aliases to avoid breaking old keys)
     # =========================================================
     @staticmethod
     def _model_map(*, include_project: bool = False) -> Dict[str, Type]:
-        base = {
+        base: Dict[str, Type] = {
             "location": MarketProjectLocation,
             "developer": MarketProjectDeveloper,
+            # Unit type aliases (your template/service had inconsistent keys before)
             "type": MarketUnitType,
+            "unit_type": MarketUnitType,
             "finishing_spec": MarketUnitFinishingSpec,
             "asset_type": MarketUnitAssetType,
         }
@@ -284,12 +294,46 @@ class MarketResearchMasterDataService:
         return base
 
     # =========================================================
-    # INTERNAL: Decode CSV bytes (fallback encodings preserved)
+    # INTERNAL: Unicode normalize (Arabic-safe)
     # =========================================================
     @staticmethod
-    def _decode_csv_bytes(file_bytes: bytes) -> Tuple[Optional[List[str]], Optional[str]]:
-        # Preserved encodings list and behavior
-        encodings_to_try = ["utf-8-sig", "utf-8", "latin1", "cp1252"]
+    def _normalize_name(raw: Any) -> str:
+        if raw is None:
+            return ""
+
+        s = str(raw)
+
+        # Remove BOM / zero-widths sometimes found in Arabic CSV exports
+        s = s.replace("\ufeff", "").replace("\u200f", "").replace("\u200e", "")
+
+        # Normalize Unicode (handles Arabic presentation forms, full-width chars, etc.)
+        s = unicodedata.normalize("NFKC", s)
+
+        # Remove Arabic tatweel + common diacritics (tashkeel) so duplicates don't happen
+        # tatweel: \u0640
+        # harakat: \u064b-\u065f, \u0670
+        s = re.sub(r"[\u0640\u064b-\u065f\u0670]", "", s)
+
+        # Collapse whitespace
+        s = re.sub(r"\s+", " ", s, flags=re.UNICODE).strip()
+
+        return s
+
+    # =========================================================
+    # INTERNAL: Decode CSV bytes (adds Arabic encodings)
+    # =========================================================
+    @staticmethod
+    def _decode_csv_bytes(file_bytes: bytes):
+        encodings_to_try = [
+            "utf-8-sig",
+            "utf-8",
+            "utf-16",
+            "utf-16-le",
+            "utf-16-be",
+            "cp1256",   # Arabic Windows Excel ANSI
+            "cp1252",
+            "latin1",
+        ]
 
         for enc in encodings_to_try:
             try:
@@ -301,3 +345,6 @@ class MarketResearchMasterDataService:
                 return None, str(e)
 
         return None, "Unsupported file encoding"
+    
+    
+    

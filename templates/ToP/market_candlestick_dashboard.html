@@ -1,796 +1,1413 @@
 {% extends base_template %}
-{% block title %}Market Unit Charts{% endblock %}
+
+{% block title %}Market Analysis{% endblock %}
+
 {% load static %}
+
 {% block content %}
 
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
 <style>
-
-    @media (min-width: 1200px) {
-        .container, .container-lg, .container-md, .container-sm, .container-xl {
-            max-width: 100%;
-        }
+    /* REQUIRED (must be at top of style tag) */
+    .container {
+        margin-top: 80px;
+        padding: 0;
     }
-
+    
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl { max-width: 100%; }
+    }
+    
     @media (min-width: 576px) {
-        .container, .container-sm {
-            max-width: 100%;
-        }
+        .container, .container-sm { max-width: 100%; }
     }
 
-    .market-charts-container {
-        max-width: 100%;
-        margin: 0 auto;
-        padding: 20px;
+    :root {
+        --bg: #f6f7fb;
+        --card: #ffffff;
+        --text: #0f172a;
+        --muted: #64748b;
+        --border: rgba(2,6,23,.10);
+        --shadow: 0 14px 40px rgba(2, 6, 23, .08);
+        --shadow-sm: 0 8px 22px rgba(2, 6, 23, .06);
+        --radius: 18px;
+        --accent: #2563eb;
+        --ring: 0 0 0 4px rgba(37,99,235,.14);
+        
+        /* FIXED: Adjusted values for proper positioning */
+        --labelsH: 144px;
+        --yGutter: 60px;
+        --chartTopPadding: 40px;
+        --chartBottomPadding: 60px;
+        --rightPadding: 30px; /* NEW: Right padding for last cell */
     }
-    .page-header {
-        text-align: center;
-        margin-bottom: 30px;
-        border-bottom: 2px solid #e9ecef;
-        padding-bottom: 20px;
+
+    body { 
+        background: var(--bg); 
+        font-family: "Times New Roman", Times, serif;
     }
-    .page-header h1 {
-        color: #2c3e50;
-        margin-bottom: 10px;
-        font-weight: 600;
+
+    .page { 
+        padding: 16px 16px 26px; 
     }
-    .subtitle {
-        color: #6c757d;
-        font-size: 1.1em;
-    }
-    .filters-section {
-        background: #f8f9fa;
-        padding: 25px;
-        border-radius: 10px;
-        margin-bottom: 30px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    }
-    .filters-form {
+
+    /* Header - unchanged */
+    .header-container {
         display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        align-items: end;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+        padding: 16px 18px;
+        background: linear-gradient(135deg, #f97316, #fb923c);
+        color: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        position: relative;
+        overflow: hidden;
+        gap: 14px;
     }
-    .filter-group {
-        flex: 1;
-        min-width: 200px;
+    
+    .header-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 220px;
+        height: 220px;
+        background: rgba(255, 255, 255, 0.10);
+        border-radius: 50%;
+        transform: translate(60px, -60px);
     }
-    .filter-group label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: 500;
-        color: #495057;
+    
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        position: relative;
+        z-index: 1;
+        min-width: 260px;
     }
-    .filter-group select {
-        width: 100%;
-        padding: 10px 15px;
-        border: 2px solid #dee2e6;
-        border-radius: 8px;
-        background: white url('image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="%23333" d="M1,3 L6,8 L11,3"/></svg>') no-repeat right 15px center;
-        background-size: 12px;
-        font-size: 14px;
-        appearance: none;
-        cursor: pointer;
-        transition: all 0.2s ease;
+    
+    .company-logo {
+        height: 78px;
+        max-width: 240px;
+        border-radius: 12px;
+        box-shadow: 0 1px 10px rgba(0,0,0,0.12);
+        background: rgba(255,255,255,.15);
+        padding: 6px;
+        object-fit: contain;
     }
-    .filter-group select:focus {
-        outline: none;
-        border-color: #007bff;
-        box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
-    }
-    .filter-actions {
+    
+    .header-buttons {
         display: flex;
         gap: 10px;
-        align-self: end;
+        position: relative;
+        z-index: 1;
+        flex-wrap: wrap;
+        justify-content: flex-end;
     }
-    .btn {
-        padding: 10px 20px;
+    
+    .btnx {
+        padding: 10px 14px;
+        border-radius: 12px;
         border: none;
-        border-radius: 5px;
+        font-size: 0.86rem;
+        font-weight: 800;
         cursor: pointer;
-        font-weight: 500;
-        transition: all 0.2s;
-    }
-    .btn-primary {
-        background: #007bff;
+        transition: all .22s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        box-shadow: 0 6px 10px -6px rgb(0 0 0 / 0.25);
+        position: relative;
+        overflow: hidden;
         color: white;
+        user-select: none;
+        white-space: nowrap;
+        font-family: "Times New Roman", Times, serif;
     }
-    .btn-primary:hover {
-        background: #0056b3;
-        transform: translateY(-1px);
+    
+    .btnx::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        transform: translateX(-110%);
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+        transition: transform .55s ease;
     }
-    .btn-secondary {
-        background: #6c757d;
-        color: white;
+    
+    .btnx:hover::before { transform: translateX(110%); }
+    .btnx:hover { transform: translateY(-2px); box-shadow: 0 18px 24px -14px rgba(0,0,0,.30); }
+    
+    .btn-report { background: linear-gradient(135deg, #764ba2, #667eea); }
+    .btn-map { background: linear-gradient(135deg, #6c757d, #5a6268); }
+    .btn-dash { background: linear-gradient(135deg, #10b981, #0d9f6e); }
+    .btn-units { background: linear-gradient(135deg, #ef4444, #f87171); }
+
+    @media (max-width: 900px) {
+        .header-container { flex-direction: column; align-items: stretch; }
+        .header-buttons { justify-content: center; }
+        .btnx { width: 100%; justify-content: center; }
+        .header-left { justify-content: center; min-width: auto; }
     }
-    .btn-secondary:hover {
-        background: #545b62;
+
+    /* Panels */
+    .panel {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+        padding: 14px;
+        margin-bottom: 14px;
     }
+    
+    .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .panel-head h3 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 900;
+        color: var(--text);
+        letter-spacing: .2px;
+        font-family: "Times New Roman", Times, serif;
+    }
+    
+    .chip {
+        font-size: 12px;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        background: #fff;
+        padding: 6px 10px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+        font-family: "Times New Roman", Times, serif;
+    }
+    
+    .chip b { color: var(--text); }
+
+    /* Filters */
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    
+    @media (max-width: 1100px) {
+        .grid { grid-template-columns: 1fr; }
+        .grid4 { grid-template-columns: 1fr; }
+    }
+    
+    .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .field label {
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 800;
+        font-family: "Times New Roman", Times, serif;
+    }
+    
+    .select {
+        width: 100%;
+        appearance: none;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 10px 12px;
+        font-size: 13px;
+        color: var(--text);
+        background: #fff;
+        outline: none;
+        transition: box-shadow .18s ease, border-color .18s ease, opacity .18s ease;
+        cursor: pointer;
+        font-family: "Times New Roman", Times, serif;
+    }
+    
+    .select:focus { border-color: rgba(37,99,235,.35); box-shadow: var(--ring); }
+    .select:disabled { opacity: .55; cursor: not-allowed; background: #f8fafc; }
+    
+    .actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+    
+    .btn-ghost {
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--text);
+        font-weight: 900;
+        padding: 10px 12px;
+        border-radius: 14px;
+        cursor: pointer;
+        transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+        font-family: "Times New Roman", Times, serif;
+    }
+    
+    .btn-ghost:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); background: #fbfbfd; }
+
+    /* States */
+    .empty {
+        border: 1px dashed rgba(2,6,23,.18);
+        background: rgba(255,255,255,.70);
+        border-radius: var(--radius);
+        padding: 14px;
+        color: var(--muted);
+        font-size: 13px;
+        margin-bottom: 14px;
+        font-family: "Times New Roman", Times, serif;
+    }
+    
+    .loading {
+        display: none;
+        gap: 10px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 10px;
+        font-family: "Times New Roman", Times, serif;
+    }
+    
+    .loading.show { display: flex; }
+    
+    .spinner {
+        width: 16px;
+        height: 16px;
+        border-radius: 999px;
+        border: 2px solid rgba(2,6,23,.12);
+        border-top-color: rgba(37,99,235,.7);
+        animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* CHARTS SECTION - UPDATED */
     .charts-section {
         display: flex;
         flex-direction: column;
-        gap: 40px;
+        gap: 14px;
     }
+    
     .chart-container {
-        background: white;
-        padding: 25px;
-        border-radius: 10px;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        background: var(--card);
+        padding: 14px;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 650px;
     }
-    .chart-container h2 {
-        color: #2c3e50;
-        margin-bottom: 20px;
-        font-weight: 500;
-        border-left: 4px solid #007bff;
-        padding-left: 15px;
+    
+    .chart-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+        flex-shrink: 0;
     }
+    
+    .chart-header h2 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 900;
+        color: var(--text);
+        border-left: 4px solid var(--accent);
+        padding-left: 12px;
+        letter-spacing: .2px;
+        font-family: "Times New Roman", Times, serif;
+    }
+    
+    .crumb {
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.35;
+        border-left: 3px solid rgba(37,99,235,.25);
+        padding-left: 10px;
+        max-width: 860px;
+        font-family: "Times New Roman", Times, serif;
+    }
+
+    /* CHART WRAPPER */
     .chart-wrapper {
-        overflow-x: auto;
-        overflow-y: visible;
-        border: 1px solid #e9ecef;
-        border-radius: 5px;
-        background: #fafafa;
-        /* Increased width and height */
-        width: 100%;
-        max-width: 7700px; /* Slightly larger than canvas for padding/borders */
-        height: 800px; /* Slightly increased height */
+        flex: 1;
+        overflow: auto;
+        border: 1px solid rgba(2,6,23,.10);
+        border-radius: 14px;
+        background: linear-gradient(180deg, rgba(2,6,23,.02), transparent);
         position: relative;
-        margin: 0 auto; /* Center if container is wider */
+        min-height: 100%;
     }
-    /* Custom styles for hierarchical labels - moved to top */
+
+    /* SCROLL CONTAINER - UPDATED */
+    .chart-scroll {
+        position: relative;
+        min-width: 100%;
+        min-height: 100%;
+        /* Add right padding for the last cell */
+        padding-right: var(--rightPadding);
+    }
+
+    /* HIERARCHICAL LABELS - UPDATED for right padding */
     .hierarchical-labels {
         position: absolute;
         top: 0;
-        left: 72px;
-        right: 0;
-        /* Increased height */
-        height: 140px;
-        background: white;
-        border-bottom: 2px solid #999999;
+        left: var(--yGutter);
+        height: var(--labelsH);
+        /* Account for right padding */
+        width: calc(100% - var(--yGutter) - var(--rightPadding));
+        background: rgba(255,255,255,.95);
+        border-bottom: 2px solid rgba(2,6,23,.35);
         z-index: 10;
+        user-select: none;
+        pointer-events: none;
+        backdrop-filter: blur(8px);
+        overflow: hidden;
     }
+
     .label-level {
-        height: 35px; /* Increased height */
-        border-bottom: 2px solid #999999;
+        height: calc(var(--labelsH) / 4);
+        border-bottom: 1px solid rgba(2,6,23,.30);
         position: relative;
-        font-size: 13px; /* Slightly larger font */
-        line-height: 35px; /* Match height */
+        font-size: 12px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        font-family: "Times New Roman", Times, serif;
     }
-    .label-level:last-child {
-        border-bottom: 2px solid #999999;
-    }
+    
+    .label-level:last-child { border-bottom: 2px solid rgba(2,6,23,.35); }
+    
     .label-group {
         position: absolute;
         height: 100%;
-        border-right: 2px solid #999999;
+        border-right: 1px solid rgba(2,6,23,.30);
         text-align: center;
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
-        padding: 0 10px; /* Increased padding */
+        padding: 0 5px;
         box-sizing: border-box;
-        background-color: inherit;
         display: flex;
         align-items: center;
         justify-content: center;
-        
+        font-weight: 900;
+        color: rgba(2,6,23,.82);
+        pointer-events: none;
+        font-family: "Times New Roman", Times, serif;
+        line-height: 1.2;
     }
-    /* Ensure all levels have a background color */
-    .label-level-0 { background-color: #f8f9fa !important; font-weight: bold; }
-    .label-level-1 { background-color: #e9ecef !important; }
-    .label-level-2 { background-color: #dee2e6 !important; }
-    .label-level-3 { background-color: #ced4da !important; }
-    /* Styles for the value boxes */
+    
+    .label-level-0 .label-group { background: #f8fafc; }
+    .label-level-1 .label-group { background: #eef2f7; }
+    .label-level-2 .label-group { background: #e7edf5; }
+    .label-level-3 .label-group { background: #dfe7f2; }
+
+    /* CANVAS POSITIONING - UPDATED */
+    canvas {
+        display: block;
+        position: absolute;
+        top: calc(var(--labelsH) + var(--chartTopPadding));
+        left: 0;
+        /* Account for right padding */
+        width: calc(100% - var(--rightPadding));
+        height: calc(100% - var(--labelsH) - var(--chartTopPadding) - var(--chartBottomPadding));
+    }
+
+    /* VALUE BOXES - UPDATED for centered positioning */
     .candlestick-value-box {
         position: absolute;
-        background-color: white;
-        color: black;
-        border: 1px solid #666666;
+        background: white;
+        color: rgba(2,6,23,.92);
+        border: 1px solid rgba(2,6,23,.45);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 12px; /* Slightly larger font */
-        font-weight: bold;
+        font-size: 12px;
+        font-weight: 900;
         white-space: nowrap;
         pointer-events: none;
-        /* Adjusted size */
-        width: 60px;
-        height: 20px;
-        margin-left: -30px; /* Half of width */
-        margin-top: -10px; /* Half of height */
-        z-index: 5;
-        padding: 2px;
+        width: 66px;
+        height: 22px;
+        margin-left: -33px;
+        margin-top: -11px;
+        z-index: 15; /* Increased z-index */
+        padding: 2px 4px;
         box-sizing: border-box;
+        border-radius: 8px;
+        box-shadow: 0 10px 18px rgba(2,6,23,.10);
+        transform: translate(-50%, -50%);
+        font-family: "Times New Roman", Times, serif;
     }
+    
     .candlestick-value-box.avg {
-        background-color: black;
-        color: white;
-        border: 1px solid #333333;
+        background: rgba(2,6,23,.92);
+        color: #fff;
+        border: 1px solid rgba(2,6,23,.92);
     }
+
+    /* NEW: Custom Tooltip Styles */
+    .custom-tooltip {
+        position: absolute;
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid rgba(2,6,23,.25);
+        border-radius: 12px;
+        padding: 10px;
+        z-index: 20;
+        pointer-events: none;
+        box-shadow: 0 12px 28px rgba(2,6,23,.15);
+        min-width: 180px;
+        backdrop-filter: blur(10px);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-family: "Times New Roman", Times, serif;
+    }
+
+    .tooltip-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 6px 0;
+        border-bottom: 1px solid rgba(2,6,23,.08);
+    }
+
+    .tooltip-item:last-child {
+        border-bottom: none;
+    }
+
+    .tooltip-label {
+        font-size: 10px;
+        color: rgba(2,6,23,.65);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .tooltip-value {
+        font-size: 11px;
+        color: rgba(2,6,23,.9);
+        font-weight: 900;
+        padding: 4px 0;
+        border-bottom: 1px solid rgba(2,6,23,.08);
+    }
+
+    .tooltip-metric {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: rgba(2,6,23,.9);
+        font-weight: 900;
+        margin-top: 4px;
+    }
+
+    .custom-tooltip .tooltip-value:nth-child(4){
+        border-bottom: none; /* last header value */
+    }
+
+
+    /* Animations */
+    .anim-swap { animation: fadeUp .24s ease both; }
+    
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(7px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hint {
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        line-height: 1.45;
+        font-family: "Times New Roman", Times, serif;
+    }
+
+    /* Responsive adjustments */
     @media (max-width: 768px) {
-        .filters-form {
-            flex-direction: column;
+        .chart-container {
+            height: 500px;
         }
-        .filter-group {
-            min-width: 100%;
+        
+        :root {
+            --labelsH: 120px;
+            --yGutter: 50px;
+            --chartTopPadding: 30px;
+            --chartBottomPadding: 50px;
+            --rightPadding: 20px;
         }
-        .filter-actions {
-            width: 100%;
-            justify-content: center;
+    }
+    
+    @media (max-width: 480px) {
+        .chart-container {
+            height: 100%;
+        }
+        
+        :root {
+            --labelsH: 100px;
+            --yGutter: 40px;
+            --chartTopPadding: 20px;
+            --chartBottomPadding: 40px;
+            --rightPadding: 15px;
         }
     }
-
-    /* Header Container Styles */
-.header-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    padding: 20px;
-    background: linear-gradient(135deg, #f97316, #fb923c);
-    color: white;
-    border-radius: 16px;
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .header-container::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 200px;
-    height: 200px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-    transform: translate(50px, -50px);
-  }
-  
-  .header-buttons {
-    display: flex;
-    gap: 15px;
-    position: relative;
-    z-index: 1;
-  }
-  
-  /* Base Button Styles */
-  .btn {
-    padding: 12px 20px;
-    border-radius: 10px;
-    border: none;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    transition: left 0.5s;
-  }
-  
-  .btn:hover::before {
-    left: 100%;
-  }
-  
-  .btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
-  }
-  
-  /* Specific Button Styles */
-  .report-button {
-    background: linear-gradient(135deg, #764ba2, #667eea);
-    color: white;
-  }
-  
-  .report-button:hover {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-  }
-  
-  .secondary-button {
-    background: linear-gradient(135deg, #6c757d, #5a6268);
-    color: white;
-  }
-  
-  .secondary-button:hover {
-    background: linear-gradient(135deg, #5a6268, #6c757d);
-    color: white;
-  }
-  
-  .third-button {
-    background: linear-gradient(135deg, #10b981, #0d9f6e);
-    color: white;
-  }
-  
-  .third-button:hover {
-    background: linear-gradient(135deg, #0d9f6e, #10b981);
-    color: white;
-  }
-
-  .forth-button {
-    background: linear-gradient(135deg, #ef4444, #f87171); /* red-500 → red-400 */
-    color: white;
-  }
-  
-  .forth-button:hover {
-    background: linear-gradient(135deg, #f87171, #ef4444); /* reverse gradient on hover */
-    color: white;
-  }
-  
-  
-  /* Mobile Responsiveness */
-  @media (max-width: 768px) {
-    .header-container {
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      text-align: center;
-      padding: 25px 20px;
-    }
-    
-    .header-buttons {
-      width: 100%;
-      flex-direction: column;
-      gap: 12px;
-    }
-    
-    .btn {
-      width: 100%;
-      justify-content: center;
-      padding: 14px 20px;
-    }
-    
-    .header-container::before {
-      width: 150px;
-      height: 150px;
-      transform: translate(40px, -40px);
-    }
-  }
-  
-  @media (max-width: 480px) {
-    .header-container {
-      padding: 20px 15px;
-    }
-    
-    .btn {
-      font-size: 0.85rem;
-      padding: 12px 16px;
-    }
-  }
-
 </style>
-<div class="market-charts-container">
 
+<div class="container">
+  <div class="page">
+
+    <!-- HEADER -->
     <div class="header-container">
-        <div style="display: flex; align-items: center; gap: 18px;">
-            <img src="{% static 'images/Screenshot 2025-12-15 170518.png' %}" alt="Your Company Logo"
-                class="company-logo"
-                style="height: 100px; max-width: 218px; border-radius: 10px; box-shadow: 0 1px 8px rgba(0,0,0,0.08);" />
-        </div>
-        <div class="header-buttons">
-            <a href="{% url 'market_research_report' %}" class="btn report-button">
-                <i class="fas fa-file-alt"></i>
-                Report View
-            </a>
-            <a href="{% url 'market_explorer' %}" class="btn secondary-button">
-                <i class="fas fa-map-marked-alt"></i>
-                Map View
-            </a>
-            <a href="{% url 'market_dashboard' %}" class="btn third-button">
-                <i class="fas fa-chart-bar"></i>
-                Market Analysis
-            </a>
-            <a href="{% url 'market_charts_view' %}?location=6th+of+October&asset_type=&unit_type=" class="btn forth-button">
-                <i class="fas fa-chart-line"></i>
-                Units Analysis
-            </a>            
-        </div>
-    </div>
-    <!-- Filters -->
-    <div class="filters-section">
-        <form method="GET" class="filters-form">
-            <div class="filter-group">
-                <label for="location">Location:</label>
-                <select name="location" id="location">
-                    <option value="">All Locations</option>
-                    {% for loc in locations %}
-                        <option value="{{ loc }}" {% if loc == selected_locations.0 %}selected{% endif %}>{{ loc }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-group">
-                <label for="asset_type">Asset Type:</label>
-                <select name="asset_type" id="asset_type">
-                     <option value="">All Asset Types</option>
-                    {% for at in asset_types %}
-                        <option value="{{ at }}" {% if at == selected_asset_types.0 %}selected{% endif %}>{{ at }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-group">
-                <label for="unit_type">Unit Type:</label>
-                <select name="unit_type" id="unit_type">
-                     <option value="">All Unit Types</option>
-                    {% for ut in unit_types %}
-                        <option value="{{ ut }}" {% if ut == selected_unit_types.0 %}selected{% endif %}>{{ ut }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-actions">
-                <button type="submit" class="btn btn-primary">Apply Filters</button>
-                <button type="button" class="btn btn-secondary" onclick="clearFilters()">Clear All</button>
-            </div>
-        </form>
-    </div>
-    <!-- Chart Containers -->
-    <div class="charts-section">
-        <div class="chart-container">
-            <h2>Unit Price Range</h2>
-            <div class="chart-wrapper">
-                <div class="hierarchical-labels" id="priceLabels"></div>
-                <!-- Increased canvas width -->
-                <canvas id="priceChart" width="7500" height="660"></canvas>
-            </div>
-        </div>
-        <div class="chart-container">
-            <h2>Built-Up Area (BUA) Range</h2>
-            <div class="chart-wrapper">
-                <div class="hierarchical-labels" id="buaLabels"></div>
-                <!-- Increased canvas width -->
-                <canvas id="buaChart" width="7500" height="660"></canvas>
-            </div>
-        </div>
-        <div class="chart-container">
-            <h2>Price per Square Meter (PSM) Range</h2>
-            <div class="chart-wrapper">
-                <div class="hierarchical-labels" id="psmLabels"></div>
-                <!-- Increased canvas width -->
-                <canvas id="psmChart" width="7500" height="660"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    // Utility function for formatting numbers
-    function formatNumber(num) {
-        if (num === null || num === undefined) return 'N/A';
-        if (Math.abs(num) < 1) {
-            if (num !== 0) {
-                return num.toFixed(2);
-            } else {
-                return '0';
-            }
-        }
-        if (num >= 1000000) {
-            const millions = num / 1000000;
-            return (Math.abs(millions) % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)) + 'M';
-        }
-        if (num >= 1000) {
-            const thousands = num / 1000;
-            return (Math.abs(thousands) % 1 === 0 ? thousands.toFixed(0) : thousands.toFixed(1)) + 'K';
-        }
-        return Math.round(num).toLocaleString();
-    }
-    // Enhanced function to flatten hierarchical data and create label structure
-    function flattenChartDataWithHierarchy(hierarchicalData) {
-        const flatLabels = [];
-        const dataPoints = [];
-        const labelHierarchy = {
-            level0: [], // Finishing Specs
-            level1: [], // Developer
-            level2: [], // Project
-            level3: []  // Payment Years
-        };
-        let currentIndex = 0;
-        function processLevel(items, depth, parentInfo = {}) {
-            if (!Array.isArray(items)) {
-                console.error("Expected array for items, got:", items);
-                return;
-            }
-            items.forEach(item => {
-                if (!item || typeof item !== 'object') {
-                    console.warn("Skipping invalid item:", item);
-                    return;
-                }
-                const label = item.label || `Unnamed Node`;
-                if (item.children && Array.isArray(item.children) && item.children.length > 0) {
-                    // This is a group node
-                    const startIndex = currentIndex;
-                    // Process children first to know the span
-                    const childrenCount = countLeafNodes(item.children);
-                    // Add hierarchy info for this level
-                    const hierarchyInfo = {
-                        label: label,
-                        startIndex: startIndex,
-                        span: childrenCount,
-                        level: depth
-                    };
-                    // Store in appropriate level
-                    labelHierarchy[`level${depth}`].push(hierarchyInfo);
-                    // Recurse into children with updated parent info
-                    const newParentInfo = { ...parentInfo };
-                    newParentInfo[`level${depth}`] = label;
-                    processLevel(item.children, depth + 1, newParentInfo);
-                } else {
-                    // This is a leaf node (Payment Years)
-                    flatLabels.push(label);
-                    if (item.min !== undefined && item.avg !== undefined && item.max !== undefined) {
-                        dataPoints.push({
-                            min: item.min,
-                            avg: item.avg,
-                            max: item.max
-                        });
-                    } else {
-                        dataPoints.push(null);
-                    }
-                    // Add leaf node to level 3
-                    labelHierarchy.level3.push({
-                        label: label,
-                        startIndex: currentIndex,
-                        span: 1,
-                        level: 3,
-                        parentInfo: parentInfo
-                    });
-                    currentIndex++;
-                }
-            });
-        }
-        function countLeafNodes(items) {
-            let count = 0;
-            items.forEach(item => {
-                if (item.children && Array.isArray(item.children) && item.children.length > 0) {
-                    count += countLeafNodes(item.children);
-                } else {
-                    count++;
-                }
-            });
-            return count;
-        }
-        processLevel(hierarchicalData, 0);
-        return {
-            labels: flatLabels,
-            dataPoints: dataPoints,
-            labelHierarchy: labelHierarchy
-        };
-    }
-    // Function to create hierarchical label display
-    function createHierarchicalLabels(containerId, labelHierarchy, chartWidth) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        container.innerHTML = '';
-        // Calculate the width per data point
-        const totalDataPoints = labelHierarchy.level3.length;
-        // Use the passed chartWidth for calculation
-        const widthPerPoint = chartWidth / totalDataPoints;
-        // Create 4 levels of labels
-        for (let level = 0; level < 4; level++) {
-            const levelDiv = document.createElement('div');
-            levelDiv.className = `label-level label-level-${level}`;
-            const levelData = labelHierarchy[`level${level}`] || [];
-            levelData.forEach(item => {
-                const labelDiv = document.createElement('div');
-                labelDiv.className = 'label-group';
-                labelDiv.textContent = item.label;
-                labelDiv.style.left = (item.startIndex * widthPerPoint) + 'px';
-                labelDiv.style.width = (item.span * widthPerPoint) + 'px';
-                labelDiv.title = item.label; // Tooltip for long labels
-                levelDiv.appendChild(labelDiv);
-            });
-            container.appendChild(levelDiv);
-        }
-    }
-    function renderChart(canvasId, chartData, chartTitle) {
-        const canvas = document.getElementById(canvasId);
-        const ctx = canvas.getContext('2d');
-        const chartWidth = canvas.width; // Get the actual canvas width
-        const chartHeight = canvas.height;
+      <div class="header-left">
+        <img src="{% static 'images/Screenshot 2025-12-15 170518.png' %}" alt="Logo" class="company-logo" />
+      </div>
 
-        // Check if we have data
-        const hasData = chartData.dataPoints.some(point => point !== null);
-        if (!hasData) {
-            ctx.clearRect(0, 0, chartWidth, chartHeight);
-            ctx.font = "20px Arial";
-            ctx.textAlign = "center";
-            ctx.fillStyle = "#6c757d";
-            ctx.fillText("No data available for selected filters", chartWidth / 2, chartHeight / 2);
-            return;
-        }
-        // Prepare data for Chart.js
-        const avgValues = chartData.dataPoints.map(point => point ? point.avg : NaN);
-        // Calculate y-axis range
-        let suggestedYMax = null;
-        let suggestedYMin = null;
-        const allValues = chartData.dataPoints.flatMap(p => p ? [p.min, p.avg, p.max] : []);
-        if (allValues.length > 0) {
-            const dataMax = Math.max(...allValues);
-            const dataMin = Math.min(...allValues);
-            const range = dataMax - dataMin;
-            // Reduce padding below the chart area
-            suggestedYMax = dataMax + range * 0.05;
-            suggestedYMin = Math.max(0, dataMin - range * 0.02);
-        }
-        // Create the chart
-        const chart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: chartData.labels,
-                datasets: [
-                    {
-                        label: '',
-                        data: chartData.dataPoints.map(p => p ? p.max : null),
-                        backgroundColor: 'transparent',
-                        borderColor: 'transparent',
-                        pointRadius: 0,
-                        pointHoverRadius: 0,
-                    },
-                    {
-                        label: '',
-                        data: avgValues,
-                        type: 'line',
-                        fill: false,
-                        borderColor: 'transparent',
-                        backgroundColor: 'transparent',
-                        borderWidth: 0,
-                        pointRadius: 0,
-                        pointHoverRadius: 0,
-                        showLine: false,
-                        yAxisID: 'y',
-                    }
-                ]
-            },
-            options: {
-                responsive: false, // Important: Keep false for fixed size
-                maintainAspectRatio: false, // Important: Keep false for fixed size
-                animation: false,
-                layout: {
-                    padding: {
-                        top: 140, // Increased to match new label height
-                        bottom: 5
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: false,
-                        min: suggestedYMin,
-                        max: suggestedYMax,
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.1)'
-                        },
-                        title: {
-                            display: true,
-                            text: chartTitle
-                        }
-                    },
-                    x: {
-                        display: false,
-                        grid: {
-                            display: false
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            padding: 20,
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                if (context.datasetIndex !== 0) return null;
-                                const dataIndex = context.dataIndex;
-                                const rawDataPoint = chartData.dataPoints[dataIndex];
-                                if (!rawDataPoint) return 'No data';
-                                return [
-                                    `Min: ${formatNumber(rawDataPoint.min)}`,
-                                    `Avg: ${formatNumber(rawDataPoint.avg)}`,
-                                    `Max: ${formatNumber(rawDataPoint.max)}`
-                                ];
-                            }
-                        }
-                    }
-                },
-                onHover: (event, activeElements) => {
-                    event.native.target.style.cursor = activeElements.length > 0 ? 'pointer' : 'default';
-                }
-            },
-            plugins: [{
-                id: 'customRangeRenderer',
-                afterDatasetsDraw: function(chart) {
-                    const ctx = chart.ctx;
-                    const meta = chart.getDatasetMeta(0);
-                    const chartArea = chart.chartArea;
-                    const yScale = chart.scales.y;
-                    // Use the actual canvas width for calculation
-                    const widthPerPoint = chartWidth / chartData.labels.length;
-                    chartData.dataPoints.forEach((dataPoint, index) => {
-                        if (!dataPoint || !meta.data[index]) return;
-                        const x = meta.data[index].x;
-                        const minY = yScale.getPixelForValue(dataPoint.min);
-                        const maxY = yScale.getPixelForValue(dataPoint.max);
-                        const avgY = yScale.getPixelForValue(dataPoint.avg);
-                        ctx.save();
-                        ctx.strokeStyle = '#000000';
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.moveTo(x, minY);
-                        ctx.lineTo(x, maxY);
-                        ctx.stroke();
-                        ctx.restore();
-                        // Use the new box dimensions and offsets
-                        const boxOffsetX = 0; // Centered now with margin-left
-                        const boxOffsetY = 0; // Centered now with margin-top
-                        const minBox = document.createElement('div');
-                        minBox.className = 'candlestick-value-box';
-                        minBox.textContent = formatNumber(dataPoint.min);
-                        minBox.style.left = (x + boxOffsetX) + 'px';
-                        minBox.style.top = (minY + boxOffsetY) + 'px';
-                        ctx.canvas.parentNode.appendChild(minBox);
-                        const maxBox = document.createElement('div');
-                        maxBox.className = 'candlestick-value-box';
-                        maxBox.textContent = formatNumber(dataPoint.max);
-                        maxBox.style.left = (x + boxOffsetX) + 'px';
-                        maxBox.style.top = (maxY + boxOffsetY) + 'px';
-                        ctx.canvas.parentNode.appendChild(maxBox);
-                        const avgBox = document.createElement('div');
-                        avgBox.className = 'candlestick-value-box avg';
-                        avgBox.textContent = formatNumber(dataPoint.avg);
-                        avgBox.style.left = (x + boxOffsetX) + 'px';
-                        avgBox.style.top = (avgY + boxOffsetY) + 'px';
-                        ctx.canvas.parentNode.appendChild(avgBox);
-                    });
-                }
-            }]
-        });
-        // Create hierarchical labels, passing the actual canvas width
-        const labelsContainerId = canvasId.replace('Chart', 'Labels');
-        createHierarchicalLabels(labelsContainerId, chartData.labelHierarchy, chartWidth);
-        return chart;
+      <div class="header-buttons">
+        <a href="{% url 'market_research_report' %}" class="btnx btn-report">Report View</a>
+        <a href="{% url 'market_explorer' %}" class="btnx btn-map">Map View</a>
+        <a href="{% url 'market_charts_view' %}?location=6th+of+October&asset_type=&unit_type=" class="btnx btn-units">Market Analysis</a>
+      </div>
+    </div>
+
+    <!-- GLOBAL FILTERS (AJAX LOAD) -->
+    <div class="panel" id="globalPanel">
+      <div class="panel-head">
+        <h3>Global Filters (loads data)</h3>
+        <span class="chip" id="loadChip">No data loaded</span>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="gf_location">Location</label>
+          <select id="gf_location" class="select">
+            <option value="">— Choose —</option>
+            {% for loc in locations %}
+              <option value="{{ loc|escape }}">{{ loc }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="gf_asset_type">Asset Type</label>
+          <select id="gf_asset_type" class="select">
+            <option value="">— Choose —</option>
+            {% for at in asset_types %}
+              <option value="{{ at|escape }}">{{ at }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="gf_unit_type">Unit Type</label>
+          <select id="gf_unit_type" class="select">
+            <option value="">— Choose —</option>
+            {% for ut in unit_types %}
+              <option value="{{ ut|escape }}">{{ ut }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-ghost" type="button" id="resetBtn">Reset</button>
+      </div>
+
+      <div class="loading" id="loadingRow">
+        <div class="spinner"></div>
+        <div>Loading rows…</div>
+      </div>
+
+      <div class="hint">
+        <span>💡</span>
+        <span>No "Apply" button. Any change here triggers an AJAX load. Analysis starts only after at least one global filter is selected.</span>
+      </div>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div class="empty" id="emptyState">
+      Select <b>Location</b> or <b>Asset Type</b> or <b>Unit Type</b> to load data and start analysis.
+    </div>
+
+    <!-- HIERARCHY FILTERS -->
+    <div class="panel" id="hierPanel" style="display:none;">
+      <div class="panel-head">
+        <h3>Hierarchy Filters</h3>
+      </div>
+
+      <div class="grid4">
+        <div class="field">
+          <label for="hf_finishing">Finishing Specs</label>
+          <select id="hf_finishing" class="select" disabled></select>
+        </div>
+
+        <div class="field">
+          <label for="hf_developer">Developer</label>
+          <select id="hf_developer" class="select" disabled></select>
+        </div>
+
+        <div class="field">
+          <label for="hf_project">Project</label>
+          <select id="hf_project" class="select" disabled></select>
+        </div>
+
+        <div class="field">
+          <label for="hf_payment">Payment Years</label>
+          <select id="hf_payment" class="select" disabled></select>
+        </div>
+      </div>
+
+      <div class="hint">
+        <span>⚡</span>
+        <span>Each level filters the next (dependent dropdowns). Changing any level re-renders all charts with animation.</span>
+      </div>
+    </div>
+
+    <!-- CHARTS SECTION -->
+    <div class="charts-section" id="chartsSection" style="display:none;">
+
+      <!-- PRICE -->
+      <div class="chart-container" id="priceContainer">
+        <div class="chart-header">
+          <div>
+            <h2>Unit Price Range</h2>
+            <div class="crumb" id="crumbPrice">—</div>
+          </div>
+          <span class="chip" id="rowsChipPrice">0 rows</span>
+        </div>
+
+        <div class="chart-wrapper" id="priceWrapper">
+          <div class="chart-scroll" id="priceScroll">
+            <div class="hierarchical-labels" id="priceLabels"></div>
+            <canvas id="priceChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- BUA -->
+      <div class="chart-container" id="buaContainer">
+        <div class="chart-header">
+          <div>
+            <h2>Built-Up Area (BUA) Range</h2>
+            <div class="crumb" id="crumbBUA">—</div>
+          </div>
+          <span class="chip" id="rowsChipBUA">0 rows</span>
+        </div>
+
+        <div class="chart-wrapper" id="buaWrapper">
+          <div class="chart-scroll" id="buaScroll">
+            <div class="hierarchical-labels" id="buaLabels"></div>
+            <canvas id="buaChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- PSM -->
+      <div class="chart-container" id="psmContainer">
+        <div class="chart-header">
+          <div>
+            <h2>Price per Square Meter (PSM) Range</h2>
+            <div class="crumb" id="crumbPSM">—</div>
+          </div>
+          <span class="chip" id="rowsChipPSM">0 rows</span>
+        </div>
+
+        <div class="chart-wrapper" id="psmWrapper">
+          <div class="chart-scroll" id="psmScroll">
+            <div class="hierarchical-labels" id="psmLabels"></div>
+            <canvas id="psmChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+(() => {
+  const DATA_URL = "{% url 'market_units_analysis_data' %}";
+
+  // Elements
+  const gfLocation = document.getElementById("gf_location");
+  const gfAsset = document.getElementById("gf_asset_type");
+  const gfUnit = document.getElementById("gf_unit_type");
+  const resetBtn = document.getElementById("resetBtn");
+
+  const loadChip = document.getElementById("loadChip");
+  const loadingRow = document.getElementById("loadingRow");
+  const emptyState = document.getElementById("emptyState");
+
+  const hierPanel = document.getElementById("hierPanel");
+  const chartsSection = document.getElementById("chartsSection");
+
+  const hfFinishing = document.getElementById("hf_finishing");
+  const hfDeveloper = document.getElementById("hf_developer");
+  const hfProject = document.getElementById("hf_project");
+  const hfPayment = document.getElementById("hf_payment");
+
+  const crumbPrice = document.getElementById("crumbPrice");
+  const crumbBUA   = document.getElementById("crumbBUA");
+  const crumbPSM   = document.getElementById("crumbPSM");
+
+  const rowsChipPrice = document.getElementById("rowsChipPrice");
+  const rowsChipBUA   = document.getElementById("rowsChipBUA");
+  const rowsChipPSM   = document.getElementById("rowsChipPSM");
+
+  let rawRows = [];
+  let controller = null;
+
+  const ALL = "__ALL__";
+  const charts = { price:null, bua:null, psm:null };
+  let customTooltip = null;
+
+  // Helpers
+  const norm = (v) => {
+    if (v === null || v === undefined) return "Unknown";
+    const s = String(v).trim();
+    return s ? s : "Unknown";
+  };
+  
+  const toNum = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  function formatNumber(num) {
+    if (num === null || num === undefined || !Number.isFinite(num)) return 'N/A';
+    const abs = Math.abs(num);
+    if (abs < 1 && num !== 0) return num.toFixed(2);
+    if (abs >= 1_000_000) {
+      const m = num / 1_000_000;
+      return (Math.abs(m) % 1 === 0 ? m.toFixed(0) : m.toFixed(1)) + 'M';
     }
-    // Clear filters function
-    function clearFilters() {
-        document.getElementById('location').value = '';
-        document.getElementById('asset_type').value = '';
-        document.getElementById('unit_type').value = '';
-        document.querySelector('.filters-form').submit();
+    if (abs >= 1_000) {
+      const k = num / 1_000;
+      return (Math.abs(k) % 1 === 0 ? k.toFixed(0) : k.toFixed(1)) + 'K';
     }
-    // Initialize charts when page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        // Get data from Django context
-        const priceData = {{ price_data|safe }};
-        const buaData = {{ bua_data|safe }};
-        const psmData = {{ psm_data|safe }};
-        // Process and render charts
-        if (priceData && priceData.length > 0) {
-            const processedPriceData = flattenChartDataWithHierarchy(priceData);
-            renderChart('priceChart', processedPriceData, 'Unit Price');
-        }
-        if (buaData && buaData.length > 0) {
-            const processedBuaData = flattenChartDataWithHierarchy(buaData);
-            renderChart('buaChart', processedBuaData, 'Built-Up Area (BUA)');
-        }
-        if (psmData && psmData.length > 0) {
-            const processedPsmData = flattenChartDataWithHierarchy(psmData);
-            renderChart('psmChart', processedPsmData, 'Price per Square Meter (PSM)');
-        }
+    return Math.round(num).toLocaleString();
+  }
+
+  const uniqSorted = (arr) => Array.from(new Set(arr)).sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
+
+  function animate(el){
+    el.classList.remove("anim-swap");
+    void el.offsetWidth;
+    el.classList.add("anim-swap");
+  }
+
+  function setOptions(selectEl, values, keepValue = ALL) {
+    selectEl.innerHTML = "";
+    const optAll = document.createElement("option");
+    optAll.value = ALL;
+    optAll.textContent = "All";
+    selectEl.appendChild(optAll);
+
+    values.forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      selectEl.appendChild(opt);
     });
+
+    const exists = Array.from(selectEl.options).some(o => o.value === keepValue);
+    selectEl.value = exists ? keepValue : ALL;
+  }
+
+  function clearValueBoxes(scrollEl){
+    scrollEl.querySelectorAll(".candlestick-value-box").forEach(n => n.remove());
+    }
+
+    function clearTooltip(){
+    if (customTooltip) {
+        customTooltip.remove();
+        customTooltip = null;
+    }
+    }
+
+
+  function selectionCrumb(){
+    const show = (v) => (v === ALL ? "All" : v);
+    return `Finishing: ${show(hfFinishing.value)}  •  Developer: ${show(hfDeveloper.value)}  •  Project: ${show(hfProject.value)}  •  Payment: ${show(hfPayment.value)}`;
+  }
+
+  function filteredRowsByHierarchy(rows){
+    const fin = hfFinishing.value;
+    const dev = hfDeveloper.value;
+    const proj = hfProject.value;
+    const pay = hfPayment.value;
+
+    return rows.filter(r => {
+      if (fin !== ALL && norm(r.finishing_specs) !== fin) return false;
+      if (dev !== ALL && norm(r.developer_name) !== dev) return false;
+      if (proj !== ALL && norm(r.project_name) !== proj) return false;
+      if (pay !== ALL && norm(r.payment_yrs) !== pay) return false;
+      return true;
+    });
+  }
+
+  function buildHierarchy(rows, metricField) {
+    const root = new Map();
+    rows.forEach(r => {
+      const fin = norm(r.finishing_specs);
+      const dev = norm(r.developer_name);
+      const proj = norm(r.project_name);
+      const pay = norm(r.payment_yrs);
+      if (!root.has(fin)) root.set(fin, new Map());
+      const devMap = root.get(fin);
+      if (!devMap.has(dev)) devMap.set(dev, new Map());
+      const projMap = devMap.get(dev);
+      if (!projMap.has(proj)) projMap.set(proj, new Map());
+      const payMap = projMap.get(proj);
+      if (!payMap.has(pay)) payMap.set(pay, []);
+      payMap.get(pay).push(r);
+    });
+
+    function stats(list){
+      const nums = list.map(x => toNum(x[metricField])).filter(n => n !== null);
+      if (!nums.length) return {min: null, avg: null, max: null};
+      let min = nums[0], max = nums[0], sum = 0;
+      for (const n of nums){
+        if (n < min) min = n;
+        if (n > max) max = n;
+        sum += n;
+      }
+      return {min, avg: sum/nums.length, max};
+    }
+
+    const finKeys = Array.from(root.keys()).sort((a,b) => a.localeCompare(b));
+    const out = [];
+
+    for (const fin of finKeys){
+      const devMap = root.get(fin);
+      const devKeys = Array.from(devMap.keys()).sort((a,b) => a.localeCompare(b));
+      const finNode = { label: fin, children: [], type: 'finishing' };
+      for (const dev of devKeys){
+        const projMap = devMap.get(dev);
+        const projKeys = Array.from(projMap.keys()).sort((a,b) => a.localeCompare(b));
+        const devNode = { label: dev, children: [], type: 'developer', parent: finNode };
+        for (const proj of projKeys){
+          const payMap = projMap.get(proj);
+          const payKeys = Array.from(payMap.keys()).sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
+          const projNode = { label: proj, children: [], type: 'project', parent: devNode };
+          for (const pay of payKeys){
+            const s = stats(payMap.get(pay));
+            const payNode = { 
+              label: pay, min: s.min, avg: s.avg, max: s.max,
+              type: 'payment', parent: projNode,
+              hierarchy: { finishing: fin, developer: dev, project: proj, payment: pay }
+            };
+            projNode.children.push(payNode);
+          }
+          devNode.children.push(projNode);
+        }
+        finNode.children.push(devNode);
+      }
+      out.push(finNode);
+    }
+    return out;
+  }
+
+  function flattenWithHierarchy(tree, metricKey) {
+    const flatLabels = [];
+    const dataPoints = [];
+    const labelHierarchy = { level0: [], level1: [], level2: [], level3: [] };
+    const hierarchyInfo = [];
+    let currentIndex = 0;
+
+    function countLeaves(items){
+      let c = 0;
+      items.forEach(it => {
+        if (it && it.children && it.children.length) c += countLeaves(it.children);
+        else c++;
+      });
+      return c;
+    }
+
+    function walk(items, depth){
+      if (!Array.isArray(items)) return;
+      items.forEach(item => {
+        if (!item || typeof item !== "object") return;
+        const label = item.label ?? "Unnamed";
+        const hasChildren = Array.isArray(item.children) && item.children.length > 0;
+        if (hasChildren){
+          const startIndex = currentIndex;
+          const span = countLeaves(item.children);
+          labelHierarchy[`level${depth}`].push({ label, startIndex, span, level: depth });
+          walk(item.children, depth + 1);
+        } else {
+          flatLabels.push(label);
+          const min = (item.min !== null && item.min !== undefined) ? Number(item.min) : null;
+          const avg = (item.avg !== null && item.avg !== undefined) ? Number(item.avg) : null;
+          const max = (item.max !== null && item.max !== undefined) ? Number(item.max) : null;
+          const ok = Number.isFinite(min) && Number.isFinite(avg) && Number.isFinite(max);
+          dataPoints.push(ok ? {min, avg, max} : null);
+          hierarchyInfo.push({
+            finishing: item.hierarchy?.finishing || "Unknown",
+            developer: item.hierarchy?.developer || "Unknown",
+            project: item.hierarchy?.project || "Unknown",
+            payment: item.hierarchy?.payment || "Unknown"
+          });
+          labelHierarchy.level3.push({ label, startIndex: currentIndex, span: 1, level: 3 });
+          currentIndex++;
+        }
+      });
+    }
+
+    walk(tree, 0);
+    return { labels: flatLabels, dataPoints, labelHierarchy, hierarchyInfo };
+  }
+
+  function getHierarchyPath(hierarchyInfo, index) {
+    if (!hierarchyInfo || !hierarchyInfo[index]) {
+      return { finishing: "Unknown", developer: "Unknown", project: "Unknown", payment: "Unknown" };
+    }
+    return hierarchyInfo[index];
+  }
+
+  function buildHierLabels(labelsEl, labelHierarchy, chart, meta, barWidth) {
+    labelsEl.innerHTML = "";
+    const elements = meta.data || [];
+    if (!elements.length) return;
+    const style = getComputedStyle(document.documentElement);
+    const yGutter = parseFloat(style.getPropertyValue('--yGutter').trim()) || 60;
+    
+    for (let level = 0; level < 4; level++) {
+      const levelDiv = document.createElement("div");
+      levelDiv.className = `label-level label-level-${level}`;
+      (labelHierarchy[`level${level}`] || []).forEach(item => {
+        const g = document.createElement("div");
+        g.className = "label-group";
+        g.textContent = item.label;
+        g.title = item.label;
+        const s = Math.max(0, item.startIndex);
+        const e = Math.min(elements.length - 1, item.startIndex + item.span - 1);
+        if (elements[s] && elements[e]) {
+          const xS = elements[s].x;
+          const xE = elements[e].x;
+          const leftPos = (xS - (barWidth / 2)) - yGutter;
+          const rightPos = (xE + (barWidth / 2)) - yGutter;
+          const width = Math.max(0, rightPos - leftPos);
+          g.style.left = `${leftPos}px`;
+          g.style.width = `${width}px`;
+        }
+        levelDiv.appendChild(g);
+      });
+      labelsEl.appendChild(levelDiv);
+    }
+  }
+
+    function showCustomTooltip(chart, index, hierarchyInfo, dataPoint, scrollContainer) {
+    // 1) Remove old tooltip
+    clearTooltip();
+
+    // 2) Build tooltip content (values only)
+    const hierarchy = getHierarchyPath(hierarchyInfo, index);
+
+    customTooltip = document.createElement("div");
+    customTooltip.className = "custom-tooltip";
+    customTooltip.style.zIndex = "100";
+
+    customTooltip.innerHTML = `
+        <div class="tooltip-value">${hierarchy.finishing}</div>
+        <div class="tooltip-value">${hierarchy.developer}</div>
+        <div class="tooltip-value">${hierarchy.project}</div>
+        <div class="tooltip-value">${hierarchy.payment}</div>
+
+        <div class="tooltip-metric"><span>Min:</span><span>${formatNumber(dataPoint.min)}</span></div>
+        <div class="tooltip-metric"><span>Avg:</span><span>${formatNumber(dataPoint.avg)}</span></div>
+        <div class="tooltip-metric"><span>Max:</span><span>${formatNumber(dataPoint.max)}</span></div>
+    `;
+
+    // 3) Append to scroll container (so it can be measured)
+    scrollContainer.appendChild(customTooltip);
+
+    // 4) Resolve bar element
+    const meta = chart.getDatasetMeta(0);
+    const bar = meta.data[index];
+    if (!bar) return;
+
+    // 5) Get bounds
+    const canvasRect = chart.canvas.getBoundingClientRect();
+    const scrollRect = scrollContainer.getBoundingClientRect();
+
+    // Bar X in viewport
+    const barX_Viewport = canvasRect.left + bar.x;
+
+    // Mid Y between min & max (in canvas coords)
+    const yScale = chart.scales.y;
+    const yMaxPx = yScale.getPixelForValue(dataPoint.max);
+    const yMinPx = yScale.getPixelForValue(dataPoint.min);
+    const yMidPx = (yMaxPx + yMinPx) / 2;
+
+    // Mid Y in viewport
+    const midY_Viewport = canvasRect.top + yMidPx;
+
+    // 6) Measure real tooltip size
+    const tipRect = customTooltip.getBoundingClientRect();
+    const tooltipWidth = tipRect.width;
+    const tooltipHeight = tipRect.height;
+
+    // 7) Convert viewport coords -> scrollContainer coords
+    let finalLeft = (barX_Viewport - scrollRect.left) - (tooltipWidth / 2);
+    let finalTop  = (midY_Viewport - scrollRect.top) - (tooltipHeight / 2);
+
+    // 8) Clamp to the visible wrapper viewport (no flip under min)
+    const wrapper = scrollContainer.parentElement; // .chart-wrapper
+    const pad = 10;
+
+    // Vertical clamp within visible portion of wrapper
+    const minTop = wrapper.scrollTop + pad;
+    const maxTop = wrapper.scrollTop + wrapper.clientHeight - tooltipHeight - pad;
+    if (maxTop >= minTop) {
+        finalTop = Math.min(Math.max(finalTop, minTop), maxTop);
+    } else {
+        finalTop = minTop;
+    }
+
+    // Horizontal clamp within visible portion of wrapper
+    const minLeft = wrapper.scrollLeft + pad;
+    const maxLeft = wrapper.scrollLeft + wrapper.clientWidth - tooltipWidth - pad;
+    if (maxLeft >= minLeft) {
+        finalLeft = Math.min(Math.max(finalLeft, minLeft), maxLeft);
+    } else {
+        finalLeft = minLeft;
+    }
+
+    // 9) Apply final position
+    customTooltip.style.left = `${finalLeft}px`;
+    customTooltip.style.top  = `${finalTop}px`;
+    }
+
+
+  function renderRangeChart({canvasId, scrollId, labelsId, processed, title, metricKey}) {
+    const canvas = document.getElementById(canvasId);
+    const scrollEl = document.getElementById(scrollId);
+    const labelsEl = document.getElementById(labelsId);
+    const wrapper = scrollEl.parentElement;
+    const ctx = canvas.getContext("2d");
+
+    clearValueBoxes(scrollEl);
+    clearTooltip();
+    labelsEl.innerHTML = "";
+    if (charts[metricKey]) { 
+      charts[metricKey].destroy(); 
+      charts[metricKey] = null; 
+    }
+
+    const leafCount = Math.max(1, processed.labels.length);
+    let pxPerLeaf;
+    if (leafCount === 1) pxPerLeaf = 300;
+    else if (leafCount <= 15) pxPerLeaf = 170;
+    else if (leafCount <= 35) pxPerLeaf = 135;
+    else if (leafCount <= 70) pxPerLeaf = 110;
+    else pxPerLeaf = 95;
+
+    const wrapperWidth = wrapper.clientWidth + 50|| 1200;
+    const wrapperHeight = wrapper.clientHeight || 400;
+    const style = getComputedStyle(document.documentElement);
+    const rightPadding = parseFloat(style.getPropertyValue('--rightPadding').trim()) || 30;
+    const chartWidth = Math.max(wrapperWidth, leafCount * pxPerLeaf + rightPadding);
+    const labelsH = parseFloat(style.getPropertyValue('--labelsH').trim()) || 144;
+    const chartTopPadding = parseFloat(style.getPropertyValue('--chartTopPadding').trim()) || 40;
+    const chartBottomPadding = parseFloat(style.getPropertyValue('--chartBottomPadding').trim()) || 60;
+    const chartHeight = Math.max(300, wrapperHeight - labelsH - chartTopPadding - chartBottomPadding);
+    const totalHeight = labelsH + chartTopPadding + chartHeight + chartBottomPadding;
+
+    scrollEl.style.width = Number(chartWidth + 50) + "px";
+    scrollEl.style.height = totalHeight + "px";
+    canvas.width = chartWidth - rightPadding;
+    canvas.height = chartHeight;
+    canvas.style.top = `${labelsH + chartTopPadding}px`;
+    canvas.style.left = "10px";
+    canvas.style.width = `${chartWidth - rightPadding}px`;
+    canvas.style.height = `${chartHeight}px`;
+
+    const hasData = processed.dataPoints.some(p => p !== null);
+    if (!hasData){
+      ctx.clearRect(0,0,canvas.width,chartHeight);
+      ctx.font = "18px Times New Roman";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(2,6,23,.45)";
+      ctx.fillText("No data available for current filters", canvas.width/2, chartHeight/2);
+      return;
+    }
+
+    const allVals = processed.dataPoints.flatMap(p => p ? [p.min, p.avg, p.max] : []);
+    const dataMax = Math.max(...allVals);
+    const dataMin = Math.min(...allVals);
+    const range = Math.max(1e-9, dataMax - dataMin);
+    const suggestedYMax = Math.ceil(dataMax + range * 0.1);
+    const suggestedYMin = Math.max(0, Math.floor(dataMin - range * 0.1));
+    const hierarchyInfo = processed.hierarchyInfo || [];
+    const tooltipData = processed.dataPoints.map(dp => dp ? [dp.min, dp.max] : null);
+
+    charts[metricKey] = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: processed.labels,
+        datasets: [{
+            label: "",
+            data: tooltipData,
+            backgroundColor: "rgba(0,0,0,0.001)", // Almost transparent for hit test
+            borderColor: "transparent",
+            borderWidth: 0,
+            barPercentage: 0.8,
+            categoryPercentage: 0.9,
+            hoverBackgroundColor: "rgba(0,0,0,0.05)", // Slight gray on hover to confirm interaction
+            order: 1
+        }]
+      },
+      options: {
+        responsive: false,
+        maintainAspectRatio: false,
+        animation: false,
+        layout: { 
+          padding: { 
+            top: 0, bottom: 0, 
+            left: parseFloat(style.getPropertyValue('--yGutter').trim()) || 60, 
+            right: 12 
+          } 
+        },
+        scales: {
+          y: {
+            beginAtZero: false, min: suggestedYMin, max: suggestedYMax,
+            grid: { color: "rgba(2,6,23,.10)", drawBorder: false },
+            title: { display: true, text: title, padding: { top: 0, bottom: 20 }, font: { family: "Times New Roman", size: 12, weight: 'bold' } },
+            ticks: { display: false, padding: 10 },
+            afterFit: function(scale) { scale.width = 50; }
+          },
+          x: {
+            display: true, ticks: { display: false }, grid: { display: false },
+            border: { display: true, color: "rgba(2,6,23,.35)", width: 2 },
+            offset: false,
+            afterFit: function(scale) { scale.left = parseFloat(style.getPropertyValue('--yGutter').trim()) || 60; }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            enabled: false,
+            external: function(context) {
+              const tooltipModel = context.tooltip;
+              if (tooltipModel.opacity === 0) {
+                clearTooltip();
+                return;
+              }
+              if (tooltipModel.dataPoints && tooltipModel.dataPoints.length > 0) {
+                const index = tooltipModel.dataPoints[0].dataIndex;
+                const dp = processed.dataPoints[index];
+                if (dp) {
+                  showCustomTooltip(context.chart, index, hierarchyInfo, dp, document.getElementById(scrollId));
+                }
+              }
+            }
+          }
+        },
+        interaction: { mode: 'index', intersect: false },
+        onHover: (event, active) => {
+          event.native.target.style.cursor = active.length ? "pointer" : "default";
+        }
+      },
+      plugins: [{
+        id: "rangeOverlay",
+        afterDatasetsDraw: (chart) => {
+          const meta = chart.getDatasetMeta(0);
+          const yScale = chart.scales.y;
+          clearValueBoxes(scrollEl); // Careful, this clears previous tooltips too
+          
+          let barWidth = 80;
+          if (meta.data.length > 1) {
+            barWidth = Math.abs(meta.data[1]?.x - meta.data[0]?.x) || 80;
+          }
+
+          processed.dataPoints.forEach((dp, idx) => {
+            const el = meta.data[idx];
+            if (!dp || !el) return;
+            const x = el.x;
+            const minY = yScale.getPixelForValue(dp.min);
+            const maxY = yScale.getPixelForValue(dp.max);
+            const avgY = yScale.getPixelForValue(dp.avg);
+            const c = chart.ctx;
+            c.save();
+            c.strokeStyle = "rgba(2,6,23,.90)";
+            c.lineWidth = 2;
+            c.beginPath();
+            c.moveTo(x, minY);
+            c.lineTo(x, maxY);
+            c.stroke();
+            c.restore();
+
+            // Value Boxes
+            const mkBox = (text, left, top, cls) => {
+              const canvasOffsetTop = canvas.offsetTop;
+              const canvasOffsetLeft = canvas.offsetLeft;
+              const adjustedLeft = left + canvasOffsetLeft;
+              const adjustedTop = top + canvasOffsetTop;
+              const d = document.createElement("div");
+              d.className = `candlestick-value-box ${cls || ""}`.trim();
+              d.textContent = text;
+              d.style.left = `${adjustedLeft}px`;
+              d.style.top = `${adjustedTop}px`;
+              scrollEl.appendChild(d);
+            };
+            mkBox(formatNumber(dp.min), x, minY, "");
+            mkBox(formatNumber(dp.max), x, maxY, "");
+            mkBox(formatNumber(dp.avg), x, avgY, "avg");
+          });
+          buildHierLabels(labelsEl, processed.labelHierarchy, chart, meta, barWidth);
+        }
+      }]
+    });
+    
+    setTimeout(() => {
+      if (charts[metricKey]) {
+        const meta = charts[metricKey].getDatasetMeta(0);
+        let barWidth = 80;
+        if (meta.data.length > 1) barWidth = Math.abs(meta.data[1]?.x - meta.data[0]?.x) || 80;
+        buildHierLabels(labelsEl, processed.labelHierarchy, charts[metricKey], meta, barWidth);
+      }
+    }, 100);
+  }
+
+  function recalcHierarchyOptions() {
+    const finOpts = uniqSorted(rawRows.map(r => norm(r.finishing_specs)));
+    setOptions(hfFinishing, finOpts, hfFinishing.value || ALL);
+    const fin = hfFinishing.value || ALL;
+    const rowsFin = (fin === ALL) ? rawRows : rawRows.filter(r => norm(r.finishing_specs) === fin);
+    const devOpts = uniqSorted(rowsFin.map(r => norm(r.developer_name)));
+    setOptions(hfDeveloper, devOpts, hfDeveloper.value || ALL);
+    const dev = hfDeveloper.value || ALL;
+    const rowsDev = (dev === ALL) ? rowsFin : rowsFin.filter(r => norm(r.developer_name) === dev);
+    const projOpts = uniqSorted(rowsDev.map(r => norm(r.project_name)));
+    setOptions(hfProject, projOpts, hfProject.value || ALL);
+    const proj = hfProject.value || ALL;
+    const rowsProj = (proj === ALL) ? rowsDev : rowsDev.filter(r => norm(r.project_name) === proj);
+    const payOpts = uniqSorted(rowsProj.map(r => norm(r.payment_yrs)));
+    setOptions(hfPayment, payOpts, hfPayment.value || ALL);
+    [hfFinishing, hfDeveloper, hfProject, hfPayment].forEach(s => s.disabled = false);
+    animate(hierPanel);
+  }
+
+  function renderAll() {
+    const rows = filteredRowsByHierarchy(rawRows);
+    const crumb = selectionCrumb();
+    crumbPrice.textContent = crumb; crumbBUA.textContent = crumb; crumbPSM.textContent = crumb;
+    rowsChipPrice.textContent = `${rows.length} rows`; rowsChipBUA.textContent = `${rows.length} rows`; rowsChipPSM.textContent = `${rows.length} rows`;
+
+    const priceProcessed = flattenWithHierarchy(buildHierarchy(rows, "unit_price"), "price");
+    const buaProcessed   = flattenWithHierarchy(buildHierarchy(rows, "bua"), "bua");
+    const psmProcessed   = flattenWithHierarchy(buildHierarchy(rows, "psm"), "psm");
+
+    renderRangeChart({ canvasId: "priceChart", scrollId: "priceScroll", labelsId: "priceLabels", processed: priceProcessed, metricKey: "price"});
+    renderRangeChart({ canvasId: "buaChart", scrollId: "buaScroll", labelsId: "buaLabels", processed: buaProcessed, metricKey: "bua"});
+    renderRangeChart({ canvasId: "psmChart", scrollId: "psmScroll", labelsId: "psmLabels", processed: psmProcessed, metricKey: "psm"});
+
+    animate(document.getElementById("priceContainer"));
+    animate(document.getElementById("buaContainer"));
+    animate(document.getElementById("psmContainer"));
+  }
+
+  async function loadData() {
+    const location = gfLocation.value.trim();
+    const asset_type = gfAsset.value.trim();
+    const unit_type = gfUnit.value.trim();
+    const shouldLoad = !!(location || asset_type || unit_type);
+
+    if (!shouldLoad) {
+      rawRows = [];
+      loadChip.textContent = "No data loaded";
+      emptyState.style.display = "block";
+      hierPanel.style.display = "none";
+      chartsSection.style.display = "none";
+      return;
+    }
+
+    if (controller) controller.abort();
+    controller = new AbortController();
+    loadingRow.classList.add("show");
+    loadChip.textContent = "Loading…";
+    [hfFinishing, hfDeveloper, hfProject, hfPayment].forEach(s => { s.disabled = true; s.innerHTML = ""; });
+
+    const params = new URLSearchParams();
+    if (location) params.set("location", location);
+    if (asset_type) params.set("asset_type", asset_type);
+    if (unit_type) params.set("unit_type", unit_type);
+
+    try {
+      const res = await fetch(`${DATA_URL}?${params.toString()}`, { signal: controller.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const payload = await res.json();
+      rawRows = (payload.items || []).map(r => ({
+        finishing_specs: norm(r.finishing_specs),
+        developer_name: norm(r.developer_name),
+        project_name: norm(r.project_name),
+        payment_yrs: norm(r.payment_yrs),
+        unit_price: r.unit_price, bua: r.bua, psm: r.psm,
+      }));
+      const c = payload.count ?? rawRows.length;
+      loadChip.textContent = `${c} rows loaded`;
+      emptyState.style.display = rawRows.length ? "none" : "block";
+      hierPanel.style.display = rawRows.length ? "block" : "none";
+      chartsSection.style.display = rawRows.length ? "flex" : "none";
+      hfFinishing.value = ALL; hfDeveloper.value = ALL; hfProject.value = ALL; hfPayment.value = ALL;
+      recalcHierarchyOptions();
+      renderAll();
+      ["priceWrapper","buaWrapper","psmWrapper"].forEach(id => { const w = document.getElementById(id); if (w) { w.scrollLeft = 0; w.scrollTop = 0; } });
+    } catch (e) {
+      if (e.name !== "AbortError") {
+        console.error(e);
+        rawRows = [];
+        loadChip.textContent = "Load failed";
+        emptyState.style.display = "block";
+        hierPanel.style.display = "none";
+        chartsSection.style.display = "none";
+      }
+    } finally {
+      loadingRow.classList.remove("show");
+    }
+  }
+
+  let debounceT = null;
+  function debouncedLoad(){ if (debounceT) clearTimeout(debounceT); debounceT = setTimeout(loadData, 120); }
+  [gfLocation, gfAsset, gfUnit].forEach(el => el.addEventListener("change", debouncedLoad));
+  resetBtn.addEventListener("click", () => { gfLocation.value = ""; gfAsset.value = ""; gfUnit.value = ""; loadData(); });
+  hfFinishing.addEventListener("change", () => { hfDeveloper.value = ALL; hfProject.value = ALL; hfPayment.value = ALL; recalcHierarchyOptions(); renderAll(); });
+  hfDeveloper.addEventListener("change", () => { hfProject.value = ALL; hfPayment.value = ALL; recalcHierarchyOptions(); renderAll(); });
+  hfProject.addEventListener("change", () => { hfPayment.value = ALL; recalcHierarchyOptions(); renderAll(); });
+  hfPayment.addEventListener("change", () => renderAll());
+
+  (function initFromQuery(){
+    const q = new URLSearchParams(window.location.search);
+    const loc = q.get("location") || "";
+    const at  = q.get("asset_type") || "";
+    const ut  = q.get("unit_type") || "";
+    if (loc) gfLocation.value = loc;
+    if (at)  gfAsset.value = at;
+    if (ut)  gfUnit.value = ut;
+    if (loc || at || ut) loadData();
+  })();
+})();
 </script>
+
 {% endblock %}
+

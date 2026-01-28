@@ -18,6 +18,12 @@ class CompanyForm(forms.ModelForm):
             "comp_type",
             "joining_date",
             "is_active",
+            
+            
+            "auto_sync",
+            "auto_sync_timer",
+            
+            
             "erp_url", "erp_url_key",
             "erp_hold_url", "erp_hold_url_key",
             "erp_approve_url", "erp_approve_url_key",
@@ -27,7 +33,8 @@ class CompanyForm(forms.ModelForm):
         ]
         widgets = {
             "joining_date": forms.DateInput(attrs={"type": "date"}),
-            "comp_type": forms.CheckboxSelectMultiple(choices=CompanyType.choices),        
+            "comp_type": forms.CheckboxSelectMultiple(choices=CompanyType.choices),   
+            "auto_sync_timer": forms.NumberInput(attrs={"min": 0}),     
             
         }
 
@@ -45,6 +52,10 @@ class CompanyForm(forms.ModelForm):
         if CompanyType.GOOGLE_SHEETS in types:
             if not cleaned.get("google_sheet_url"):
                 self.add_error("google_sheet_url", "Google Sheet URL is required when Google Sheets module is selected.")
+                
+        timer = cleaned.get("auto_sync_timer") or 0
+        if timer < 0:
+            self.add_error("auto_sync_timer", "Auto sync timer must be >= 0.")
 
         # 4. REMOVED the logic that clears/nones the other fields. 
         # We want to keep them if the user filled them out.

@@ -1,0 +1,546 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+
+{% block title %}ERP Mapping{% endblock %}
+
+{% block content %}
+
+<style>
+    .container { margin-top: 80px; padding: 0; }
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl { max-width: 100%; }
+    }
+    @media (min-width: 576px) {
+        .container, .container-sm { max-width: 100%; }
+    }
+    table { margin-top:0%; }
+
+    :root{
+        --bg:#f6f7fb;
+        --card:#ffffff;
+        --text:#0f172a;
+        --muted:#64748b;
+        --border: rgba(15,23,42,.12);
+        --shadow: 0 14px 40px rgba(15,23,42,.08);
+        --shadow-sm: 0 8px 22px rgba(15,23,42,.08);
+        --radius: 18px;
+        --danger:#b91c1c;
+        --active:#0f172a;
+        --activeText:#ffffff;
+        --success:#065f46;
+        --successBg: rgba(6,95,70,.08);
+    }
+
+    .page-wrap{ padding: 18px; }
+
+    .cardx{
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+
+    .cardx-header{
+        padding: 18px 18px 12px 18px;
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(180deg, rgba(246,247,251,1), rgba(255,255,255,1));
+        flex-wrap: wrap;
+    }
+
+    .title{
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--text);
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .subtitle{
+        margin: 6px 0 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+        max-width: 920px;
+    }
+
+    .header-left{
+        min-width: 320px;
+        flex: 1 1 520px;
+    }
+
+    .header-right{
+        display:flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        flex: 1 1 420px;
+    }
+
+    .btnx{
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--text);
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: .15s ease;
+        box-shadow: var(--shadow-sm);
+        font-size: 13px;
+        white-space: nowrap;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btnx:hover{ transform: translateY(-1px); }
+
+    .btnx.primary{
+        background: var(--active);
+        color: var(--activeText);
+        border-color: var(--active);
+    }
+
+    .btnx.success{
+        background: var(--successBg);
+        border-color: rgba(6,95,70,.22);
+        color: var(--success);
+    }
+
+    .btnx:disabled{
+        opacity: .55;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .cardx-body{ padding: 14px 18px 18px 18px; }
+
+    .table-wrap{
+        width: 100%;
+        overflow-x: auto;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: #fff;
+    }
+
+    table{
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 820px;
+    }
+
+    thead th{
+        text-align: left;
+        padding: 12px;
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 900;
+        border-bottom: 1px solid var(--border);
+        background: #fbfcff;
+        letter-spacing: .2px;
+    }
+
+    tbody td{
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
+
+    .inputx{
+        width: 100%;
+        padding: 10px 10px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        outline: none;
+        font-size: 13px;
+        color: var(--text);
+        background: #fff;
+    }
+
+    .inputx:focus{
+        border-color: rgba(15,23,42,.35);
+        box-shadow: 0 0 0 4px rgba(15,23,42,.06);
+    }
+
+    .row-actions{
+        display:flex;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+
+    .icon-btn{
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 9px 10px;
+        background: #fff;
+        cursor: pointer;
+        font-weight: 900;
+        font-size: 12px;
+    }
+    .icon-btn.danger{
+        border-color: rgba(185,28,28,.25);
+        color: var(--danger);
+        background: rgba(185,28,28,.04);
+    }
+
+    .note{
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.6;
+    }
+
+    .pill{
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: #fff;
+        font-size: 12px;
+        font-weight: 900;
+        color: var(--text);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .status{
+        margin-left: 8px;
+        font-size: 12px;
+        font-weight: 900;
+        color: var(--muted);
+    }
+
+    .warn{
+        margin-top: 12px;
+        padding: 12px 14px;
+        border: 1px dashed rgba(185,28,28,.35);
+        background: rgba(185,28,28,.05);
+        border-radius: 14px;
+        color: #7f1d1d;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.6;
+    }
+
+    .tabs{
+        display:flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+
+    .tab{
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-weight: 900;
+        background: #fff;
+        color: var(--text);
+        text-decoration: none;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .tab.active{
+        background: var(--active);
+        color: var(--activeText);
+        border-color: var(--active);
+    }
+
+    .table-toolbar{
+        display:flex;
+        gap: 10px;
+        align-items:center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        margin-top: 14px;
+        margin-bottom: 10px;
+    }
+
+    .toolbar-left{
+        display:flex;
+        gap: 10px;
+        align-items:center;
+        flex-wrap: wrap;
+    }
+
+    .toolbar-right{
+        display:flex;
+        gap: 10px;
+        align-items:center;
+        flex-wrap: wrap;
+    }
+
+    .hint{
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 800;
+    }
+
+    @media (max-width: 768px){
+        .table-toolbar{
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .toolbar-left, .toolbar-right{
+            width: 100%;
+            justify-content: space-between;
+        }
+        .btnx{
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 576px){
+        .page-wrap{ padding: 12px; }
+        .cardx-header{ padding: 14px; }
+        .cardx-body{ padding: 14px; }
+    }
+</style>
+
+<div class="container">
+  <div class="page-wrap">
+    <div class="cardx">
+
+      <div class="cardx-header">
+        <div class="header-left">
+          <h1 class="title">ERP Mapping Manager</h1>
+          <p class="subtitle">
+            {{ subtitle }}
+            Example: <b>{{ example_left }}</b> → <b>{{ example_right }}</b>
+          </p>
+
+          <div class="tabs">
+            {% if selected_company %}
+              <a class="tab {% if mapping_mode == 'unit' %}active{% endif %}"
+                 href="{% url 'erp_unit_mapping' %}?company_id={{ selected_company.id }}">Units API</a>
+
+              <a class="tab {% if mapping_mode == 'leads' %}active{% endif %}"
+                 href="{% url 'erp_leads_mapping' %}?company_id={{ selected_company.id }}">Leads API</a>
+
+              <a class="tab {% if mapping_mode == 'hold_post' %}active{% endif %}"
+                 href="{% url 'erp_hold_post_mapping' %}?company_id={{ selected_company.id }}">Hold POST</a>
+            {% else %}
+              <a class="tab {% if mapping_mode == 'unit' %}active{% endif %}"
+                 href="{% url 'erp_unit_mapping' %}">Units API</a>
+
+              <a class="tab {% if mapping_mode == 'leads' %}active{% endif %}"
+                 href="{% url 'erp_leads_mapping' %}">Leads API</a>
+
+              <a class="tab {% if mapping_mode == 'hold_post' %}active{% endif %}"
+                 href="{% url 'erp_hold_post_mapping' %}">Hold POST</a>
+            {% endif %}
+          </div>
+
+          {% if selected_company %}
+            <div class="status">
+              Selected Company: <b>{{ selected_company.name }}</b>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="header-right">
+          <form id="companyForm" method="get" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span class="pill">Company</span>
+            <select class="inputx" name="company_id" style="min-width:260px;"
+                    onchange="document.getElementById('companyForm').submit();">
+              <option value="">Select Company...</option>
+              {% for c in companies %}
+                <option value="{{ c.id }}" {% if selected_company and selected_company.id == c.id %}selected{% endif %}>
+                  {{ c.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </form>
+        </div>
+      </div>
+
+      <div class="cardx-body">
+
+        {% if not selected_company %}
+          <div class="warn">
+            Please select a company first using the dropdown above.
+          </div>
+        {% endif %}
+
+        <div class="table-toolbar">
+          <div class="toolbar-left">
+            <span class="hint">
+              {% if mapping_mode == 'unit' %}
+                Mapping Target: <b>Unit Fields</b>
+              {% elif mapping_mode == 'leads' %}
+                Mapping Target: <b>Leads Keys</b>
+              {% else %}
+                Mapping Target: <b>Hold POST Internal Keys</b>
+              {% endif %}
+            </span>
+          </div>
+
+          <div class="toolbar-right">
+            <button class="btnx success" type="button" onclick="addRow()" {% if not selected_company %}disabled{% endif %}>
+              + Add Row
+            </button>
+            <button class="btnx primary" type="button" onclick="saveMappings()" {% if not selected_company %}disabled{% endif %}>
+              Save
+            </button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:45%;">Provided Name (ERP key)</th>
+                <th style="width:45%;">{{ needed_label }}</th>
+                <th style="width:10%; text-align:right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+
+        <p class="note">
+          Matching rules: case-insensitive, trims spaces, and converts spaces/dashes to underscores.
+        </p>
+
+        <datalist id="targetFieldsList">
+          {% for f in target_fields %}
+            <option value="{{ f }}"></option>
+          {% endfor %}
+        </datalist>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  const existing = {{ existing_mappings_json|safe }};
+  const companyId = "{{ selected_company.id|default:'' }}";
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  function escapeHtml(str){
+    return (str || '')
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'","&#039;");
+  }
+
+  function rowTemplate(provided='', needed=''){
+    const tr = document.createElement('tr');
+
+    const providedPH = "{% if mapping_mode == 'unit' %}e.g. Unit Price / list_price{% elif mapping_mode == 'leads' %}e.g. clientMobile / leadName{% else %}e.g. ced_name / status_reason{% endif %}";
+    const neededPH   = "{% if mapping_mode == 'unit' %}e.g. interest_free_unit_price{% elif mapping_mode == 'leads' %}e.g. phone / name{% else %}e.g. unit_code / type{% endif %}";
+
+    tr.innerHTML = `
+      <td>
+        <input class="inputx provided" placeholder="${providedPH}" value="${escapeHtml(provided)}">
+      </td>
+      <td>
+        <input class="inputx needed" list="targetFieldsList" placeholder="${neededPH}" value="${escapeHtml(needed)}">
+      </td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn danger" type="button" onclick="removeRow(this)">Delete</button>
+        </div>
+      </td>
+    `;
+    return tr;
+  }
+
+  function addRow(provided='', needed=''){
+    if(!companyId){
+      alert("Please select a company first.");
+      return;
+    }
+    document.getElementById('rows').appendChild(rowTemplate(provided, needed));
+  }
+
+  function removeRow(btn){
+    const tr = btn.closest('tr');
+    if(tr) tr.remove();
+  }
+
+  function loadExisting(){
+    const tbody = document.getElementById('rows');
+    tbody.innerHTML = "";
+
+    if(!companyId){
+      return;
+    }
+
+    const keys = Object.keys(existing || {});
+    if(!keys.length){
+      addRow();
+      return;
+    }
+    keys.forEach(k => addRow(k, existing[k]));
+  }
+
+  function collectMappings(){
+    const rows = document.querySelectorAll('#rows tr');
+    const mappings = [];
+    rows.forEach(r => {
+      const provided = (r.querySelector('.provided')?.value || '').trim();
+      const needed = (r.querySelector('.needed')?.value || '').trim();
+      if(provided && needed){
+        mappings.push({provided_name: provided, needed_name: needed});
+      }
+    });
+    return mappings;
+  }
+
+  async function saveMappings(){
+    if(!companyId){
+      alert("Please select a company first.");
+      return;
+    }
+
+    const mappings = collectMappings();
+    const csrftoken = getCookie('csrftoken');
+
+    const res = await fetch("", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken
+      },
+      body: JSON.stringify({ company_id: companyId, mappings })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if(res.ok && data.success){
+      alert(`Saved successfully. Rows: ${data.count}`);
+    }else{
+      alert(data.error || "Failed to save mappings");
+    }
+  }
+
+  loadExisting();
+</script>
+
+{% endblock %}

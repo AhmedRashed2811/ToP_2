@@ -1,67 +1,22 @@
-# ToP/services/market_research_units_management_service.py
-
 from __future__ import annotations
 
 import csv
-import traceback
+import re
+import unicodedata
 from dataclasses import dataclass
-from datetime import datetime, date
-from typing import Any, Dict, Optional, List, Tuple
+from typing import Any, Dict, Optional, List, Tuple, Set
 
-import chardet
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.core.paginator import Paginator
 from django.db import transaction
+from django.utils import timezone
 
 from ..models import (
     MarketUnitData,
     MarketProject,
-    MarketUnitAssetType,
     MarketUnitType,
+    MarketUnitAssetType,
     MarketUnitFinishingSpec,
 )
-
-from ..utils.market_research_units_management_utils import (
-    get_user_full_name,
-    parse_flexible_date,
-    parse_update_endpoint_date,
-    clean_numeric_value,
-    normalize_csv_row,
-    calculate_derived_fields,
-)
-
-# put your mapping here (single source of truth)
-COLUMN_MAPPING = {
-    'Project Name': 'project_name',
-    'Project Name ': 'project_name',
-    'Developer Name': 'developer_name',
-    'Location': 'location',
-    'Asset Type': 'asset_type',
-    'Unit Type': 'unit_type',
-    'BUA': 'bua',
-    'Land Area': 'land_area',
-    'Garden': 'garden',
-    'Unit Price': 'unit_price',
-    ' Unit Price ': 'unit_price',
-    'PSM': 'psm',
-    'Payment yrs raw': 'payment_yrs_raw',
-    ' Payment yrs raw ': 'payment_yrs_raw',
-    'Payment Yrs': 'payment_yrs',
-    'Down Payment': 'down_payment',
-    'Down Payment ': 'down_payment',
-    'Delivery %': 'delivery_percentage',
-    'Cash discount': 'cash_discount',
-    'Delivery Date': 'delivery_date',
-    'Finishing Specs': 'finishing_specs',
-    'Maintenance': 'maintenance',
-    'Phase': 'phase',
-    'Date of Update': 'date_of_update',
-    'Updated by': 'updated_by',
-    'Source of info': 'source_of_info',
-    'Source of info.': 'source_of_info',
-    'Months from Update': 'months_from_update',
-    'Notes': 'notes',
-    'DP % Range': 'dp_percentage'
-}
 
 
 @dataclass
@@ -75,425 +30,690 @@ class ServiceResult:
 
 class MarketResearchUnitsManagmentService:
     """
-    Refactored service layer for market unit data views:
-    - list context (pagination + dropdowns)
-    - update field(s) / create if id missing
-    - create unit (legacy endpoint)
-    - delete unit
-    - import CSV units
+    MarketUnitData CRUD + Import + Derived fields (PSM, payment_yrs, months_from_update).
+    Import reads updated_by/date_of_update/months_from_update FROM CSV (no calc).
     """
 
-    ALLOWED_PAGE_SIZES = {10, 25, 50, 100}
-
-    NUMERIC_FIELDS_UPDATE = {
-        "unit_price", "bua", "land_area", "garden", "down_payment",
-        "delivery_percentage", "cash_discount", "maintenance", "phase", "psm"
-    }
-
-    LIST_FIELD_NAMES = [
-        "project_name", "developer_name", "location", "asset_type", "unit_type", "bua",
-        "land_area", "garden", "unit_price", "psm", "payment_yrs", "payment_yrs_raw",
-        "down_payment", "delivery_percentage", "cash_discount", "delivery_date",
-        "finishing_specs", "maintenance", "phase", "date_of_update",
-        "updated_by", "source_of_info", "months_from_update", "notes"
-    ]
-
-    # ---------------------------------------------------------
-    # 1) LIST PAGE CONTEXT
-    # ---------------------------------------------------------
+    # ==============================
+    # LIST CONTEXT + PAGINATION
+    # ==============================
     @staticmethod
-    def get_list_context(*, page: Any, page_size: Any) -> ServiceResult:
+    def get_list_context(*, page: int = 1, page_size: int = 25) -> ServiceResult:
         try:
-            units_list = MarketUnitData.objects.all().order_by("-date_of_update", "id")
-            page_size_int = MarketResearchUnitsManagmentService._sanitize_page_size(page_size)
-
-            paginator = Paginator(units_list, page_size_int)
-            page_number = page or 1
-
-            try:
-                units = paginator.page(page_number)
-            except PageNotAnInteger:
-                units = paginator.page(1)
-            except EmptyPage:
-                units = paginator.page(paginator.num_pages)
-
-            projects = MarketProject.objects.select_related("developer", "location").all()
-            asset_types = MarketUnitAssetType.objects.all()
-            unit_types = MarketUnitType.objects.all()
-            finishing_specs = MarketUnitFinishingSpec.objects.all()
-
-            return ServiceResult(
-                success=True,
-                status=200,
-                payload={
-                    "units": units,
-                    "projects": projects,
-                    "asset_types": asset_types,
-                    "unit_types": unit_types,
-                    "finishing_specs": finishing_specs,
-                    "field_names": MarketResearchUnitsManagmentService.LIST_FIELD_NAMES,
-                    "page_size": page_size_int,
-                }
-            )
-        except Exception as e:
-            return ServiceResult(success=False, status=500, error=str(e), trace=traceback.format_exc())
-
-    @staticmethod
-    def _sanitize_page_size(page_size: Any) -> int:
-        try:
-            ps = int(page_size)
-            if ps in MarketResearchUnitsManagmentService.ALLOWED_PAGE_SIZES:
-                return ps
-            return 25
+            page = int(page or 1)
+            page_size = int(page_size or 25)
+            page_size = max(5, min(200, page_size))
         except Exception:
-            return 25
+            page, page_size = 1, 25
 
-    # ---------------------------------------------------------
-    # 2) UPDATE FIELD(S) (single or bulk, create if id missing)
-    # ---------------------------------------------------------
+        qs = MarketUnitData.objects.all().order_by("-date_of_update", "-id")
+
+        paginator = Paginator(qs, page_size)
+        page_obj = paginator.get_page(page)
+
+        projects = MarketProject.objects.select_related("developer", "location").order_by("name", "id")
+        unit_types = MarketUnitType.objects.all().order_by("name")
+        asset_types = MarketUnitAssetType.objects.all().order_by("name")
+        finishing_specs = MarketUnitFinishingSpec.objects.all().order_by("name")
+
+        return ServiceResult(
+            True,
+            200,
+            payload={
+                "page_obj": page_obj,
+                "paginator": paginator,
+                "page_size": page_size,
+                "page_size_options": [10, 25, 50, 100],
+                "projects": projects,
+                "unit_types": unit_types,
+                "asset_types": asset_types,
+                "finishing_specs": finishing_specs,
+            },
+        )
+
+    # ==============================
+    # UPDATE SINGLE FIELD (AJAX)
+    # ==============================
     @staticmethod
     @transaction.atomic
     def update_market_unit(*, user, data: Dict[str, Any]) -> ServiceResult:
-        """
-        Accepts:
-        - single: {id?, field, value}
-        - bulk: {id?, fields: {...}}
-        """
         try:
             record_id = data.get("id")
-            user_full_name = get_user_full_name(user)
+            field = (data.get("field") or "").strip()
+            value = data.get("value")
 
-            # Single update
-            if "field" in data and "value" in data:
-                field = data.get("field")
-                value = data.get("value")
+            if not record_id or not field:
+                return ServiceResult(False, 400, error="Missing id or field")
 
-                unit = MarketResearchUnitsManagmentService._upsert_single(
-                    record_id=record_id,
-                    field=field,
-                    value=value,
-                    updated_by=user_full_name,
-                )
+            unit = MarketUnitData.objects.filter(id=record_id).first()
+            if not unit:
+                return ServiceResult(False, 404, error="Record not found")
 
-                derived = MarketResearchUnitsManagmentService._apply_derived(unit)
+            old_project = unit.project_name
+            old_unit_type = unit.unit_type
 
-                return ServiceResult(
-                    success=True,
-                    status=200,
-                    payload={
-                        "success": True,
-                        "id": unit.id,
-                        "display_date": unit.date_of_update.strftime("%b/%y") if field == "date_of_update" else None,
-                        **derived
-                    }
-                )
+            readonly_fields = {
+                "psm", "payment_yrs", "months_from_update",
+                "updated_by", "developer_name", "location"
+            }
+            if field in readonly_fields:
+                return ServiceResult(True, 200, payload={"success": True, "skipped": True})
 
-            # Multiple update
-            if "fields" in data and isinstance(data["fields"], dict):
-                fields = data["fields"]
+            # Project dropdown: value is MarketProject.id or name
+            if field == "project_name":
+                project = MarketResearchUnitsManagmentService._get_project_from_value(value)
+                if not project:
+                    return ServiceResult(False, 400, error="Invalid project selected")
 
-                unit = MarketResearchUnitsManagmentService._upsert_many(
-                    record_id=record_id,
-                    fields=fields,
-                    updated_by=user_full_name,
-                )
+                unit.project_name = project.name
+                unit.developer_name = project.developer.name if project.developer else ""
+                unit.location = project.location.name if project.location else ""
 
-                derived = MarketResearchUnitsManagmentService._apply_derived(unit)
+            elif field in {"unit_type", "asset_type", "finishing_specs"}:
+                unit.__dict__[field] = MarketResearchUnitsManagmentService._normalize_text(value)
 
-                return ServiceResult(
-                    success=True,
-                    status=200,
-                    payload={
-                        "success": True,
-                        "id": unit.id,
-                        "display_date": unit.date_of_update.strftime("%b/%y") if "date_of_update" in fields else None,
-                        **derived
-                    }
-                )
+            elif field == "date_of_update":
+                unit.date_of_update = MarketResearchUnitsManagmentService._parse_date(value)
 
-            return ServiceResult(success=False, status=400, error="Invalid request format")
+            elif field in {
+                "bua", "land_area", "garden", "unit_price", "down_payment",
+                "delivery_percentage", "cash_discount", "maintenance", "phase"
+            }:
+                unit.__dict__[field] = MarketResearchUnitsManagmentService._parse_float(value)
 
-        except MarketUnitData.DoesNotExist:
-            return ServiceResult(success=False, status=404, error="Record not found")
-        except ValueError as e:
-            return ServiceResult(success=False, status=400, error=str(e))
-        except Exception as e:
-            return ServiceResult(success=False, status=500, error=str(e), trace=traceback.format_exc())
+            elif field in {"payment_yrs_raw", "delivery_date", "source_of_info", "notes", "dp_percentage", "offering"}:
+                unit.__dict__[field] = value if value is not None else ""
 
-    @staticmethod
-    def _cast_update_value(field: str, value: Any) -> Any:
-        # Date parsing for update endpoint
-        if field == "date_of_update":
-            dt, err = parse_update_endpoint_date(value)
-            if err:
-                raise ValueError(err)
-            return dt
+            else:
+                return ServiceResult(False, 400, error=f"Unknown field: {field}")
 
-        # Numeric parsing
-        if field in MarketResearchUnitsManagmentService.NUMERIC_FIELDS_UPDATE:
-            num, err = clean_numeric_value(value, field)
-            if err:
-                raise ValueError(err)
-            return num
+            # Always update updated_by on any change
+            unit.updated_by = MarketResearchUnitsManagmentService._user_full_name(user)
 
-        return value
-
-    @staticmethod
-    def _upsert_single(*, record_id: Any, field: str, value: Any, updated_by: str) -> MarketUnitData:
-        value = MarketResearchUnitsManagmentService._cast_update_value(field, value)
-
-        if not record_id:
-            return MarketUnitData.objects.create(**{field: value}, updated_by=updated_by)
-
-        unit = MarketUnitData.objects.get(id=record_id)
-        setattr(unit, field, value)
-        unit.save()
-        return unit
-
-    @staticmethod
-    def _upsert_many(*, record_id: Any, fields: Dict[str, Any], updated_by: str) -> MarketUnitData:
-        if not record_id:
-            first_field, first_value = next(iter(fields.items()))
-            unit = MarketUnitData.objects.create(
-                **{first_field: MarketResearchUnitsManagmentService._cast_update_value(first_field, first_value)},
-                updated_by=updated_by
-            )
-        else:
-            unit = MarketUnitData.objects.get(id=record_id)
-
-        for f, v in fields.items():
-            setattr(unit, f, MarketResearchUnitsManagmentService._cast_update_value(f, v))
-
-        unit.save()
-        return unit
-
-    @staticmethod
-    def _apply_derived(unit: MarketUnitData) -> Dict[str, Any]:
-        derived = calculate_derived_fields(unit)
-        for k, v in derived.items():
-            setattr(unit, k, v)
-        unit.save()
-        return derived
-
-    # ---------------------------------------------------------
-    # 3) CREATE MARKET UNIT (legacy endpoint)
-    # ---------------------------------------------------------
-    @staticmethod
-    @transaction.atomic
-    def create_market_unit(*, user, field: str, value: Any) -> ServiceResult:
-        try:
-            user_full_name = get_user_full_name(user)
-
-            # Cast numeric when needed (matches your create endpoint behavior)
-            if field in MarketResearchUnitsManagmentService.NUMERIC_FIELDS_UPDATE:
-                num, err = clean_numeric_value(value, field)
-                if err:
-                    return ServiceResult(success=False, status=400, error=err)
-                value = num
-
-            unit = MarketUnitData.objects.create(
-                **{field: value},
-                updated_by=user_full_name,
-                date_of_update=date.today()
+            # Recompute derived fields on edits
+            MarketResearchUnitsManagmentService._recompute_row(
+                unit,
+                compute_psm=True,
+                compute_months=True,   # editable path: compute
+                compute_payment=True
             )
 
-            derived = MarketResearchUnitsManagmentService._apply_derived(unit)
+            unit.save()
+
+            # payment group changes -> recompute group payment_yrs
+            group_updates = []
+            if field in {"payment_yrs_raw", "unit_type", "project_name"}:
+                if old_project and old_unit_type:
+                    MarketResearchUnitsManagmentService._recompute_payment_yrs_group(old_project, old_unit_type)
+                if unit.project_name and unit.unit_type:
+                    MarketResearchUnitsManagmentService._recompute_payment_yrs_group(unit.project_name, unit.unit_type)
+                    group_updates = MarketResearchUnitsManagmentService._get_group_payment_yrs(unit.project_name, unit.unit_type)
 
             return ServiceResult(
-                success=True,
-                status=200,
-                payload={"success": True, "id": unit.id, **derived}
+                True,
+                200,
+                payload={
+                    "success": True,
+                    "id": unit.id,
+                    "computed": MarketResearchUnitsManagmentService._row_computed_payload(unit),
+                    "group_updates": group_updates,
+                },
             )
         except Exception as e:
-            return ServiceResult(success=False, status=500, error=str(e), trace=traceback.format_exc())
+            return ServiceResult(False, 500, error="Update failed", trace=str(e))
 
-    # ---------------------------------------------------------
-    # 4) DELETE MARKET UNIT
-    # ---------------------------------------------------------
+    # ==============================
+    # CREATE UNIT (FROM MODAL DATA)
+    # ==============================
+    @staticmethod
+    @transaction.atomic
+    def create_market_unit(*, user, data: Dict[str, Any]) -> ServiceResult:
+        """
+        Create using full payload from modal (AJAX).
+        Developer/location are derived from project selection.
+        PSM/payment_yrs/months_from_update computed.
+        """
+        try:
+            unit = MarketUnitData()
+
+            # project id/name
+            project = MarketResearchUnitsManagmentService._get_project_from_value(data.get("project_name"))
+            if project:
+                unit.project_name = project.name
+                unit.developer_name = project.developer.name if project.developer else ""
+                unit.location = project.location.name if project.location else ""
+            else:
+                # allow blank / unknown
+                unit.project_name = MarketResearchUnitsManagmentService._normalize_text(data.get("project_name"))
+                unit.developer_name = ""
+                unit.location = ""
+
+            # dropdowns
+            unit.asset_type = MarketResearchUnitsManagmentService._normalize_text(data.get("asset_type"))
+            unit.unit_type = MarketResearchUnitsManagmentService._normalize_text(data.get("unit_type"))
+            unit.finishing_specs = MarketResearchUnitsManagmentService._normalize_text(data.get("finishing_specs"))
+
+            # numbers
+            unit.bua = MarketResearchUnitsManagmentService._parse_float(data.get("bua"))
+            unit.land_area = MarketResearchUnitsManagmentService._parse_float(data.get("land_area"))
+            unit.garden = MarketResearchUnitsManagmentService._parse_float(data.get("garden"))
+            unit.unit_price = MarketResearchUnitsManagmentService._parse_float(data.get("unit_price"))
+
+            unit.payment_yrs_raw = (data.get("payment_yrs_raw") or "").strip()
+            unit.down_payment = MarketResearchUnitsManagmentService._parse_float(data.get("down_payment"))
+            unit.delivery_percentage = MarketResearchUnitsManagmentService._parse_float(data.get("delivery_percentage"))
+            unit.cash_discount = MarketResearchUnitsManagmentService._parse_float(data.get("cash_discount"))
+
+            unit.delivery_date = (data.get("delivery_date") or "").strip()
+            unit.maintenance = MarketResearchUnitsManagmentService._parse_float(data.get("maintenance"))
+            unit.phase = MarketResearchUnitsManagmentService._parse_float(data.get("phase"))
+
+            unit.date_of_update = MarketResearchUnitsManagmentService._parse_date(data.get("date_of_update"))
+            unit.source_of_info = data.get("source_of_info") or ""
+            unit.dp_percentage = data.get("dp_percentage") or ""
+            unit.notes = data.get("notes") or ""
+            unit.offering = data.get("offering") or ""
+
+            # system
+            unit.updated_by = MarketResearchUnitsManagmentService._user_full_name(user)
+
+            MarketResearchUnitsManagmentService._recompute_row(
+                unit,
+                compute_psm=True,
+                compute_months=True,
+                compute_payment=True
+            )
+
+            unit.save()
+
+            # recompute group payment_yrs for this group
+            if unit.project_name and unit.unit_type:
+                MarketResearchUnitsManagmentService._recompute_payment_yrs_group(unit.project_name, unit.unit_type)
+
+            return ServiceResult(True, 200, payload={"success": True, "id": unit.id})
+        except Exception as e:
+            return ServiceResult(False, 500, error="Create failed", trace=str(e))
+
+    # ==============================
+    # DELETE SINGLE
+    # ==============================
     @staticmethod
     @transaction.atomic
     def delete_market_unit(*, record_id: Any) -> ServiceResult:
         try:
-            unit = MarketUnitData.objects.get(id=record_id)
-            unit.delete()
-            return ServiceResult(success=True, status=200, payload={"success": True})
-        except MarketUnitData.DoesNotExist:
-            return ServiceResult(success=False, status=404, error="Record not found")
-        except Exception as e:
-            return ServiceResult(success=False, status=400, error=str(e), trace=traceback.format_exc())
+            if not record_id:
+                return ServiceResult(False, 400, error="Missing id")
 
-    # ---------------------------------------------------------
-    # 5) IMPORT CSV
-    # ---------------------------------------------------------
+            unit = MarketUnitData.objects.filter(id=record_id).first()
+            if not unit:
+                return ServiceResult(False, 404, error="Record not found")
+
+            unit.delete()
+            return ServiceResult(True, 200, payload={"success": True})
+        except Exception as e:
+            return ServiceResult(False, 500, error="Delete failed", trace=str(e))
+
+    # ==============================
+    # CLEAR ALL (ADVANCED CONFIRM)
+    # ==============================
     @staticmethod
     @transaction.atomic
-    def import_market_units(*, file_bytes: bytes) -> ServiceResult:
+    def clear_all_market_units(*, confirm_text: str) -> ServiceResult:
         try:
-            decoded_lines, enc_error = MarketResearchUnitsManagmentService._decode_csv(file_bytes)
-            if enc_error:
-                return ServiceResult(success=False, status=400, error=enc_error)
+            if (confirm_text or "").strip() != "Accept Delete All":
+                return ServiceResult(False, 400, error='Confirmation text must be exactly: "Accept Delete All"')
 
-            reader = csv.DictReader(decoded_lines)
-
-            if reader.fieldnames:
-                reader.fieldnames = [COLUMN_MAPPING.get(name.strip(), name.strip()) for name in reader.fieldnames]
-
-            imported_count = 0
-            error_rows: List[Dict[str, Any]] = []
-            row_number = 1
-
-            # Clear existing data (kept as your original)
+            deleted_count = MarketUnitData.objects.all().count()
             MarketUnitData.objects.all().delete()
 
-            numeric_fields = [
-                "bua", "land_area", "garden", "unit_price", "psm",
-                "down_payment", "delivery_percentage", "cash_discount",
-                "maintenance", "phase", "months_from_update"
-            ]
+            return ServiceResult(True, 200, payload={"success": True, "deleted": deleted_count})
+        except Exception as e:
+            return ServiceResult(False, 500, error="Clear all failed", trace=str(e))
 
-            required_fields = ["project_name", "unit_type"]
+    # ==============================
+    # IMPORT CSV (UPDATED)
+    # ==============================
+    @staticmethod
+    @transaction.atomic
+    def import_market_units(*, user, file_bytes: bytes) -> ServiceResult:
+        """
+        Import notes:
+        - updated_by, date_of_update, months_from_update are read from CSV (NO CALC)
+        - project matching is normalized and case-insensitive, and saved using canonical DB name
+        - PSM/payment_yrs can remain computed
+        - still skips repeated header rows
+        - upsert (update if exists else create)
+        """
+        decoded_lines, decode_err = MarketResearchUnitsManagmentService._decode_csv_bytes(file_bytes)
+        if decoded_lines is None:
+            return ServiceResult(False, 400, error=decode_err or "Unsupported file encoding. Export as CSV UTF-8.")
 
-            for row in reader:
-                row_number += 1
-                row_errors: List[Any] = []
-                processed_row: Dict[str, Any] = {}
+        decoded_lines = [ln for ln in decoded_lines if ln and ln.strip()]
 
-                try:
-                    row = normalize_csv_row(row, COLUMN_MAPPING)
+        try:
+            sample = "\n".join(decoded_lines[:10])
+            dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
+            reader = csv.DictReader(decoded_lines, dialect=dialect)
+        except Exception:
+            reader = csv.DictReader(decoded_lines)
 
-                    # date_of_update
-                    if row.get("date_of_update"):
-                        date_obj, error = parse_flexible_date(row["date_of_update"], "date_of_update")
-                        if error:
-                            row_errors.append(error)
-                            processed_row["date_of_update"] = datetime.now().date()
-                        else:
-                            processed_row["date_of_update"] = date_obj
-                    else:
-                        processed_row["date_of_update"] = datetime.now().date()
+        # Build normalized project map once
+        all_projects = list(MarketProject.objects.select_related("developer", "location").all())
+        project_map = {MarketResearchUnitsManagmentService._project_key(p.name): p for p in all_projects}
 
-                    # numeric fields
-                    for f in numeric_fields:
-                        if f in row:
-                            val, err = clean_numeric_value(row.get(f), f)
-                            if err:
-                                row_errors.append(err)
-                            processed_row[f] = val
+        created = 0
+        updated = 0
+        skipped = 0
+        touched_groups: Set[Tuple[str, str]] = set()
 
-                    # required
-                    for f in required_fields:
-                        if not row.get(f):
-                            row_errors.append({
-                                "field": f,
-                                "message": "This field is required",
-                                "type": "required_field"
-                            })
-                        else:
-                            processed_row[f] = row.get(f)
+        for raw_row in reader:
+            row = MarketResearchUnitsManagmentService._canonicalize_row(raw_row)
 
-                    # others
-                    for k, v in row.items():
-                        if k not in (["date_of_update"] + numeric_fields + required_fields):
-                            processed_row[k] = v
+            # skip repeated header rows
+            if MarketResearchUnitsManagmentService._row_looks_like_header(row):
+                skipped += 1
+                continue
 
-                    if row_errors:
-                        error_rows.append({"row": row_number, "errors": row_errors, "data": row})
-                        continue
+            raw_project = row.get("project_name")
+            project_name_in = MarketResearchUnitsManagmentService._normalize_text(raw_project)
+            project_key = MarketResearchUnitsManagmentService._project_key(project_name_in)
 
-                    MarketUnitData.objects.create(
-                        project_name=processed_row["project_name"],
-                        unit_type=processed_row["unit_type"],
-                        developer_name=processed_row.get("developer_name"),
-                        location=processed_row.get("location"),
-                        asset_type=processed_row.get("asset_type"),
-                        bua=processed_row.get("bua"),
-                        land_area=processed_row.get("land_area"),
-                        garden=processed_row.get("garden"),
-                        unit_price=processed_row.get("unit_price"),
-                        psm=processed_row.get("psm"),
-                        payment_yrs_raw=processed_row.get("payment_yrs_raw"),
-                        payment_yrs=processed_row.get("payment_yrs"),
-                        down_payment=processed_row.get("down_payment"),
-                        delivery_percentage=processed_row.get("delivery_percentage"),
-                        cash_discount=processed_row.get("cash_discount"),
-                        delivery_date=processed_row.get("delivery_date"),
-                        finishing_specs=processed_row.get("finishing_specs"),
-                        maintenance=processed_row.get("maintenance"),
-                        phase=processed_row.get("phase"),
-                        date_of_update=processed_row.get("date_of_update"),
-                        updated_by=processed_row.get("updated_by"),
-                        source_of_info=processed_row.get("source_of_info"),
-                        months_from_update=processed_row.get("months_from_update"),
-                        notes=processed_row.get("notes"),
-                        dp_percentage=processed_row.get("dp_percentage"),
-                    )
+            project_obj = project_map.get(project_key)
+            if not project_obj and project_name_in:
+                # fallback db lookup (still normalized)
+                project_obj = MarketProject.objects.select_related("developer", "location").filter(name__iexact=project_name_in).first()
 
-                    imported_count += 1
+            # canonical project name (if found)
+            project_name = project_obj.name if project_obj else project_name_in
 
-                except Exception as e:
-                    error_rows.append({
-                        "row": row_number,
-                        "errors": [{
-                            "message": f"System error: {str(e)}",
-                            "type": "system_error"
-                        }],
-                        "data": row
-                    })
+            unit_type = MarketResearchUnitsManagmentService._normalize_text(row.get("unit_type"))
+            asset_type = MarketResearchUnitsManagmentService._normalize_text(row.get("asset_type"))
+            finishing_specs = MarketResearchUnitsManagmentService._normalize_text(row.get("finishing_specs"))
 
-            error_summary = MarketResearchUnitsManagmentService._build_error_summary(error_rows)
+            bua = MarketResearchUnitsManagmentService._parse_float(row.get("bua"))
+            unit_price = MarketResearchUnitsManagmentService._parse_float(row.get("unit_price"))
+            payment_yrs_raw = (row.get("payment_yrs_raw") or "").strip()
 
-            return ServiceResult(
-                success=True,
-                status=200,
-                payload={
-                    "success": True,
-                    "imported_count": imported_count,
-                    "total_rows": row_number - 1,
-                    "error_count": len(error_rows),
-                    "error_summary": error_summary,
-                    "error_rows": error_rows[:10],
-                    "has_more_errors": len(error_rows) > 10,
-                    "sample_error": error_rows[0] if error_rows else None,
-                }
+            if not (project_name or unit_type or bua or unit_price):
+                skipped += 1
+                continue
+
+            developer_name = project_obj.developer.name if project_obj and project_obj.developer else ""
+            location_name = project_obj.location.name if project_obj and project_obj.location else ""
+
+            # Upsert key (keep as-is from your current logic)
+            down_payment = MarketResearchUnitsManagmentService._parse_float(row.get("down_payment"))
+            delivery_date = (row.get("delivery_date") or "").strip()
+            payment_raw = payment_yrs_raw
+
+            existing = MarketUnitData.objects.filter(
+                project_name__iexact=project_name,
+                unit_type__iexact=unit_type,
+                bua=bua,
+                unit_price=unit_price,
+                down_payment=down_payment,
+                delivery_date=delivery_date,
+                payment_yrs_raw=payment_raw,
+            ).first()
+
+            if existing:
+                unit = existing
+                updated += 1
+            else:
+                unit = MarketUnitData()
+                created += 1
+
+            # Assign imported fields
+            unit.project_name = project_name
+            unit.developer_name = developer_name
+            unit.location = location_name
+
+            unit.asset_type = asset_type
+            unit.unit_type = unit_type
+            unit.finishing_specs = finishing_specs
+
+            unit.bua = bua
+            unit.land_area = MarketResearchUnitsManagmentService._parse_float(row.get("land_area"))
+            unit.garden = MarketResearchUnitsManagmentService._parse_float(row.get("garden"))
+            unit.unit_price = unit_price
+
+            unit.payment_yrs_raw = payment_raw
+            unit.down_payment = down_payment
+            unit.delivery_percentage = MarketResearchUnitsManagmentService._parse_float(row.get("delivery_percentage"))
+            unit.cash_discount = MarketResearchUnitsManagmentService._parse_float(row.get("cash_discount"))
+
+            unit.delivery_date = delivery_date
+            unit.maintenance = MarketResearchUnitsManagmentService._parse_float(row.get("maintenance"))
+            unit.phase = MarketResearchUnitsManagmentService._parse_float(row.get("phase"))
+
+            # ✅ read date_of_update from CSV
+            unit.date_of_update = MarketResearchUnitsManagmentService._parse_date(row.get("date_of_update"))
+
+            unit.source_of_info = row.get("source_of_info") or ""
+            unit.notes = row.get("notes") or ""
+            unit.offering = row.get("offering") or ""
+            unit.dp_percentage = row.get("dp_percentage") or ""
+
+            # ✅ read updated_by from CSV (no override) - fallback to current user if empty
+            csv_updated_by = MarketResearchUnitsManagmentService._normalize_text(row.get("updated_by"))
+            unit.updated_by = csv_updated_by if csv_updated_by else MarketResearchUnitsManagmentService._user_full_name(user)
+
+            # ✅ read months_from_update from CSV (no calc) - if provided
+            csv_months = MarketResearchUnitsManagmentService._parse_int(row.get("months_from_update"))
+            if csv_months is not None:
+                unit.months_from_update = csv_months
+
+            # Recompute derived fields:
+            # - PSM: yes
+            # - payment_yrs: yes (group-based)
+            # - months_from_update: ONLY if CSV didn't provide it
+            MarketResearchUnitsManagmentService._recompute_row(
+                unit,
+                compute_psm=True,
+                compute_payment=True,
+                compute_months=(csv_months is None),
             )
 
-        except Exception as e:
-            return ServiceResult(success=False, status=500, error=str(e), trace=traceback.format_exc())
+            unit.save()
+
+            if unit.project_name and unit.unit_type:
+                touched_groups.add((unit.project_name, unit.unit_type))
+
+        # recompute payment_yrs for touched groups
+        for project_name, unit_type in touched_groups:
+            MarketResearchUnitsManagmentService._recompute_payment_yrs_group(project_name, unit_type)
+
+        return ServiceResult(True, 200, payload={"success": True, "created": created, "updated": updated, "skipped": skipped})
+
+    # ======================================================
+    # INTERNALS
+    # ======================================================
+    @staticmethod
+    def _user_full_name(user) -> str:
+        if not user:
+            return ""
+        full_name = getattr(user, "full_name", None)
+        if full_name:
+            return str(full_name).strip()
+        try:
+            gn = user.get_full_name()
+            if gn:
+                return gn.strip()
+        except Exception:
+            pass
+        return getattr(user, "username", "") or "Unknown"
 
     @staticmethod
-    def _build_error_summary(error_rows: List[Dict[str, Any]]) -> Dict[str, int]:
-        summary: Dict[str, int] = {}
-        for row in error_rows:
-            for err in row.get("errors", []):
-                if isinstance(err, dict):
-                    t = err.get("type", "general")
-                else:
-                    t = "general"
-                summary[t] = summary.get(t, 0) + 1
-        return summary
+    def _normalize_text(raw: Any) -> str:
+        if raw is None:
+            return ""
+        s = str(raw)
+        s = s.replace("\ufeff", "").replace("\u200f", "").replace("\u200e", "")
+        s = unicodedata.normalize("NFKC", s)
+        s = re.sub(r"[\u0640\u064b-\u065f\u0670]", "", s)  # tatweel + tashkeel
+        s = re.sub(r"\s+", " ", s, flags=re.UNICODE).strip()
+        return s
 
     @staticmethod
-    def _decode_csv(file_bytes: bytes) -> Tuple[Optional[List[str]], Optional[str]]:
+    def _project_key(name: str) -> str:
+        """
+        Strong normalization for project matching (csv vs db):
+        - strip, lower, remove punctuation
+        - remove leading "project"/"مشروع"
+        """
+        s = MarketResearchUnitsManagmentService._normalize_text(name or "")
+        s = re.sub(r"^(project|proj)\s+", "", s, flags=re.IGNORECASE)
+        s = re.sub(r"^(مشروع)\s+", "", s)
+        s = s.lower()
+        s = re.sub(r"[^a-z0-9\u0600-\u06ff\s]+", " ", s)  # keep arabic letters too
+        s = re.sub(r"\s+", " ", s).strip()
+        return s
+
+    @staticmethod
+    def _decode_csv_bytes(file_bytes: bytes) -> Tuple[Optional[List[str]], Optional[str]]:
         encodings_to_try = [
             "utf-8-sig",
             "utf-8",
-            "windows-1256",
-            "iso-8859-6",
+            "utf-16",
+            "utf-16-le",
+            "utf-16-be",
             "cp1256",
             "cp1252",
             "latin1",
         ]
-
-        decoded = None
         for enc in encodings_to_try:
             try:
                 decoded = file_bytes.decode(enc)
-                break
+                return decoded.splitlines(), None
             except UnicodeDecodeError:
                 continue
+            except Exception as e:
+                return None, str(e)
+        return None, "Unsupported file encoding."
 
-        if decoded is None:
-            detected = chardet.detect(file_bytes).get("encoding")
-            return None, f"Failed to decode file. Detected encoding: {detected}. Please save as UTF-8."
+    @staticmethod
+    def _parse_float(v: Any) -> Optional[float]:
+        if v is None or v == "":
+            return None
+        try:
+            if isinstance(v, (int, float)):
+                return float(v)
+            s = str(v).strip().replace(",", "")
+            return float(s)
+        except Exception:
+            return None
 
-        return decoded.splitlines(), None
+    @staticmethod
+    def _parse_int(v: Any) -> Optional[int]:
+        if v is None or v == "":
+            return None
+        try:
+            s = str(v).strip()
+            if s.isdigit():
+                return int(s)
+            # allow "00"
+            m = re.search(r"(\d+)", s)
+            if not m:
+                return None
+            return int(m.group(1))
+        except Exception:
+            return None
+
+    @staticmethod
+    def _parse_date(v: Any):
+        if not v:
+            return None
+        s = str(v).strip()
+        try:
+            if re.match(r"^\d{4}-\d{2}-\d{2}$", s):
+                y, m, d = s.split("-")
+                return timezone.datetime(int(y), int(m), int(d)).date()
+            if re.match(r"^\d{2}/\d{2}/\d{4}$", s):
+                d, m, y = s.split("/")
+                return timezone.datetime(int(y), int(m), int(d)).date()
+        except Exception:
+            return None
+        return None
+
+    @staticmethod
+    def _get_project_from_value(value: Any) -> Optional[MarketProject]:
+        if value is None or value == "":
+            return None
+        try:
+            pid = int(value)
+            return MarketProject.objects.select_related("developer", "location").filter(id=pid).first()
+        except Exception:
+            pass
+        name = MarketResearchUnitsManagmentService._normalize_text(value)
+        if not name:
+            return None
+        # normalized match
+        proj = MarketProject.objects.select_related("developer", "location").filter(name__iexact=name).first()
+        if proj:
+            return proj
+        # fallback by normalized key
+        key = MarketResearchUnitsManagmentService._project_key(name)
+        for p in MarketProject.objects.select_related("developer", "location").all():
+            if MarketResearchUnitsManagmentService._project_key(p.name) == key:
+                return p
+        return None
+
+    @staticmethod
+    def _calc_psm(unit_price: Optional[float], bua: Optional[float]) -> Optional[float]:
+        if unit_price is None or bua is None or bua == 0:
+            return None
+        try:
+            return float(unit_price) / float(bua)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _calc_months_from_update(date_of_update) -> Optional[int]:
+        if not date_of_update:
+            return None
+        try:
+            today = timezone.localdate()
+            delta_days = (today - date_of_update).days
+            months = round((delta_days / 365.25) * 12)
+            months = min(12, max(0, int(months)))
+            return months
+        except Exception:
+            return None
+
+    @staticmethod
+    def _parse_payment_raw_to_number(raw: Any) -> float:
+        if raw is None or raw == "":
+            return 0.0
+        s = str(raw).strip()
+        m = re.search(r"(\d+(\.\d+)?)", s)
+        if not m:
+            return 0.0
+        try:
+            return float(m.group(1))
+        except Exception:
+            return 0.0
+
+    @staticmethod
+    def _format_payment_range(minv: float, maxv: float) -> str:
+        left = "Cash" if minv == 0 else f"{int(minv) if float(minv).is_integer() else minv} Yrs"
+        if minv == maxv:
+            return left
+        right = f"{int(maxv) if float(maxv).is_integer() else maxv} Yrs"
+        return f"{left} - {right}"
+
+    @staticmethod
+    def _recompute_payment_yrs_group(project_name: str, unit_type: str) -> None:
+        if not project_name or not unit_type:
+            return
+
+        qs = MarketUnitData.objects.filter(project_name__iexact=project_name, unit_type__iexact=unit_type)
+        raws = list(qs.values_list("payment_yrs_raw", flat=True))
+        nums = [MarketResearchUnitsManagmentService._parse_payment_raw_to_number(r) for r in raws]
+        if not nums:
+            return
+
+        formatted = MarketResearchUnitsManagmentService._format_payment_range(min(nums), max(nums))
+        qs.update(payment_yrs=formatted)
+
+    @staticmethod
+    def _get_group_payment_yrs(project_name: str, unit_type: str) -> List[Dict[str, Any]]:
+        if not project_name or not unit_type:
+            return []
+        qs = MarketUnitData.objects.filter(project_name__iexact=project_name, unit_type__iexact=unit_type).values("id", "payment_yrs")
+        return [{"id": r["id"], "payment_yrs": r["payment_yrs"]} for r in qs]
+
+    @staticmethod
+    def _recompute_row(unit: MarketUnitData, *, compute_psm: bool, compute_months: bool, compute_payment: bool) -> None:
+        if compute_psm:
+            unit.psm = MarketResearchUnitsManagmentService._calc_psm(unit.unit_price, unit.bua)
+
+        if compute_months:
+            unit.months_from_update = MarketResearchUnitsManagmentService._calc_months_from_update(unit.date_of_update)
+
+        if compute_payment and unit.project_name and unit.unit_type:
+            MarketResearchUnitsManagmentService._recompute_payment_yrs_group(unit.project_name, unit.unit_type)
+
+    @staticmethod
+    def _row_computed_payload(unit: MarketUnitData) -> Dict[str, Any]:
+        months = unit.months_from_update
+        months_display = str(months).zfill(2) if months is not None else ""
+        return {
+            "developer_name": unit.developer_name or "",
+            "location": unit.location or "",
+            "psm": unit.psm if unit.psm is not None else "",
+            "payment_yrs": unit.payment_yrs or "",
+            "months_from_update_display": months_display,
+            "updated_by": unit.updated_by or "",
+        }
+
+    # -------- CSV header/key handling --------
+    @staticmethod
+    def _canon_key(k: str) -> str:
+        k = (k or "").strip()
+        k = k.replace(".", "")
+        k = k.replace("%", " percent ")
+        k = k.lower()
+        k = re.sub(r"\s+", " ", k).strip()
+
+        k = k.replace("project name", "project_name")
+        k = k.replace("developer name", "developer_name")
+        k = k.replace("updated by", "updated_by")
+        k = k.replace("land area", "land_area")
+        k = k.replace("unit price", "unit_price")
+        k = k.replace("asset type", "asset_type")
+        k = k.replace("unit type", "unit_type")
+        k = k.replace("finishing specs", "finishing_specs")
+        k = k.replace("source of info", "source_of_info")
+        k = k.replace("months from update", "months_from_update")
+        k = k.replace("cash discount", "cash_discount")
+        k = k.replace("down payment", "down_payment")
+        k = k.replace("delivery percent", "delivery_percentage")
+        k = k.replace("payment yrs raw", "payment_yrs_raw")
+        k = k.replace("payment yrs", "payment_yrs")
+        k = k.replace("date of update", "date_of_update")
+
+        k = re.sub(r"[^a-z0-9_]+", "_", k)
+        k = re.sub(r"_+", "_", k).strip("_")
+        return k
+
+    @staticmethod
+    def _canonicalize_row(raw_row: Dict[str, Any]) -> Dict[str, Any]:
+        out: Dict[str, Any] = {}
+        for k, v in (raw_row or {}).items():
+            if k is None:
+                continue
+            ck = MarketResearchUnitsManagmentService._canon_key(str(k))
+            if not ck:
+                continue
+            out[ck] = v
+        return out
+
+    @staticmethod
+    def _row_looks_like_header(row: Dict[str, Any]) -> bool:
+        if not row:
+            return True
+
+        def v(name: str) -> str:
+            return (row.get(name) or "").strip().lower()
+
+        header_values = {
+            "project_name": "project name",
+            "developer_name": "developer name",
+            "location": "location",
+            "asset_type": "asset type",
+            "unit_type": "unit type",
+            "bua": "bua",
+            "unit_price": "unit price",
+            "payment_yrs_raw": "payment yrs raw",
+            "date_of_update": "date of update",
+            "updated_by": "updated by",
+            "source_of_info": "source of info",
+            "months_from_update": "months from update",
+        }
+
+        hits = 0
+        for key, expected in header_values.items():
+            if v(key) == expected:
+                hits += 1
+
+        return hits >= 3 or v("project_name") in ("project name", "project_name")

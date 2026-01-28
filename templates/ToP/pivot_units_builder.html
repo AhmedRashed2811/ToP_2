@@ -1,0 +1,1871 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+{% block title %}Pivot Units Builder{% endblock %}
+
+{% block content %}
+
+<style>
+    /* REQUIRED (must be at top of style tag) */
+    .container { margin-top: 80px; padding: 0; }
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl { max-width: 100%; }
+    }
+    @media (min-width: 576px) {
+        .container, .container-sm { max-width: 100%; }
+    }
+
+    /* REQUIRED BY YOU */
+    table { margin-top: 0%; }
+
+    :root{
+        --xl-bg: #f3f3f3;
+        --xl-sheet: #ffffff;
+        --xl-border: #c8c8c8;
+        --xl-border-soft: #e3e3e3;
+
+        --xl-text: #1f1f1f;
+        --xl-muted: #6a6a6a;
+
+        --xl-pane: #f7f7f7;
+        --xl-pane-h: #efefef;
+
+        --xl-blue-1: #d9e1f2;
+        --xl-blue-2: #b4c6e7;
+        --xl-blue-3: #2f5597;
+        --xl-blue-4: #eaf0fb;
+
+        --xl-btn: #ffffff;
+        --xl-btn-b: #bfbfbf;
+
+        --xl-shadow: 0 10px 28px rgba(0,0,0,.08);
+        --xl-shadow-sm: 0 6px 18px rgba(0,0,0,.06);
+        --radius: 10px;
+        --radius-sm: 8px;
+    }
+
+    /* Times New Roman */
+    body{
+        background: var(--xl-bg);
+        font-family: "Times New Roman", Times, serif !important;
+        color: var(--xl-text);
+    }
+    .xl-wrap, .xl-topbar, .xl-sheet, .xl-pane, input, select, button, table, th, td{
+        font-family: "Times New Roman", Times, serif !important;
+    }
+
+    .xl-wrap{
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 12px;
+        padding: 12px;
+    }
+    @media (max-width: 1100px){
+        .xl-wrap{ grid-template-columns: 1fr; }
+    }
+
+    .xl-topbar{
+        display:flex;
+        align-items:center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 12px;
+        background: var(--xl-sheet);
+        border: 1px solid var(--xl-border);
+        border-radius: var(--radius);
+        box-shadow: var(--xl-shadow-sm);
+        flex-wrap: wrap;
+        margin: 12px;
+    }
+
+    .xl-title{
+        display:flex;
+        align-items:center;
+        gap: 10px;
+        font-weight: 700;
+        letter-spacing: .2px;
+    }
+
+    .xl-badge{
+        display:inline-flex;
+        align-items:center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--xl-border);
+        background: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--xl-text);
+    }
+
+    .xl-controls{
+        display:flex;
+        align-items:center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .xl-select{
+        min-width: 240px;
+        max-width: 100%;
+        padding: 8px 10px;
+        border: 1px solid var(--xl-border);
+        border-radius: var(--radius-sm);
+        background: #fff;
+        font-weight: 600;
+        outline: none;
+        font-size: 13px;
+        color: var(--xl-text);
+    }
+
+    .xl-btn{
+        padding: 8px 12px;
+        border: 1px solid var(--xl-btn-b);
+        background: var(--xl-btn) !important;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 13px;
+        box-shadow: 0 2px 0 rgba(0,0,0,.04);
+        transition: transform .08s ease, filter .08s ease;
+        user-select: none;
+        color: var(--xl-text) !important;
+    }
+    .xl-btn:hover{ transform: translateY(-1px); }
+
+    .xl-btn-primary{
+        background: var(--xl-blue-3) !important;
+        border-color: var(--xl-blue-3) !important;
+        color: #ffffff !important;
+    }
+    .xl-btn-primary:hover{ filter: brightness(.95); }
+
+    .xl-status{
+        display:flex;
+        align-items:center;
+        gap: 10px;
+        padding: 0 12px 10px 12px;
+        margin: 0 12px;
+        flex-wrap: wrap;
+    }
+    .xl-muted{ color: var(--xl-muted); font-size: 12px; font-weight: 600; }
+
+    .xl-toggle{
+        display:flex;
+        align-items:center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--xl-text);
+        user-select: none;
+        padding: 6px 10px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--xl-border-soft);
+        background: #fff;
+    }
+
+    .xl-spinner{
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px solid rgba(47,85,151,.20);
+        border-top-color: rgba(47,85,151,.85);
+        animation: spin .7s linear infinite;
+        display:none;
+    }
+    @keyframes spin{ to { transform: rotate(360deg);} }
+
+    .xl-error{
+        margin: 0 12px 12px;
+        display:none;
+        padding: 10px 12px;
+        border-radius: var(--radius);
+        border: 1px solid rgba(185, 28, 28, .25);
+        background: rgba(239, 68, 68, .10);
+        color: #b91c1c;
+        font-weight: 800;
+        font-size: 13px;
+    }
+
+    .xl-sheet{
+        background: var(--xl-sheet);
+        border: 1px solid var(--xl-border);
+        border-radius: var(--radius);
+        box-shadow: var(--xl-shadow-sm);
+        overflow: hidden;
+        min-height: 420px;
+        min-width: 0;
+    }
+
+    .xl-sheet-head{
+        background: linear-gradient(#fdfdfd, #f6f6f6);
+        border-bottom: 1px solid var(--xl-border);
+        padding: 10px 12px;
+        display:flex;
+        align-items:center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .xl-mini{ font-size: 12px; font-weight: 700; color: var(--xl-muted); }
+
+    .xl-report-filters{
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--xl-border-soft);
+        display:flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        background: #fff;
+    }
+
+    .rf-item{
+        display:flex;
+        align-items:center;
+        gap: 8px;
+        padding: 6px 8px;
+        border: 1px solid var(--xl-border);
+        border-radius: var(--radius-sm);
+        background: #fff;
+        cursor: pointer;
+        user-select: none;
+        box-shadow: 0 1px 0 rgba(0,0,0,.03);
+        max-width: 100%;
+        min-width: 0;
+    }
+    .rf-item .rf-label{ font-weight: 800; font-size: 12px; color: var(--xl-text); white-space: nowrap; }
+    .rf-item .rf-value{
+        font-weight: 700;
+        font-size: 12px;
+        color: var(--xl-muted);
+        max-width: 220px;
+        overflow:hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+    }
+    .rf-item .rf-caret{ font-size: 11px; color: var(--xl-muted); margin-left: 2px; flex: 0 0 auto; }
+
+    .xl-pivot-area{
+        padding: 0;
+        background:
+            repeating-linear-gradient(0deg, #ffffff 0px, #ffffff 23px, #f6f6f6 24px),
+            repeating-linear-gradient(90deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 59px, #f6f6f6 60px);
+    }
+    .xl-pivot-scroll{ overflow: auto; max-height: 70vh; }
+    .xl-placeholder{
+        padding: 16px 12px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--xl-muted);
+        background: #fff;
+        border-top: 1px solid var(--xl-border-soft);
+    }
+
+    table.pivot{
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        background: #fff;
+    }
+    table.pivot th, table.pivot td{
+        border: 1px solid var(--xl-border-soft);
+        padding: 6px 8px;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+    table.pivot thead th{
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: var(--xl-blue-1);
+        color: #0f1f3d;
+        font-weight: 900;
+    }
+    table.pivot thead tr.header-2 th{ top: 31px; z-index: 2; }
+    table.pivot tbody tr:hover td{ background: var(--xl-blue-4); }
+
+    .num{ text-align: right; font-variant-numeric: tabular-nums; }
+    .gt-row td{ background: var(--xl-blue-2); font-weight: 900; color: #0f1f3d; }
+    .gt-col{ background: rgba(180,198,231,.55); font-weight: 900; color: #0f1f3d; }
+
+    /* Sticky first (group) columns on horizontal scroll */
+    .sticky-col{
+        position: sticky;
+        left: 0;
+        z-index: 4;
+        background: #fff;
+    }
+    table.pivot thead .sticky-col{ z-index: 6; background: var(--xl-blue-1); }
+    table.pivot tbody tr:hover td.sticky-col{ background: var(--xl-blue-4); }
+    .gt-row td.sticky-col{ background: var(--xl-blue-2); }
+
+    .xl-pane{
+        background: var(--xl-pane);
+        border: 1px solid var(--xl-border);
+        border-radius: var(--radius);
+        box-shadow: var(--xl-shadow-sm);
+        overflow: hidden;
+        min-width: 0;
+    }
+    .xl-pane-head{
+        background: var(--xl-pane-h);
+        border-bottom: 1px solid var(--xl-border);
+        padding: 10px 12px;
+        display:flex;
+        align-items:center;
+        justify-content: space-between;
+        gap: 10px;
+        min-width: 0;
+    }
+    .xl-pane-head .h{ font-weight: 900; font-size: 14px; color: var(--xl-text); }
+    .xl-pane-head .sub{ font-size: 12px; font-weight: 700; color: var(--xl-muted); }
+
+    .xl-pane-body{ padding: 10px 12px 12px; min-width: 0; }
+
+    .xl-search{
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid var(--xl-border);
+        border-radius: var(--radius-sm);
+        outline: none;
+        font-weight: 700;
+        font-size: 13px;
+        background: #fff;
+        color: var(--xl-text);
+    }
+
+    .xl-fields{
+        margin-top: 8px;
+        background: #fff;
+        border: 1px solid var(--xl-border);
+        border-radius: var(--radius-sm);
+        max-height: 40vh;
+        overflow: auto;
+        min-width: 0;
+    }
+
+    .xl-field{
+        display:flex;
+        align-items:center;
+        gap: 8px;
+        padding: 7px 8px;
+        border-bottom: 1px solid var(--xl-border-soft);
+        user-select: none;
+        min-width: 0;
+    }
+    .xl-field:last-child{ border-bottom: none; }
+    .xl-field:hover{ background: rgba(0,0,0,.03); }
+
+    .xl-field .chk{ transform: translateY(1px); }
+    .xl-field .label{
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--xl-text);
+        flex: 1;
+        overflow:hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+    }
+
+    .xl-field .tags{
+        display:flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        align-items:center;
+        min-width: 0;
+    }
+    .tag{
+        font-size: 10px;
+        font-weight: 900;
+        padding: 2px 6px;
+        border-radius: 999px;
+        border: 1px solid var(--xl-border-soft);
+        background: #fff;
+        color: var(--xl-muted);
+        flex: 0 0 auto;
+    }
+    .tag.on{ background: rgba(47,85,151,.10); border-color: rgba(47,85,151,.25); color: var(--xl-blue-3); }
+
+    .xl-pane-section-title{
+        font-size: 12px;
+        font-weight: 900;
+        color: var(--xl-text);
+        margin: 10px 0 6px;
+    }
+
+    .xl-areas{
+        margin-top: 8px;
+        padding: 10px;
+        background: #fff;
+        border: 1px solid var(--xl-border);
+        border-radius: var(--radius-sm);
+        min-width: 0;
+    }
+
+    .areas-grid{
+        display:grid;
+        grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+        gap: 10px;
+    }
+    .area{
+        border: 1px solid var(--xl-border);
+        border-radius: var(--radius-sm);
+        background: #fff;
+        min-height: 72px;
+        padding: 8px;
+        min-width: 0;
+        overflow: hidden;
+    }
+    .area .t{
+        font-size: 11px;
+        font-weight: 900;
+        color: var(--xl-muted);
+        display:flex;
+        align-items:center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        min-width: 0;
+    }
+    .chips{
+        display:flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items:center;
+        min-width: 0;
+        max-height: 120px;
+        overflow: auto;
+        padding-right: 2px;
+    }
+    .chip{
+        display:inline-flex;
+        align-items:center;
+        gap: 6px;
+        padding: 4px 6px;
+        border: 1px solid var(--xl-border);
+        border-radius: 999px;
+        background: #fff;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--xl-text);
+        max-width: 100%;
+        min-width: 0;
+        flex: 0 1 auto;
+    }
+    .chip .txt{
+        max-width: 140px;
+        overflow:hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+    }
+    .chip .mini-btn{
+        width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        border: 1px solid var(--xl-border-soft);
+        background: #fff;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        cursor:pointer;
+        color: var(--xl-muted);
+        font-weight: 900;
+        line-height: 1;
+        user-select:none;
+        flex: 0 0 auto;
+    }
+    .chip .mini-btn:hover{ background: rgba(0,0,0,.04); }
+
+    .agg{
+        border: 1px solid var(--xl-border-soft);
+        border-radius: 999px;
+        background: #fff;
+        font-size: 12px;
+        font-weight: 900;
+        padding: 2px 8px;
+        outline:none;
+        cursor:pointer;
+        color: var(--xl-blue-3);
+        max-width: 130px;
+    }
+
+    .area-hint{
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--xl-muted);
+        margin-top: 6px;
+    }
+
+    @media (max-width: 520px){
+        .areas-grid{ grid-template-columns: 1fr; }
+        .xl-select{ min-width: 220px; }
+        .chip .txt{ max-width: 190px; }
+    }
+
+    .pane-toggle{ display:none; }
+    @media (max-width: 1100px){
+        .pane-toggle{ display:inline-flex; }
+        .xl-pane.mobile-hidden{ display:none; }
+    }
+
+    /* Filter popup */
+    .filter-popup{
+        position: fixed;
+        z-index: 9999;
+        display:none;
+        width: min(360px, calc(100vw - 24px));
+        max-height: min(520px, calc(100vh - 120px));
+        background: #fff;
+        border: 1px solid var(--xl-border);
+        border-radius: var(--radius);
+        box-shadow: var(--xl-shadow);
+        overflow: hidden;
+    }
+    .fp-head{
+        background: var(--xl-pane-h);
+        border-bottom: 1px solid var(--xl-border);
+        padding: 10px 12px;
+        display:flex;
+        align-items:center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+    .fp-head .h{
+        font-weight: 950;
+        font-size: 13px;
+        color: var(--xl-text);
+        overflow:hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+    }
+    .fp-body{
+        padding: 10px 12px;
+        display:flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 0;
+    }
+    .fp-search{
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid var(--xl-border);
+        border-radius: var(--radius-sm);
+        outline:none;
+        font-weight: 800;
+        font-size: 13px;
+        color: var(--xl-text);
+    }
+    .fp-list{
+        border: 1px solid var(--xl-border);
+        border-radius: var(--radius-sm);
+        background: #fff;
+        overflow:auto;
+        padding: 6px;
+        max-height: 300px;
+    }
+    .fp-item{
+        display:flex;
+        align-items:center;
+        gap: 8px;
+        padding: 6px 6px;
+        border-radius: 6px;
+        cursor:pointer;
+        user-select:none;
+        min-width: 0;
+    }
+    .fp-item:hover{ background: rgba(0,0,0,.03); }
+    .fp-item input{ transform: translateY(1px); }
+    .fp-item span{
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--xl-text);
+        flex:1;
+        overflow:hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+    }
+    .fp-actions{
+        display:flex;
+        justify-content:flex-end;
+        gap: 8px;
+        padding-top: 6px;
+    }
+
+    .toast{
+        position: fixed;
+        right: 14px;
+        bottom: 14px;
+        z-index: 99999;
+        background: rgba(31,31,31,.92);
+        color: #fff;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-weight: 800;
+        font-size: 12px;
+        display:none;
+        max-width: min(420px, calc(100vw - 28px));
+        box-shadow: var(--xl-shadow);
+    }
+</style>
+
+<div class="xl-topbar">
+    <div class="xl-title">
+        <span class="xl-badge">Pivot Units (Excel-like)</span>
+        {% if user_is_scoped %}
+            <span class="xl-badge">Company: {{ user_company_name }}</span>
+        {% endif %}
+    </div>
+
+    <div class="xl-controls">
+        {% if not user_is_scoped %}
+            <select id="companySelect" class="xl-select">
+                <option value="">Select Company...</option>
+                {% for c in companies %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        {% else %}
+            <select id="companySelect" class="xl-select" disabled>
+                <option value="{{ user_company_id }}">{{ user_company_name }}</option>
+            </select>
+        {% endif %}
+
+        <button id="togglePaneBtn" class="xl-btn pane-toggle" type="button">Fields Pane</button>
+        <button id="sendManagersBtn" class="xl-btn xl-btn-primary" type="button">Send Managers</button>
+        <button id="resetBtn" class="xl-btn" type="button">Reset</button>
+    </div>
+</div>
+
+<div class="xl-status">
+    <div id="spinner" class="xl-spinner"></div>
+    <div class="xl-muted" id="statusText">Load a company to start.</div>
+
+    <label class="xl-toggle" title="Show row/column totals like Excel">
+        <input type="checkbox" id="grandTotals" checked />
+        Grand Totals
+    </label>
+</div>
+
+<div class="xl-error" id="errorBox"></div>
+
+<div class="xl-wrap">
+    <!-- LEFT -->
+    <div class="xl-sheet">
+        <div class="xl-sheet-head">
+            <div class="left" style="display:flex; gap:10px; flex-wrap:wrap;">
+                <div class="xl-mini"><b>PivotTable</b></div>
+                <div class="xl-mini" id="metaText">No data loaded.</div>
+            </div>
+            <div class="right" style="display:flex; gap:10px; flex-wrap:wrap;">
+                <div class="xl-mini" id="measuresText">Values: (none)</div>
+            </div>
+        </div>
+
+        <div class="xl-report-filters" id="reportFiltersBar">
+            <span class="xl-mini">Report Filters:</span>
+            <span class="xl-mini" style="color:var(--xl-muted);">Add fields to FILTERS area (right pane).</span>
+        </div>
+
+        <div class="xl-pivot-area">
+            <div class="xl-pivot-scroll" id="pivotScroll">
+                <div class="xl-placeholder" id="pivotPlaceholder">Configure Rows / Columns / Filters / Values to render the pivot.</div>
+                <div id="pivotTableHost"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="xl-pane" id="fieldsPane">
+        <div class="xl-pane-head">
+            <div>
+                <div class="h">PivotTable Fields</div>
+                <div class="sub">Choose fields to add to report</div>
+            </div>
+            <div class="sub" id="fieldsCount">0</div>
+        </div>
+
+        <div class="xl-pane-body">
+            <input id="fieldSearch" class="xl-search" placeholder="Search" />
+
+            <div class="xl-fields" id="fieldList">
+                <div class="xl-field">
+                    <span class="xl-muted">Select a company to load fields.</span>
+                </div>
+            </div>
+
+            <div class="xl-pane-section-title" style="margin-top:12px;">Drag fields between areas below:</div>
+
+            <div class="xl-areas">
+                <div class="areas-grid">
+                    <div class="area" id="areaFilters" data-area="filters">
+                        <div class="t">FILTERS <span class="xl-muted">drop</span></div>
+                        <div class="chips" id="chipsFilters"></div>
+                        <div class="area-hint">Report filter (supports multi-select)</div>
+                    </div>
+
+                    <div class="area" id="areaColumns" data-area="cols">
+                        <div class="t">COLUMNS <span class="xl-muted">drop</span></div>
+                        <div class="chips" id="chipsCols"></div>
+                        <div class="area-hint">Column Labels</div>
+                    </div>
+
+                    <div class="area" id="areaRows" data-area="rows">
+                        <div class="t">ROWS <span class="xl-muted">drop</span></div>
+                        <div class="chips" id="chipsRows"></div>
+                        <div class="area-hint">Row Labels</div>
+                    </div>
+
+                    <div class="area" id="areaValues" data-area="values">
+                        <div class="t">VALUES <span class="xl-muted">drop</span></div>
+                        <div class="chips" id="chipsValues"></div>
+                        <div class="area-hint">Multi-measures + Count + Distinct Count</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter popup -->
+<div class="filter-popup" id="filterPopup">
+    <div class="fp-head">
+        <div class="h" id="fpTitle">Filter</div>
+        <button class="xl-btn" id="fpCloseBtn" type="button">✕</button>
+    </div>
+    <div class="fp-body">
+        <input class="fp-search" id="fpSearch" placeholder="Search" />
+        <div class="fp-list" id="fpList"></div>
+        <div class="fp-actions">
+            <button class="xl-btn" id="fpClearBtn" type="button">Clear</button>
+            <button class="xl-btn xl-btn-primary" id="fpApplyBtn" type="button">OK</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+    const companySelect = document.getElementById("companySelect");
+    const resetBtn = document.getElementById("resetBtn");
+    const togglePaneBtn = document.getElementById("togglePaneBtn");
+    const sendManagersBtn = document.getElementById("sendManagersBtn");
+    const fieldsPane = document.getElementById("fieldsPane");
+
+    const spinner = document.getElementById("spinner");
+    const statusText = document.getElementById("statusText");
+    const errorBox = document.getElementById("errorBox");
+    const metaText = document.getElementById("metaText");
+    const measuresText = document.getElementById("measuresText");
+
+    const fieldSearch = document.getElementById("fieldSearch");
+    const fieldList = document.getElementById("fieldList");
+    const fieldsCount = document.getElementById("fieldsCount");
+
+    const chipsRows = document.getElementById("chipsRows");
+    const chipsCols = document.getElementById("chipsCols");
+    const chipsFilters = document.getElementById("chipsFilters");
+    const chipsValues = document.getElementById("chipsValues");
+
+    const reportFiltersBar = document.getElementById("reportFiltersBar");
+    const pivotTableHost = document.getElementById("pivotTableHost");
+    const pivotPlaceholder = document.getElementById("pivotPlaceholder");
+
+    const grandTotals = document.getElementById("grandTotals");
+
+    // Filter popup
+    const filterPopup = document.getElementById("filterPopup");
+    const fpTitle = document.getElementById("fpTitle");
+    const fpSearch = document.getElementById("fpSearch");
+    const fpList = document.getElementById("fpList");
+    const fpCloseBtn = document.getElementById("fpCloseBtn");
+    const fpClearBtn = document.getElementById("fpClearBtn");
+    const fpApplyBtn = document.getElementById("fpApplyBtn");
+
+    // Toast
+    const toast = document.getElementById("toast");
+
+    const dataUrlTpl = "{% url 'pivot_units_data' 0 %}";
+    function buildDataUrl(companyId){ return dataUrlTpl.replace(/\/0\/?$/, `/${companyId}/`); }
+
+    const sendUrlTpl = "{% url 'pivot_units_send_managers' 0 %}";
+    function buildSendUrl(companyId){ return sendUrlTpl.replace(/\/0\/?$/, `/${companyId}/`); }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    let rawUnits = [];
+    let fieldsMeta = [];
+    let fieldsMap = {};
+
+    // filterValues meaning:
+    // - undefined/null => (All)
+    // - Set(size=0)   => (None)
+    // - Set(values)   => (Some)
+    let config = {
+        rows: [],
+        cols: [],
+        filters: [],
+        values: [],
+        filterValues: {}
+    };
+
+    let fpCurrentField = null;
+    let fpAllValues = [];
+
+    let lastStickyCount = 0;
+    let stickyRAF = null;
+
+    function showToast(msg){
+        toast.textContent = msg;
+        toast.style.display = "block";
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(()=> toast.style.display = "none", 2200);
+    }
+
+    function setLoading(isLoading){
+        spinner.style.display = isLoading ? "inline-block" : "none";
+        errorBox.style.display = "none";
+        if(isLoading) statusText.textContent = "Loading units...";
+    }
+
+    function setError(msg){
+        errorBox.textContent = msg;
+        errorBox.style.display = "block";
+    }
+
+    function isBlank(v){ return v === null || v === undefined || v === ""; }
+
+    function normVal(v){
+        if(isBlank(v)) return "(blank)";
+        return String(v);
+    }
+
+    function fieldType(fieldName){
+        return (fieldsMap[fieldName] && fieldsMap[fieldName].type) ? fieldsMap[fieldName].type : "string";
+    }
+
+    function labelOf(fieldName){
+        return (fieldsMap[fieldName] && fieldsMap[fieldName].label) ? fieldsMap[fieldName].label : fieldName;
+    }
+
+    function fmtNumber(x){
+        if(x === null || x === undefined || x === "") return "";
+        const n = Number(x);
+        if(Number.isNaN(n)) return String(x);
+        return new Intl.NumberFormat().format(n);
+    }
+
+    function uniqSorted(arr){
+        const s = new Set(arr);
+        return Array.from(s).sort((a,b)=> a.localeCompare(b));
+    }
+
+    function removeFromArray(arr, item){
+        const i = arr.indexOf(item);
+        if(i >= 0) arr.splice(i,1);
+    }
+
+    function removeFieldFromRCF(fieldName){
+        removeFromArray(config.rows, fieldName);
+        removeFromArray(config.cols, fieldName);
+        removeFromArray(config.filters, fieldName);
+        delete config.filterValues[fieldName];
+    }
+
+    function fieldIsUsed(fieldName){
+        if(config.rows.includes(fieldName)) return true;
+        if(config.cols.includes(fieldName)) return true;
+        if(config.filters.includes(fieldName)) return true;
+        if(config.values.some(v => v.field === fieldName)) return true;
+        return false;
+    }
+
+    function allowedAggsForField(fieldName){
+        const t = fieldType(fieldName);
+        if(t === "number"){
+            return [
+                {k:"sum", label:"Sum"},
+                {k:"avg", label:"Average"},
+                {k:"min", label:"Min"},
+                {k:"max", label:"Max"},
+                {k:"count", label:"Count"},
+                {k:"dcount", label:"Distinct Count"},
+            ];
+        }
+        return [
+            {k:"count", label:"Count"},
+            {k:"dcount", label:"Distinct Count"},
+        ];
+    }
+
+    function defaultAggForField(fieldName){
+        return (fieldType(fieldName) === "number") ? "sum" : "count";
+    }
+
+    function aggTitle(agg){
+        if(agg === "sum") return "Sum";
+        if(agg === "avg") return "Average";
+        if(agg === "min") return "Min";
+        if(agg === "max") return "Max";
+        if(agg === "count") return "Count";
+        if(agg === "dcount") return "Distinct Count";
+        return agg;
+    }
+
+    function measureCaption(measure){
+        return `${aggTitle(measure.agg)} of ${labelOf(measure.field)}`;
+    }
+
+    function setPaneMobileVisibility(){
+        if(window.matchMedia("(max-width: 1100px)").matches){
+            fieldsPane.classList.add("mobile-hidden");
+        }else{
+            fieldsPane.classList.remove("mobile-hidden");
+        }
+    }
+    window.addEventListener("resize", setPaneMobileVisibility);
+    setPaneMobileVisibility();
+
+    togglePaneBtn?.addEventListener("click", () => {
+        fieldsPane.classList.toggle("mobile-hidden");
+    });
+
+    window.addEventListener("resize", () => {
+        if(!lastStickyCount) return;
+        cancelAnimationFrame(stickyRAF);
+        stickyRAF = requestAnimationFrame(() => applyStickyRowCols(lastStickyCount));
+    });
+
+    async function loadCompany(companyId){
+        if(!companyId){
+            rawUnits = [];
+            fieldsMeta = [];
+            fieldsMap = {};
+            config = { rows:[], cols:[], filters:[], values:[], filterValues:{} };
+            renderAll();
+            statusText.textContent = "Load a company to start.";
+            metaText.textContent = "No data loaded.";
+            measuresText.textContent = "Values: (none)";
+            return;
+        }
+
+        setLoading(true);
+        try{
+            const res = await fetch(buildDataUrl(companyId), { method: "GET" });
+            const data = await res.json();
+
+            if(!res.ok || !data.success){
+                throw new Error(data.error || "Failed to load data");
+            }
+
+            rawUnits = Array.isArray(data.units) ? data.units : [];
+            fieldsMeta = Array.isArray(data.fields) ? data.fields : [];
+
+            fieldsMap = {};
+            fieldsMeta.forEach(f => fieldsMap[f.name] = f);
+
+            config = { rows:[], cols:[], filters:[], values:[], filterValues:{} };
+
+            statusText.textContent = `Loaded ${data.count} units • ${data.company.name}`;
+            metaText.textContent = `${data.company.name} • ${data.count} records`;
+
+            renderAll();
+        }catch(err){
+            setError(err.message || "Error while loading");
+            statusText.textContent = "Failed to load company data.";
+            rawUnits = [];
+            fieldsMeta = [];
+            fieldsMap = {};
+            config = { rows:[], cols:[], filters:[], values:[], filterValues:{} };
+            renderAll();
+        }finally{
+            setLoading(false);
+        }
+    }
+
+    if(companySelect.value){
+        loadCompany(companySelect.value);
+    }
+
+    companySelect.addEventListener("change", () => loadCompany(companySelect.value));
+
+    function renderFieldList(){
+        fieldsCount.textContent = fieldsMeta.length;
+
+        if(!fieldsMeta.length){
+            fieldList.innerHTML = `<div class="xl-field"><span class="xl-muted">Select a company to load fields.</span></div>`;
+            return;
+        }
+
+        const q = (fieldSearch.value || "").trim().toLowerCase();
+        const filtered = fieldsMeta.filter(f => {
+            const n = (f.name || "").toLowerCase();
+            const l = (f.label || "").toLowerCase();
+            return !q || n.includes(q) || l.includes(q);
+        });
+
+        if(!filtered.length){
+            fieldList.innerHTML = `<div class="xl-field"><span class="xl-muted">No matching fields.</span></div>`;
+            return;
+        }
+
+        fieldList.innerHTML = filtered.map(f => {
+            const used = fieldIsUsed(f.name);
+            const tags = [];
+            if(config.filters.includes(f.name)) tags.push("F");
+            if(config.cols.includes(f.name)) tags.push("C");
+            if(config.rows.includes(f.name)) tags.push("R");
+            if(config.values.some(v=>v.field===f.name)) tags.push("V");
+
+            const tagsHtml = tags.map(t=> `<span class="tag on">${t}</span>`).join("") || `<span class="tag">—</span>`;
+
+            return `
+                <div class="xl-field" draggable="true" data-field="${escapeHtmlAttr(f.name)}">
+                    <input class="chk" type="checkbox" data-check="${escapeHtmlAttr(f.name)}" ${used ? "checked" : ""}/>
+                    <div class="label" title="${escapeHtmlAttr(f.label)}">${escapeHtml(f.label)}</div>
+                    <div class="tags">${tagsHtml}</div>
+                </div>
+            `;
+        }).join("");
+
+        fieldList.querySelectorAll(".xl-field[draggable='true']").forEach(el => {
+            el.addEventListener("dragstart", (e) => {
+                e.dataTransfer.setData("text/plain", el.dataset.field);
+            });
+        });
+
+        fieldList.querySelectorAll("input[data-check]").forEach(chk => {
+            chk.addEventListener("change", () => {
+                const fieldName = chk.dataset.check;
+                if(chk.checked){
+                    autoPlaceField(fieldName);
+                }else{
+                    removeFieldEverywhere(fieldName);
+                }
+                renderAll();
+            });
+        });
+    }
+
+    fieldSearch.addEventListener("input", renderFieldList);
+
+    function autoPlaceField(fieldName){
+        const t = fieldType(fieldName);
+        if(t === "number"){
+            addMeasure(fieldName, defaultAggForField(fieldName));
+            return;
+        }
+        if(t === "date"){
+            removeFieldFromRCF(fieldName);
+            config.cols.push(fieldName);
+            return;
+        }
+        removeFieldFromRCF(fieldName);
+        config.rows.push(fieldName);
+    }
+
+    function removeFieldEverywhere(fieldName){
+        removeFieldFromRCF(fieldName);
+        config.values = config.values.filter(m => m.field !== fieldName);
+    }
+
+    function wireArea(areaId){
+        const el = document.getElementById(areaId);
+        el.addEventListener("dragover", (e)=> e.preventDefault());
+        el.addEventListener("drop", (e)=>{
+            e.preventDefault();
+            const fieldName = e.dataTransfer.getData("text/plain");
+            const area = el.dataset.area;
+            if(!fieldName || !fieldsMap[fieldName]) return;
+            placeFieldInArea(fieldName, area);
+            renderAll();
+        });
+    }
+    wireArea("areaFilters");
+    wireArea("areaColumns");
+    wireArea("areaRows");
+    wireArea("areaValues");
+
+    function placeFieldInArea(fieldName, area){
+        if(area === "values"){
+            addMeasure(fieldName, defaultAggForField(fieldName));
+            return;
+        }
+
+        removeFieldFromRCF(fieldName);
+        if(area === "filters") config.filters.push(fieldName);
+        if(area === "cols") config.cols.push(fieldName);
+        if(area === "rows") config.rows.push(fieldName);
+    }
+
+    function addMeasure(fieldName, agg){
+        const allowed = allowedAggsForField(fieldName).map(x=>x.k);
+        if(!allowed.includes(agg)) agg = "count";
+
+        const id = cryptoRandomId();
+        config.values.push({ id, field: fieldName, agg });
+
+        if(fieldType(fieldName) !== "number" && (agg === "sum" || agg === "avg" || agg === "min" || agg === "max")){
+            config.values[config.values.length - 1].agg = "count";
+            showToast("Non-numeric value field → using COUNT.");
+        }
+    }
+
+    function cryptoRandomId(){
+        return "m_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
+    }
+
+    function uniqueValuesFor(fieldName){
+        const vals = rawUnits.map(r => normVal(r[fieldName]));
+        return uniqSorted(vals);
+    }
+
+    function filterSummary(fieldName){
+        const all = uniqueValuesFor(fieldName);
+        const chosen = config.filterValues[fieldName];
+
+        if(chosen === null || chosen === undefined) return "(All)";
+        if(chosen instanceof Set && chosen.size === 0) return "(None)";
+        if(chosen instanceof Set && chosen.size === 1) return Array.from(chosen)[0];
+        if(chosen instanceof Set && chosen.size === all.length) return "(All)";
+        return "(Multiple Items)";
+    }
+
+    function renderChips(){
+        chipsRows.innerHTML = config.rows.map(f => chipHtml(f, "rows")).join("");
+        chipsCols.innerHTML = config.cols.map(f => chipHtml(f, "cols")).join("");
+        chipsFilters.innerHTML = config.filters.map(f => chipHtml(f, "filters", true)).join("");
+        chipsValues.innerHTML = config.values.length ? config.values.map(m => measureChipHtml(m)).join("") : "";
+
+        document.querySelectorAll("[data-rm-field]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const field = btn.dataset.rmField;
+                const area = btn.dataset.area;
+                if(area === "rows") removeFromArray(config.rows, field);
+                if(area === "cols") removeFromArray(config.cols, field);
+                if(area === "filters"){
+                    removeFromArray(config.filters, field);
+                    delete config.filterValues[field];
+                }
+                renderAll();
+            });
+        });
+
+        document.querySelectorAll("[data-rm-measure]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const id = btn.dataset.rmMeasure;
+                config.values = config.values.filter(m => m.id !== id);
+                renderAll();
+            });
+        });
+
+        document.querySelectorAll("[data-dup-measure]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const id = btn.dataset.dupMeasure;
+                const m = config.values.find(x=>x.id===id);
+                if(!m) return;
+                addMeasure(m.field, m.agg);
+                renderAll();
+            });
+        });
+
+        document.querySelectorAll("select[data-agg]").forEach(sel => {
+            sel.addEventListener("change", () => {
+                const id = sel.dataset.agg;
+                const m = config.values.find(x=>x.id===id);
+                if(!m) return;
+
+                const newAgg = sel.value;
+                const allowed = allowedAggsForField(m.field).map(x=>x.k);
+                if(!allowed.includes(newAgg)){
+                    m.agg = "count";
+                    showToast("Aggregation not allowed → COUNT.");
+                }else{
+                    m.agg = newAgg;
+                }
+                renderAll();
+            });
+        });
+    }
+
+    function chipHtml(fieldName, area, isFilter=false){
+        const lbl = labelOf(fieldName);
+        let text = lbl;
+
+        if(isFilter){
+            const summary = filterSummary(fieldName);
+            text = `${lbl}: ${summary}`;
+        }
+
+        return `
+            <span class="chip">
+                <span class="txt" title="${escapeHtmlAttr(text)}">${escapeHtml(text)}</span>
+                <span class="mini-btn" title="Remove" data-rm-field="${escapeHtmlAttr(fieldName)}" data-area="${escapeHtmlAttr(area)}">×</span>
+            </span>
+        `;
+    }
+
+    function measureChipHtml(m){
+        const lbl = labelOf(m.field);
+        const allowed = allowedAggsForField(m.field);
+
+        const options = allowed.map(a => {
+            const selected = (a.k === m.agg) ? "selected" : "";
+            return `<option value="${escapeHtmlAttr(a.k)}" ${selected}>${escapeHtml(a.label)}</option>`;
+        }).join("");
+
+        const text = `${aggTitle(m.agg)} of ${lbl}`;
+
+        return `
+            <span class="chip">
+                <span class="txt" title="${escapeHtmlAttr(text)}">${escapeHtml(text)}</span>
+                <select class="agg" data-agg="${escapeHtmlAttr(m.id)}" title="Aggregation">${options}</select>
+                <span class="mini-btn" title="Duplicate measure" data-dup-measure="${escapeHtmlAttr(m.id)}">⧉</span>
+                <span class="mini-btn" title="Remove measure" data-rm-measure="${escapeHtmlAttr(m.id)}">×</span>
+            </span>
+        `;
+    }
+
+    function renderReportFiltersBar(){
+        if(!config.filters.length){
+            reportFiltersBar.innerHTML = `
+                <span class="xl-mini">Report Filters:</span>
+                <span class="xl-mini" style="color:var(--xl-muted);">Add fields to FILTERS area (right pane).</span>
+            `;
+            return;
+        }
+
+        const items = config.filters.map(f => {
+            const summary = filterSummary(f);
+            return `
+                <div class="rf-item" data-rf="${escapeHtmlAttr(f)}">
+                    <div class="rf-label">${escapeHtml(labelOf(f))}</div>
+                    <div class="rf-value">${escapeHtml(summary)}</div>
+                    <div class="rf-caret">▾</div>
+                </div>
+            `;
+        }).join("");
+
+        reportFiltersBar.innerHTML = `<span class="xl-mini">Report Filters:</span>${items}`;
+
+        reportFiltersBar.querySelectorAll("[data-rf]").forEach(el => {
+            el.addEventListener("click", () => {
+                const fieldName = el.dataset.rf;
+                openFilterPopup(fieldName);
+            });
+        });
+    }
+
+    function openFilterPopup(fieldName){
+        fpCurrentField = fieldName;
+        fpAllValues = uniqueValuesFor(fieldName);
+
+        fpTitle.textContent = `Filter: ${labelOf(fieldName)}`;
+        fpSearch.value = "";
+
+        const stored = config.filterValues[fieldName];
+        let mode = "all";
+        let chosen = new Set();
+
+        if(stored === null || stored === undefined){
+            mode = "all"; chosen = new Set();
+        }else if(stored instanceof Set && stored.size === 0){
+            mode = "none"; chosen = new Set();
+        }else if(stored instanceof Set){
+            mode = "some"; chosen = new Set(stored);
+        }
+
+        filterPopup._work = { mode, chosen };
+        renderFilterPopupList();
+
+        filterPopup.style.left = "14px";
+        filterPopup.style.top = "120px";
+        filterPopup.style.display = "block";
+    }
+
+    function renderFilterPopupList(){
+        const work = filterPopup._work;
+        if(!work) return;
+
+        const q = fpSearch.value.trim().toLowerCase();
+        const visible = fpAllValues.filter(v => !q || v.toLowerCase().includes(q));
+
+        const rows = [];
+        rows.push(`
+            <label class="fp-item" style="border-bottom:1px solid var(--xl-border-soft); padding-bottom:8px; margin-bottom:6px;">
+                <input type="checkbox" id="fpSelectAll" ${work.mode === "all" ? "checked" : ""}/>
+                <span>(Select All)</span>
+            </label>
+        `);
+
+        visible.forEach(v => {
+            let checked = false;
+            if(work.mode === "all") checked = true;
+            else if(work.mode === "none") checked = false;
+            else checked = work.chosen.has(v);
+
+            rows.push(`
+                <label class="fp-item">
+                    <input type="checkbox" data-fp-val="${encodeURIComponent(v)}" ${checked ? "checked" : ""}/>
+                    <span title="${escapeHtmlAttr(v)}">${escapeHtml(v)}</span>
+                </label>
+            `);
+        });
+
+        fpList.innerHTML = rows.join("");
+
+        const selAll = document.getElementById("fpSelectAll");
+        if(selAll){
+            selAll.indeterminate = (work.mode === "some");
+            selAll.addEventListener("change", (e) => {
+                work.mode = e.target.checked ? "all" : "none";
+                work.chosen = new Set();
+                renderFilterPopupList();
+            });
+        }
+
+        fpList.querySelectorAll("[data-fp-val]").forEach(chk => {
+            chk.addEventListener("change", () => {
+                const v = decodeURIComponent(chk.dataset.fpVal);
+
+                let set;
+                if(work.mode === "all") set = new Set(fpAllValues);
+                else if(work.mode === "none") set = new Set();
+                else set = new Set(work.chosen);
+
+                if(chk.checked) set.add(v);
+                else set.delete(v);
+
+                if(set.size === 0){
+                    work.mode = "none"; work.chosen = new Set();
+                }else if(set.size === fpAllValues.length){
+                    work.mode = "all"; work.chosen = new Set();
+                }else{
+                    work.mode = "some"; work.chosen = set;
+                }
+
+                renderFilterPopupList();
+            });
+        });
+    }
+
+    fpSearch.addEventListener("input", () => renderFilterPopupList());
+    fpCloseBtn.addEventListener("click", closeFilterPopup);
+
+    fpClearBtn.addEventListener("click", () => {
+        if(!filterPopup._work) return;
+        filterPopup._work.mode = "none";
+        filterPopup._work.chosen = new Set();
+        renderFilterPopupList();
+    });
+
+    fpApplyBtn.addEventListener("click", () => {
+        if(!fpCurrentField || !filterPopup._work) return;
+
+        const work = filterPopup._work;
+
+        if(work.mode === "all") config.filterValues[fpCurrentField] = null;
+        else if(work.mode === "none") config.filterValues[fpCurrentField] = new Set();
+        else{
+            const set = new Set(work.chosen);
+            if(set.size === 0) config.filterValues[fpCurrentField] = new Set();
+            else if(set.size === fpAllValues.length) config.filterValues[fpCurrentField] = null;
+            else config.filterValues[fpCurrentField] = set;
+        }
+
+        closeFilterPopup();
+        renderAll();
+    });
+
+    function closeFilterPopup(){
+        filterPopup.style.display = "none";
+        fpCurrentField = null;
+        fpAllValues = [];
+        filterPopup._work = null;
+    }
+
+    document.addEventListener("mousedown", (e) => {
+        if(filterPopup.style.display !== "block") return;
+        const inside = filterPopup.contains(e.target);
+        const clickedRF = e.target.closest && e.target.closest(".rf-item");
+        if(!inside && !clickedRF) closeFilterPopup();
+    });
+
+    function passesFilters(r){
+        for(const f of config.filters){
+            const chosen = config.filterValues[f];
+            if(chosen === null || chosen === undefined) continue;
+            if(chosen instanceof Set && chosen.size === 0) return false;
+            const v = normVal(r[f]);
+            if(!chosen.has(v)) return false;
+        }
+        return true;
+    }
+
+    function initStateForMeasure(measure){
+        return { sum: 0, count: 0, min: null, max: null, distinct: (measure.agg === "dcount") ? new Set() : null };
+    }
+
+    function updateState(state, measure, rawValue){
+        const agg = measure.agg;
+
+        if(agg === "count"){
+            if(!isBlank(rawValue)) state.count += 1;
+            return;
+        }
+
+        if(agg === "dcount"){
+            if(isBlank(rawValue)) return;
+            state.distinct.add(normVal(rawValue));
+            return;
+        }
+
+        if(isBlank(rawValue)) return;
+        const n = Number(rawValue);
+        if(Number.isNaN(n)) return;
+
+        state.sum += n;
+        state.count += 1;
+        state.min = (state.min === null) ? n : Math.min(state.min, n);
+        state.max = (state.max === null) ? n : Math.max(state.max, n);
+    }
+
+    function stateToValue(state, measure){
+        const agg = measure.agg;
+        if(agg === "count") return state.count;
+        if(agg === "dcount") return state.distinct ? state.distinct.size : 0;
+        if(agg === "sum") return state.sum;
+        if(agg === "avg") return state.count ? (state.sum / state.count) : null;
+        if(agg === "min") return state.min;
+        if(agg === "max") return state.max;
+        return null;
+    }
+
+    function makeKey(r, fields){
+        if(!fields.length) return "(all)";
+        return fields.map(f => normVal(r[f])).join(" | ");
+    }
+
+    function computePivot(){
+        const measures = config.values.slice();
+        const rows = config.rows.slice();
+        const cols = config.cols.slice();
+
+        const data = rawUnits.filter(passesFilters);
+
+        const rowKeysSet = new Set();
+        const colKeysSet = new Set();
+
+        const cell = new Map();
+        const rowTotals = new Map();
+        const colTotals = new Map();
+        const grand = measures.map(m => initStateForMeasure(m));
+
+        function getStateArray(map, key){
+            if(!map.has(key)){
+                map.set(key, measures.map(m => initStateForMeasure(m)));
+            }
+            return map.get(key);
+        }
+
+        for(const r of data){
+            const rk = makeKey(r, rows);
+            const ck = makeKey(r, cols);
+
+            rowKeysSet.add(rk);
+            colKeysSet.add(ck);
+
+            const k = rk + "||" + ck;
+
+            const cellStates = getStateArray(cell, k);
+            const rtStates = getStateArray(rowTotals, rk);
+            const ctStates = getStateArray(colTotals, ck);
+
+            for(let i=0; i<measures.length; i++){
+                updateState(cellStates[i], measures[i], r[measures[i].field]);
+                updateState(rtStates[i], measures[i], r[measures[i].field]);
+                updateState(ctStates[i], measures[i], r[measures[i].field]);
+                updateState(grand[i], measures[i], r[measures[i].field]);
+            }
+        }
+
+        const rowKeys = Array.from(rowKeysSet).sort((a,b)=>a.localeCompare(b));
+        const colKeys = Array.from(colKeysSet).sort((a,b)=>a.localeCompare(b));
+
+        if(rowKeys.length === 0) rowKeys.push("(all)");
+        if(cols.length === 0) colKeys.length = 0;
+
+        return { measures, rows, cols, rowKeys, colKeys, cell, rowTotals, colTotals, grand };
+    }
+
+    /* ✅ Excel-like row label suppression:
+       If same value repeated in group columns, show blank instead of repeating. */
+    function computeDisplayRowParts(parts, prevParts){
+        if(!prevParts) return parts;
+
+        const out = [...parts];
+        for(let i=0; i<parts.length; i++){
+            const sameThis = (parts[i] === prevParts[i]);
+            if(!sameThis) continue;
+
+            // only suppress if all previous levels are same
+            let allPrevSame = true;
+            for(let j=0; j<i; j++){
+                if(parts[j] !== prevParts[j]) { allPrevSame = false; break; }
+            }
+            if(allPrevSame) out[i] = ""; // suppress
+        }
+        return out;
+    }
+
+    function renderPivot(){
+        pivotTableHost.innerHTML = "";
+        pivotPlaceholder.style.display = "none";
+        lastStickyCount = 0;
+
+        if(!rawUnits.length){
+            pivotPlaceholder.style.display = "block";
+            pivotPlaceholder.textContent = "No units loaded yet.";
+            return;
+        }
+
+        if(config.values.length === 0){
+            pivotPlaceholder.style.display = "block";
+            pivotPlaceholder.textContent = "Add one or more fields to VALUES to render the pivot (text → COUNT by default).";
+            return;
+        }
+
+        const showGT = grandTotals.checked;
+        const p = computePivot();
+        const measures = p.measures;
+
+        measuresText.textContent = `Values: ${measures.map(m => measureCaption(m)).join(" • ")}`;
+
+        const hasCols = p.cols.length > 0;
+        const multiMeasures = measures.length > 1;
+
+        let html = `<table class="pivot"><thead>`;
+
+        if(hasCols && multiMeasures){
+            html += `<tr class="header-1">`;
+            if(p.rows.length){
+                for(const rf of p.rows){ html += `<th rowspan="2">${escapeHtml(labelOf(rf))}</th>`; }
+            }else{
+                html += `<th rowspan="2">Row Labels</th>`;
+            }
+
+            for(const ck of p.colKeys){
+                html += `<th colspan="${measures.length}">${escapeHtml(ck)}</th>`;
+            }
+            if(showGT) html += `<th class="gt-col" colspan="${measures.length}">Grand Total</th>`;
+            html += `</tr>`;
+
+            html += `<tr class="header-2">`;
+            for(const ck of p.colKeys){
+                for(const m of measures){
+                    html += `<th>${escapeHtml(measureCaption(m))}</th>`;
+                }
+            }
+            if(showGT){
+                for(const m of measures){
+                    html += `<th class="gt-col">${escapeHtml(measureCaption(m))}</th>`;
+                }
+            }
+            html += `</tr>`;
+        }else{
+            html += `<tr class="header-1">`;
+
+            if(p.rows.length){
+                for(const rf of p.rows){ html += `<th>${escapeHtml(labelOf(rf))}</th>`; }
+            }else{
+                html += `<th>Row Labels</th>`;
+            }
+
+            if(hasCols){
+                if(multiMeasures){
+                    for(const ck of p.colKeys){
+                        for(const m of measures){
+                            html += `<th>${escapeHtml(ck)} • ${escapeHtml(measureCaption(m))}</th>`;
+                        }
+                    }
+                    if(showGT){
+                        for(const m of measures){
+                            html += `<th class="gt-col">Grand Total • ${escapeHtml(measureCaption(m))}</th>`;
+                        }
+                    }
+                }else{
+                    for(const ck of p.colKeys){ html += `<th>${escapeHtml(ck)}</th>`; }
+                    if(showGT) html += `<th class="gt-col">Grand Total</th>`;
+                }
+            }else{
+                for(const m of measures){ html += `<th>${escapeHtml(measureCaption(m))}</th>`; }
+            }
+
+            html += `</tr>`;
+        }
+
+        html += `</thead><tbody>`;
+
+        let prevParts = null;
+
+        for(const rk of p.rowKeys){
+            html += `<tr>`;
+
+            // row label cells
+            if(p.rows.length){
+                const parts = rk.split(" | ");
+                const shown = computeDisplayRowParts(parts, prevParts);
+
+                for(let i=0; i<p.rows.length; i++){
+                    const val = shown[i] || "";
+                    html += `<td>${escapeHtml(val)}</td>`;
+                }
+                prevParts = parts;
+            }else{
+                html += `<td>${escapeHtml(rk)}</td>`;
+            }
+
+            // values
+            if(hasCols){
+                if(multiMeasures){
+                    for(const ck of p.colKeys){
+                        const states = p.cell.get(rk + "||" + ck);
+                        for(let i=0; i<measures.length; i++){
+                            const v = states ? stateToValue(states[i], measures[i]) : null;
+                            html += `<td class="num">${formatCell(v, measures[i])}</td>`;
+                        }
+                    }
+                    if(showGT){
+                        const rtStates = p.rowTotals.get(rk);
+                        for(let i=0; i<measures.length; i++){
+                            const v = rtStates ? stateToValue(rtStates[i], measures[i]) : null;
+                            html += `<td class="num gt-col">${formatCell(v, measures[i])}</td>`;
+                        }
+                    }
+                }else{
+                    for(const ck of p.colKeys){
+                        const states = p.cell.get(rk + "||" + ck);
+                        const v = states ? stateToValue(states[0], measures[0]) : null;
+                        html += `<td class="num">${formatCell(v, measures[0])}</td>`;
+                    }
+                    if(showGT){
+                        const rtStates = p.rowTotals.get(rk);
+                        const v = rtStates ? stateToValue(rtStates[0], measures[0]) : null;
+                        html += `<td class="num gt-col">${formatCell(v, measures[0])}</td>`;
+                    }
+                }
+            }else{
+                const rtStates = p.rowTotals.get(rk) || null;
+                for(let i=0; i<measures.length; i++){
+                    const v = rtStates ? stateToValue(rtStates[i], measures[i]) : null;
+                    html += `<td class="num">${formatCell(v, measures[i])}</td>`;
+                }
+            }
+
+            html += `</tr>`;
+        }
+
+        if(showGT){
+            html += `<tr class="gt-row">`;
+            if(p.rows.length) html += `<td colspan="${p.rows.length}">Grand Total</td>`;
+            else html += `<td>Grand Total</td>`;
+
+            if(hasCols){
+                if(multiMeasures){
+                    for(const ck of p.colKeys){
+                        const ctStates = p.colTotals.get(ck);
+                        for(let i=0; i<measures.length; i++){
+                            const v = ctStates ? stateToValue(ctStates[i], measures[i]) : null;
+                            html += `<td class="num">${formatCell(v, measures[i])}</td>`;
+                        }
+                    }
+                    for(let i=0; i<measures.length; i++){
+                        const v = stateToValue(p.grand[i], measures[i]);
+                        html += `<td class="num">${formatCell(v, measures[i])}</td>`;
+                    }
+                }else{
+                    for(const ck of p.colKeys){
+                        const ctStates = p.colTotals.get(ck);
+                        const v = ctStates ? stateToValue(ctStates[0], measures[0]) : null;
+                        html += `<td class="num">${formatCell(v, measures[0])}</td>`;
+                    }
+                    const gv = stateToValue(p.grand[0], measures[0]);
+                    html += `<td class="num">${formatCell(gv, measures[0])}</td>`;
+                }
+            }else{
+                for(let i=0; i<measures.length; i++){
+                    const v = stateToValue(p.grand[i], measures[i]);
+                    html += `<td class="num">${formatCell(v, measures[i])}</td>`;
+                }
+            }
+
+            html += `</tr>`;
+        }
+
+        html += `</tbody></table>`;
+        pivotTableHost.innerHTML = html;
+
+        // sticky group columns
+        const groupColsCount = (p.rows && p.rows.length) ? p.rows.length : 1;
+        lastStickyCount = groupColsCount;
+        applyStickyRowCols(groupColsCount);
+    }
+
+    function applyStickyRowCols(count){
+        const table = pivotTableHost.querySelector("table.pivot");
+        if(!table) return;
+
+        table.querySelectorAll(".sticky-col").forEach(el => {
+            el.classList.remove("sticky-col");
+            el.style.left = "";
+            el.style.zIndex = "";
+            el.style.position = "";
+        });
+
+        let left = 0;
+
+        for(let colIndex = 1; colIndex <= count; colIndex++){
+            const sample = table.querySelector(`tbody tr td:nth-child(${colIndex})`) ||
+                           table.querySelector(`thead tr th:nth-child(${colIndex})`);
+            const width = sample ? sample.getBoundingClientRect().width : 0;
+
+            const cells = table.querySelectorAll(`tr > *:nth-child(${colIndex})`);
+            cells.forEach(cell => {
+                cell.classList.add("sticky-col");
+                cell.style.position = "sticky";
+                cell.style.left = left + "px";
+                cell.style.zIndex = (cell.tagName === "TH") ? 7 : 5;
+            });
+
+            left += width;
+        }
+    }
+
+    function formatCell(v, measure){
+        if(v === null || v === undefined) return "";
+        if(measure.agg === "avg"){
+            const n = Number(v);
+            if(Number.isNaN(n)) return "";
+            return fmtNumber(n.toFixed(2));
+        }
+        return fmtNumber(v);
+    }
+
+    function renderAll(){
+        renderFieldList();
+        renderChips();
+        renderReportFiltersBar();
+        renderPivot();
+        updateMeta();
+    }
+
+    function updateMeta(){
+        if(config.values.length){
+            measuresText.textContent = `Values: ${config.values.map(m => measureCaption(m)).join(" • ")}`;
+        }else{
+            measuresText.textContent = "Values: (none)";
+        }
+
+        if(pivotTableHost.innerHTML.trim()){
+            pivotPlaceholder.style.display = "none";
+        }else if(!rawUnits.length){
+            pivotPlaceholder.style.display = "block";
+            pivotPlaceholder.textContent = "No units loaded yet.";
+        }else{
+            pivotPlaceholder.style.display = "block";
+            pivotPlaceholder.textContent = "Configure Rows / Columns / Filters / Values to render the pivot.";
+        }
+    }
+
+    resetBtn.addEventListener("click", () => {
+        config = { rows:[], cols:[], filters:[], values:[], filterValues:{} };
+        fieldSearch.value = "";
+        closeFilterPopup();
+        renderAll();
+    });
+
+    grandTotals.addEventListener("change", renderPivot);
+
+    // ✅ Send Managers
+    sendManagersBtn.addEventListener("click", async () => {
+        const companyId = companySelect.value;
+        if(!companyId){
+            showToast("Select a company first.");
+            return;
+        }
+        const html = pivotTableHost.innerHTML.trim();
+        if(!html || !html.includes("table")){
+            showToast("Generate a pivot table first.");
+            return;
+        }
+
+        try{
+            sendManagersBtn.disabled = true;
+            sendManagersBtn.textContent = "Sending...";
+
+            const payload = {
+                table_html: html,
+                meta_text: metaText.textContent || "",
+                measures_text: measuresText.textContent || ""
+            };
+
+            const res = await fetch(buildSendUrl(companyId), {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if(!res.ok || !data.success){
+                throw new Error(data.error || "Failed");
+            }
+
+            showToast("Snapshot sent to managers (overwritten).");
+        }catch(err){
+            showToast(err.message || "Send failed");
+        }finally{
+            sendManagersBtn.disabled = false;
+            sendManagersBtn.textContent = "Send Managers";
+        }
+    });
+
+    function escapeHtml(str){
+        return String(str)
+            .replaceAll("&","&amp;")
+            .replaceAll("<","&lt;")
+            .replaceAll(">","&gt;")
+            .replaceAll('"',"&quot;")
+            .replaceAll("'","&#039;");
+    }
+    function escapeHtmlAttr(str){ return escapeHtml(str); }
+
+    // start
+    renderAll();
+
+})();
+</script>
+
+{% endblock %}

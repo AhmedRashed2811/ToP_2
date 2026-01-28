@@ -1,0 +1,86 @@
+{% for u in page_obj.object_list %}
+<tr data-id="{{ u.id }}">
+    <td>
+        <button class="trash" type="button" data-delete title="Delete">
+            <i class="fa-solid fa-trash"></i>
+        </button>
+    </td>
+
+    <td>
+        <select class="cell-input" data-field="project_name">
+            <option value="">Select</option>
+            {% for p in projects %}
+                <option value="{{ p.id }}"
+                    {% if u.project_name|default:''|lower == p.name|lower %}selected{% endif %}>
+                    {{ p.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </td>
+
+    <td><input class="cell-calc cell-readonly" data-field="developer_name" value="{{ u.developer_name|default:'' }}" readonly></td>
+    <td><input class="cell-calc cell-readonly" data-field="location" value="{{ u.location|default:'' }}" readonly></td>
+
+    <td>
+        <select class="cell-input" data-field="asset_type">
+            <option value="">Select</option>
+            {% for a in asset_types %}
+                <option value="{{ a.name }}" {% if u.asset_type|default:''|lower == a.name|lower %}selected{% endif %}>{{ a.name }}</option>
+            {% endfor %}
+        </select>
+    </td>
+
+    <td>
+        <select class="cell-input" data-field="unit_type">
+            <option value="">Select</option>
+            {% for t in unit_types %}
+                <option value="{{ t.name }}" {% if u.unit_type|default:''|lower == t.name|lower %}selected{% endif %}>{{ t.name }}</option>
+            {% endfor %}
+        </select>
+    </td>
+
+    <td><input class="cell-input" data-field="offering" value="{{ u.offering|default:'' }}"></td>
+
+
+    <td>
+        <select class="cell-input" data-field="finishing_specs">
+            <option value="">Select</option>
+            {% for f in finishing_specs %}
+                <option value="{{ f.name }}" {% if u.finishing_specs|default:''|lower == f.name|lower %}selected{% endif %}>{{ f.name }}</option>
+            {% endfor %}
+        </select>
+    </td>
+
+    <td><input class="cell-input" data-field="bua" type="number" step="any" value="{{ u.bua|default:'' }}"></td>
+    <td><input class="cell-input" data-field="land_area" type="number" step="any" value="{{ u.land_area|default:'' }}"></td>
+    <td><input class="cell-input" data-field="garden" type="number" step="any" value="{{ u.garden|default:'' }}"></td>
+
+    <td><input class="cell-input" data-field="unit_price" type="number" step="any" value="{{ u.unit_price|default:'' }}"></td>
+    <td><input class="cell-calc cell-readonly" data-field="psm" value="{% if u.psm %}{{ u.psm|floatformat:2 }}{% endif %}" readonly></td>
+
+    <td><input class="cell-input" data-field="payment_yrs_raw" value="{{ u.payment_yrs_raw|default:'' }}"></td>
+    <td><input class="cell-calc cell-readonly" data-field="payment_yrs" value="{{ u.payment_yrs|default:'' }}" readonly></td>
+
+    <td><input class="cell-input" data-field="down_payment" type="number" step="any" value="{{ u.down_payment|default:'' }}"></td>
+    <td><input class="cell-input" data-field="delivery_percentage" type="number" step="any" value="{{ u.delivery_percentage|default:'' }}"></td>
+    <td><input class="cell-input" data-field="cash_discount" type="number" step="any" value="{{ u.cash_discount|default:'' }}"></td>
+
+    <td><input class="cell-input" data-field="delivery_date" value="{{ u.delivery_date|default:'' }}"></td>
+    <td><input class="cell-input" data-field="maintenance" type="number" step="any" value="{{ u.maintenance|default:'' }}"></td>
+    <td><input class="cell-input" data-field="phase" type="number" step="any" value="{{ u.phase|default:'' }}"></td>
+
+    <td><input class="cell-input" data-field="date_of_update" type="date" value="{% if u.date_of_update %}{{ u.date_of_update|date:'Y-m-d' }}{% endif %}"></td>
+
+    <td>
+        <input class="cell-calc cell-readonly" data-field="months_from_update"
+               value="{% if u.months_from_update is not None %}{{ u.months_from_update|stringformat:'02d' }}{% endif %}"
+               readonly>
+    </td>
+
+    <td><input class="cell-calc cell-readonly" data-field="updated_by" value="{{ u.updated_by|default:'' }}" readonly></td>
+
+    <td><input class="cell-input" data-field="source_of_info" value="{{ u.source_of_info|default:'' }}"></td>
+    <td><input class="cell-input" data-field="dp_percentage" value="{{ u.dp_percentage|default:'' }}"></td>
+    <td><input class="cell-input" data-field="notes" value="{{ u.notes|default:'' }}"></td>
+</tr>
+{% endfor %}

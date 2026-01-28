@@ -3,12 +3,13 @@ import requests
 import traceback
 import logging 
 
-from ToP.utils.utils import _get_uploader_company, _projects_qs_for_user, _get_locked_company_for_uploader
+from ToP.utils.utils import _distinct_clean, _get_uploader_company, _is_admin, _mapping_page, _projects_qs_for_user, _get_locked_company_for_uploader, _read_confirm_text, _resolve_user_company
+
 
 from .services.inventory_sync_service import InventorySyncService
 from .services.top_calculation_service import TopCalculationService
 from .services.unit_catalog_service import UnitCatalogService
-
+from .services.market_units_performance_report_service import MarketUnitsPerformanceReportService
 from .services.company_management_services import CompanyManagementService
 from .services.csv_inventory_service import CsvInventoryService
 from .services.modification_records_service import ModificationRecordsService
@@ -35,12 +36,19 @@ from .services.unit_auto_unblock_service import UnitAutoUnblockService
 from .services.market_research_service import MarketResearchService
 from .services.admin_dashboard_service import AdminDashboardService
 from .services.pricing_service import PricingService
-from .utils.admin_dashboard_utils import is_superuser_check
-from .strategies.inventory_strategy import get_inventory_strategy
 from .services.historical_sales_requests_analysis_service import HistoricalSalesRequestsAnalysisService
 from .services.unit_warehouse_service import UnitWarehouseService
 from .services.import_hub_service import ImportHubService
 from .services.sales_team_service import SalesTeamService
+from .services.unit_reservation_cancel_service import UnitReservationCancelService
+from .services.pivot_units_service import PivotUnitsService
+from .services.erp_unit_mapping_service import ERPUnitMappingService
+from .services.erp_leads_mapping_service import ERPLeadsMappingService
+from .services.erp_hold_post_mapping_service import ERPHoldPostMappingService
+
+
+from .utils.admin_dashboard_utils import is_superuser_check
+from .strategies.inventory_strategy import get_inventory_strategy
 
 from .forms import *
 from .models import *
@@ -54,6 +62,8 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import ValidationError
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie   
 from django.views.decorators.http import require_POST,require_GET, require_http_methods
+from django.urls import reverse
+from django.template.loader import render_to_string
 from decimal import getcontext
 
 
@@ -685,6 +695,38 @@ def delete_hub_units(request):
         return JsonResponse({"success": False, "error": str(e)})
 
 
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember", "Uploader"])
+@require_POST
+def rename_hub_units(request):
+    """
+    View to handle bulk unit renaming via CSV.
+    Expects 'company_id' and 'csv_file' in request.POST/FILES.
+    """
+    try:
+        company_id = request.POST.get('company_id')
+        csv_file = request.FILES.get('csv_file')
+
+        if not company_id:
+            return JsonResponse({'success': False, 'error': 'Company ID is required.'}, status=400)
+        
+        if not csv_file:
+            return JsonResponse({'success': False, 'error': 'CSV File is required.'}, status=400)
+
+        # Check for file extension
+        if not csv_file.name.endswith('.csv'):
+            return JsonResponse({'success': False, 'error': 'File must be a CSV.'}, status=400)
+
+        # Call the Service
+        result = ImportHubService.rename_units_bulk(company_id, csv_file)
+        
+        if result.get('success'):
+             return JsonResponse(result)
+        else:
+             return JsonResponse(result, status=400)
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 
@@ -739,7 +781,6 @@ def delete_sales_request(request):
     except Exception:
         return JsonResponse({"status": "error", "message": "Invalid JSON payload"}, status=400)
 
-    # REMOVED: requests_post_func=requests.post
     # The service now handles the API call internally
     result = SalesRequestManagementService.delete_sales_request(
         user=request.user,
@@ -809,7 +850,6 @@ def approve_sales_request(request):
     except Exception:
         return JsonResponse({"status": "error", "message": "Invalid JSON payload"}, status=400)
 
-    # REMOVED: requests_post_func=requests.post
     # The service now handles the request internally
     result = SalesRequestManagementService.approve_sales_request(
         user=request.user,
@@ -1669,11 +1709,81 @@ def import_csv_for_model(request):
 
 
 
+CONFIRM_PHRASE = "Accept Delete All"
+
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin"])
+@require_POST
+@csrf_exempt
+def clear_market_projects(request):
+    confirm_text = _read_confirm_text(request)
+    if confirm_text != CONFIRM_PHRASE:
+        return JsonResponse(
+            {"success": False, "error": f'Invalid confirmation. Type exactly: "{CONFIRM_PHRASE}".'},
+            status=400
+        )
+
+    deleted_count, _ = MarketProject.objects.all().delete()
+    return JsonResponse({"success": True, "deleted": deleted_count}, status=200)
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin"])
+@require_POST
+@csrf_exempt
+def clear_market_locations(request):
+    confirm_text = _read_confirm_text(request)
+    if confirm_text != CONFIRM_PHRASE:
+        return JsonResponse(
+            {"success": False, "error": f'Invalid confirmation. Type exactly: "{CONFIRM_PHRASE}".'},
+            status=400
+        )
+
+    deleted_count, _ = MarketProjectLocation.objects.all().delete()
+    return JsonResponse({"success": True, "deleted": deleted_count}, status=200)
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin"])
+@require_POST
+@csrf_exempt
+def clear_market_developers(request):
+    confirm_text = _read_confirm_text(request)
+    if confirm_text != CONFIRM_PHRASE:
+        return JsonResponse(
+            {"success": False, "error": f'Invalid confirmation. Type exactly: "{CONFIRM_PHRASE}".'},
+            status=400
+        )
+
+    deleted_count, _ = MarketProjectDeveloper.objects.all().delete()
+    return JsonResponse({"success": True, "deleted": deleted_count}, status=200)
 
 
 
 
-# ---------------------------------------------- Market Unit Data List
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin"])
+@require_POST
+@csrf_exempt
+def clear_market_units(request):
+    confirm_text = _read_confirm_text(request)
+    if confirm_text != CONFIRM_PHRASE:
+        return JsonResponse(
+            {"success": False, "error": f'Invalid confirmation. Type exactly: "{CONFIRM_PHRASE}".'},
+            status=400
+        )
+
+    deleted_count, _ = MarketUnitData.objects.all().delete()
+    return JsonResponse({"success": True, "deleted": deleted_count}, status=200)
+
+
+
+
+
+
+
 @login_required(login_url="login")
 @allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
 def market_unit_data_list(request):
@@ -1683,12 +1793,16 @@ def market_unit_data_list(request):
     )
 
     if not result.success:
-        return JsonResponse({"error": result.error, "trace": result.trace}, status=result.status)
+        return JsonResponse({"success": False, "error": result.error, "trace": result.trace}, status=result.status)
+
+    if request.headers.get("x-requested-with") == "XMLHttpRequest" or request.GET.get("ajax") == "1":
+        rows_html = render_to_string("ToP/partials/market_unit_data_rows.html", result.payload, request=request)
+        pagination_html = render_to_string("ToP/partials/market_unit_data_pagination.html", result.payload, request=request)
+        return JsonResponse({"success": True, "rows_html": rows_html, "pagination_html": pagination_html}, status=200)
 
     return render(request, "ToP/market_unit_data_list.html", result.payload)
 
 
-# ---------------------------------------------- Update Market Unit Field
 @login_required(login_url="login")
 @allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
 @csrf_exempt
@@ -1697,34 +1811,9 @@ def update_market_unit_field(request):
     try:
         data = json.loads(request.body or "{}")
     except Exception:
-        return JsonResponse({"error": "Invalid JSON body"}, status=400)
-
-    result = MarketResearchUnitsManagmentService.update_market_unit(user=request.user, data=data)
-
-    if not result.success:
-        # Return full message + trace for debugging (you can remove trace in prod)
-        return JsonResponse({"error": result.error, "trace": result.trace}, status=result.status)
-
-    return JsonResponse(result.payload, status=result.status)
-
-
-# ---------------------------------------------- Create Market Unit
-@login_required(login_url="login")
-@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
-@csrf_exempt
-def create_market_unit(request):
-    if request.method != "POST":
-        return JsonResponse({"success": False, "error": "Invalid request"}, status=400)
-
-    try:
-        data = json.loads(request.body or "{}")
-    except Exception:
         return JsonResponse({"success": False, "error": "Invalid JSON body"}, status=400)
 
-    field = data.get("field")
-    value = data.get("value")
-
-    result = MarketResearchUnitsManagmentService.create_market_unit(user=request.user, field=field, value=value)
+    result = MarketResearchUnitsManagmentService.update_market_unit(user=request.user, data=data)
 
     if not result.success:
         return JsonResponse({"success": False, "error": result.error, "trace": result.trace}, status=result.status)
@@ -1732,7 +1821,24 @@ def create_market_unit(request):
     return JsonResponse(result.payload, status=result.status)
 
 
-# ---------------------------------------------- Delete Market Unit
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@csrf_exempt
+@require_http_methods(["POST"])
+def create_market_unit(request):
+    try:
+        data = json.loads(request.body or "{}")
+    except Exception:
+        return JsonResponse({"success": False, "error": "Invalid JSON body"}, status=400)
+
+    result = MarketResearchUnitsManagmentService.create_market_unit(user=request.user, data=data)
+
+    if not result.success:
+        return JsonResponse({"success": False, "error": result.error, "trace": result.trace}, status=result.status)
+
+    return JsonResponse(result.payload, status=result.status)
+
+
 @login_required(login_url="login")
 @allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
 @csrf_exempt
@@ -1752,19 +1858,15 @@ def delete_market_unit(request):
     return JsonResponse(result.payload, status=result.status)
 
 
-# ---------------------------------------------- Import Market Units
 @login_required(login_url="login")
 @allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
 @require_POST
 def import_market_units(request):
     if not request.FILES.get("csv_file"):
-        return JsonResponse(
-            {"success": False, "error": "No file provided", "error_type": "missing_file"},
-            status=400
-        )
+        return JsonResponse({"success": False, "error": "No file provided", "error_type": "missing_file"}, status=400)
 
     file_bytes = request.FILES["csv_file"].read()
-    result = MarketResearchUnitsManagmentService.import_market_units(file_bytes=file_bytes)
+    result = MarketResearchUnitsManagmentService.import_market_units(user=request.user, file_bytes=file_bytes)
 
     if not result.success:
         return JsonResponse(
@@ -1773,6 +1875,105 @@ def import_market_units(request):
         )
 
     return JsonResponse(result.payload, status=result.status)
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Developer", "TeamMember"])
+@csrf_exempt
+@require_http_methods(["POST"])
+def clear_all_market_units(request):
+    try:
+        data = json.loads(request.body or "{}")
+    except Exception:
+        return JsonResponse({"success": False, "error": "Invalid JSON body"}, status=400)
+
+    confirm_text = data.get("confirm_text", "")
+    result = MarketResearchUnitsManagmentService.clear_all_market_units(confirm_text=confirm_text)
+
+    if not result.success:
+        return JsonResponse({"success": False, "error": result.error, "trace": result.trace}, status=result.status)
+
+    return JsonResponse(result.payload, status=result.status)
+
+
+
+
+
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin"])
+@require_http_methods(["GET", "POST"])
+def market_units_performance_report(request):
+    """
+    GET  -> render page with initial context
+    POST -> return JSON data for AJAX filters (no query params in URL)
+    """
+    service = MarketUnitsPerformanceReportService()
+
+    if request.method == "POST":
+        # Expect JSON body
+        try:
+            payload = json.loads(request.body or "{}")
+        except Exception:
+            payload = {}
+
+        result = service.build_report_payload(payload=payload)
+
+        if not result["success"]:
+            return JsonResponse({"success": False, "error": result["error"]}, status=result.get("status", 400))
+
+        return JsonResponse({"success": True, "data": result["data"]}, status=200)
+
+    # GET
+    result = service.build_page_context()
+    if not result["success"]:
+        return JsonResponse({"success": False, "error": result["error"]}, status=result.get("status", 400))
+
+    return render(request, "ToP/market_units_performance_report.html", result["data"])
+
+
+
+
+
+@login_required
+@require_GET
+def market_units_analysis_data(request):
+    """
+    Returns raw rows only. NO analysis on backend.
+    Filters are optional (location/asset_type/unit_type).
+    """
+    location = (request.GET.get("location") or "").strip()
+    asset_type = (request.GET.get("asset_type") or "").strip()
+    unit_type = (request.GET.get("unit_type") or "").strip()
+
+    qs = MarketUnitData.objects.all()
+
+    # Use iexact for user-friendly matching
+    if location:
+        qs = qs.filter(location__iexact=location)
+    if asset_type:
+        qs = qs.filter(asset_type__iexact=asset_type)
+    if unit_type:
+        qs = qs.filter(unit_type__iexact=unit_type)
+
+    items = list(qs.values(
+        "finishing_specs",
+        "developer_name",
+        "project_name",
+        "payment_yrs",
+        "unit_price",
+        "bua",
+        "psm",
+    ))
+
+    return JsonResponse({
+        "count": len(items),
+        "items": items,
+    })
+
+
+
 
 
 
@@ -1870,34 +2071,6 @@ def dashboard_export_data(request):
     return JsonResponse(result.payload, status=result.status)
 
 
-# ---------------------------------------------- View for the candlestick chart dashboard template
-def market_candlestick_dashboard(request):
-    result = MarketResearchService.get_candlestick_dashboard_context(user=request.user)
-
-    if not result.success:
-        return JsonResponse({"error": result.error, "trace": result.trace}, status=result.status)
-
-    return render(request, "ToP/market_candlestick_dashboard.html", result.payload)
-
-
-# ---------------------------------------------- API endpoint to provide hierarchical candlestick data for charts
-def get_candlestick_data(request):
-    result = MarketResearchService.get_candlestick_data(request=request)
-
-    if not result.success:
-        return JsonResponse({"error": result.error, "trace": result.trace}, status=result.status)
-
-    return JsonResponse(result.payload, status=result.status)
-
-
-# ---------------------------------------------- API endpoint to get unique values for filter dropdowns
-def get_filter_options(request):
-    result = MarketResearchService.get_filter_options()
-
-    if not result.success:
-        return JsonResponse({"error": result.error, "trace": result.trace}, status=result.status)
-
-    return JsonResponse(result.payload, status=result.status)
 
 
 # ---------------------------------------------- Market Charts View (hierarchical data rendered server-side)
@@ -2604,3 +2777,244 @@ def ajax_sales_team_report(request):
         return JsonResponse({"success": False, "error": res.error}, status=res.status)
 
     return JsonResponse({"success": True, **(res.payload or {})}, status=res.status)
+
+
+
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "TeamMember", "Manager", "SalesOperation", "Uploader"])
+def unit_reservation_cancellation(request):
+    """
+    Single-page (no APIs):
+    - GET: render page
+      * SalesOperation: show unit_code
+      * Admin/Business/Superuser: show company dropdown, then unit_code after selection
+    - POST: run cancellation, set Django messages, redirect back to same page
+    """
+    user = request.user
+    access = UnitReservationCancelService.get_access_context(actor=user)
+
+    if not access.can_access:
+        return HttpResponseForbidden("Forbidden")
+
+    # Dropdown companies for Admin/Business only
+    companies = UnitReservationCancelService.list_companies_for_dropdown(limit=5000) if access.is_admin_or_biz else []
+
+    # Selected company id is stored in session (no GET params)
+    selected_company_id = request.session.get("unit_cancel_selected_company_id") if access.is_admin_or_biz else None
+    selected_company = UnitReservationCancelService.get_company_by_id(company_id=selected_company_id) if selected_company_id else None
+
+    # SalesOperation company comes from profile
+    if access.is_sales_ops:
+        selected_company = access.sales_ops_company
+
+    if request.method == "POST":
+        unit_code = (request.POST.get("unit_code") or "").strip()
+
+        # Resolve company for operation
+        if access.is_sales_ops:
+            if not selected_company:
+                messages.error(request, "SalesOperation user has no company assigned.")
+                return redirect(reverse("unit_reservation_cancellation"))
+
+            company = selected_company
+
+        else:
+            # Admin/Business must select company from dropdown
+            raw_company_id = (request.POST.get("company_id") or "").strip()
+            try:
+                company_id = int(raw_company_id) if raw_company_id else None
+            except Exception:
+                company_id = None
+
+            if not company_id:
+                messages.error(request, "Please select a company first.")
+                return redirect(reverse("unit_reservation_cancellation"))
+
+            company = UnitReservationCancelService.get_company_by_id(company_id=company_id)
+            if not company:
+                messages.error(request, "Company not found.")
+                return redirect(reverse("unit_reservation_cancellation"))
+
+            # persist selection in session (no GET)
+            request.session["unit_cancel_selected_company_id"] = company.id
+            selected_company_id = company.id
+            selected_company = company
+
+        # Run business operation (service does the work)
+        result = UnitReservationCancelService.cancel_reservation(
+            actor=user,
+            unit_code=unit_code,
+            company=company,
+        )
+
+        if result.success:
+            messages.success(request, result.message)
+        else:
+            msg = result.message
+            if result.reason:
+                msg = f"{msg} ({result.reason})"
+            messages.error(request, msg)
+
+        return redirect(reverse("unit_reservation_cancellation"))
+
+    context = {
+        "is_sales_ops": access.is_sales_ops,
+        "is_admin_or_biz": access.is_admin_or_biz,
+        "companies": companies,
+        "selected_company": selected_company,
+        "selected_company_id": selected_company_id,
+        "company": selected_company 
+    }
+    return render(request, "ToP/unit_reservation_cancel.html", context)
+
+
+
+
+
+
+
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Uploader", "TeamMember", "Manager"])
+def pivot_units_builder(request):
+    user_company = _resolve_user_company(request.user)
+    user_is_scoped = bool(user_company)
+    
+
+    companies = Company.objects.all() if not user_is_scoped else []
+
+    context = {
+        "companies": companies,
+        "user_is_scoped": user_is_scoped,
+        "company": user_company, 
+        "user_company_id": user_company.id if user_company else "",
+        "user_company_name": user_company.name if user_company else "",
+    }
+    return render(request, "ToP/pivot_units_builder.html", context)
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Uploader", "TeamMember", "Manager"])
+def pivot_units_data(request, company_id):
+    """
+    Existing endpoint used by your builder.
+    """
+    try:
+        user_company = _resolve_user_company(request.user)
+        if user_company and not _is_admin(request.user) and int(company_id) != int(user_company.id):
+            return JsonResponse({"success": False, "error": "Forbidden (company scope)."}, status=403)
+
+        result = PivotUnitsService.get_pivot_units_data(user=request.user, company_id=company_id)
+        if not result.success:
+            return JsonResponse({"success": False, "error": result.error}, status=result.status)
+        return JsonResponse(result.payload, status=result.status)
+    
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Manager", "Uploader", "TeamMember"])
+def pivot_units_managers(request):
+    """
+    Managers snapshot page:
+    - Managers: auto-scoped to their company
+    - Admins: pick company first
+    """
+    user_company = _resolve_user_company(request.user)
+    user_is_scoped = bool(user_company)
+    print(f"user_is_scoped= {user_is_scoped}")
+
+    companies = Company.objects.all() if not user_is_scoped else []
+
+    context = {
+        "companies": companies,
+        "user_is_scoped": user_is_scoped,
+        "company": user_company, 
+        "user_company_id": user_company.id if user_company else "",
+        "user_company_name": user_company.name if user_company else "",
+    }
+    return render(request, "ToP/pivot_units_managers.html", context)
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin", "Manager", "Uploader", "TeamMember"])
+def pivot_units_snapshot_data(request, company_id):
+    """
+    AJAX: return the saved snapshot (HTML table) for that company.
+    """
+    try:
+        user_company = _resolve_user_company(request.user)
+        if user_company and not _is_admin(request.user) and int(company_id) != int(user_company.id):
+            return JsonResponse({"success": False, "error": "Forbidden (company scope)."}, status=403)
+
+        result = PivotUnitsService.load_pivot_snapshot(user=request.user, company_id=company_id)
+        if not result.success:
+            return JsonResponse({"success": False, "error": result.error}, status=result.status)
+        return JsonResponse(result.payload, status=result.status)
+    
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required(login_url="login")
+@require_POST
+@allowed_users(allowed_roles=["Admin", "Uploader", "TeamMember"])
+def pivot_units_send_managers(request, company_id):
+    """
+    AJAX: save/overwrite snapshot for that company.
+    """
+    try:
+        user_company = _resolve_user_company(request.user)
+        if user_company and not _is_admin(request.user) and int(company_id) != int(user_company.id):
+            return JsonResponse({"success": False, "error": "Forbidden (company scope)."}, status=403)
+
+        data = json.loads(request.body.decode("utf-8") or "{}")
+        table_html = data.get("table_html", "")
+        meta_text = data.get("meta_text", "")
+        measures_text = data.get("measures_text", "")
+
+        result = PivotUnitsService.save_pivot_snapshot(
+            user=request.user,
+            company_id=company_id,
+            table_html=table_html,
+            meta_text=meta_text,
+            measures_text=measures_text,
+        )
+        if not result.success:
+            return JsonResponse({"success": False, "error": result.error}, status=result.status)
+        return JsonResponse(result.payload, status=result.status)
+    
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+
+
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin"])
+@require_http_methods(["GET", "POST"])
+def erp_unit_mapping_manager(request):
+    return _mapping_page(request, mode="unit")
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin"])
+@require_http_methods(["GET", "POST"])
+def erp_leads_mapping_manager(request):
+    return _mapping_page(request, mode="leads")
+
+
+@login_required(login_url="login")
+@allowed_users(allowed_roles=["Admin"])
+@require_http_methods(["GET", "POST"])
+def erp_hold_post_mapping_manager(request):
+    return _mapping_page(request, mode="hold_post")
+
+
+

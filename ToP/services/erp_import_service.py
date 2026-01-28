@@ -1,10 +1,16 @@
 import requests
 import logging
 from typing import List, Dict, Any
+
 from ..models import Company
 from ..utils.csv_inventory_utils import convert_date_format  # Import the fix
 
+# NEW: Mapping functionality (Admin-defined mappings per company)
+from ..services.erp_unit_mapping_service import ERPUnitMappingService
+from ..utils.erp_mapping_utils import apply_header_mapping
+
 logger = logging.getLogger(__name__)
+
 
 class ERPImportService:
     """
@@ -15,6 +21,7 @@ class ERPImportService:
     def fetch_units(company: Company) -> List[Dict[str, Any]]:
         """
         Requests data from company.erp_url and maps it to Unit Warehouse format.
+        Now supports dynamic header mapping per company before the default mapping.
         """
         if not company.erp_url:
             raise ValueError("ERP URL is not configured for this company.")
@@ -50,9 +57,27 @@ class ERPImportService:
             else:
                 raise ValueError("ERP response format not recognized. Expected list or {'results': []}.")
 
-        # 4. Map Fields
+        # ✅ 4. Load custom mapping for this company
+        # Example: {"price": "interest_free_unit_price"}
+        try:
+            custom_map = ERPUnitMappingService.get_mapping_dict(company=company)
+        except Exception as e:
+            # Don't break the import if mapping system has an issue
+            logger.exception("Failed to load ERP header mapping for company=%s. Error=%s", getattr(company, "id", None), str(e))
+            custom_map = {}
+
+        # 5. Map Fields (Apply custom mapping first, then run default mapper)
         standardized_units = []
         for item in results:
+            # ✅ Step A: rename keys based on Admin-defined mappings
+            if custom_map:
+                try:
+                    item = apply_header_mapping(item, custom_map)
+                except Exception as e:
+                    logger.exception("Failed to apply header mapping on ERP item. Error=%s", str(e))
+                    # fallback to original item
+
+            # ✅ Step B: run your existing robust mapper (snake/camel/title-case supported)
             unit_data = ERPImportService._map_erp_item(item)
             if unit_data.get('unit_code'):
                 standardized_units.append(unit_data)
@@ -70,7 +95,7 @@ class ERPImportService:
                 if k in item and item[k] is not None:
                     return item[k]
             return None
-        
+
         # Helper to get date and convert immediately
         def get_date_val(*keys):
             raw = get_val(*keys)
@@ -101,7 +126,7 @@ class ERPImportService:
         # Areas
         mapped['footprint'] = get_val("footprint", "Foot print")
         mapped['net_area'] = get_val("net_area", "netArea", "Unit Area (Net Area)")
-        mapped['gross_area'] = get_val("sellable_area"", gross_area", "sellableArea", "Gross Area", "Sellable Area")
+        mapped['gross_area'] = get_val("sellable_area", "gross_area", "sellableArea", "Gross Area", "Sellable Area")
         mapped['total_area'] = get_val("total_area", "totalArea", "Total Area")
         mapped['internal_area'] = get_val("internal_area", "internalArea", "Internal Area")
         mapped['covered_terraces'] = get_val("covered_terraces", "coveredTerraces", "Covered Terraces")
@@ -139,7 +164,7 @@ class ERPImportService:
         mapped['release_date'] = get_date_val("release_date", "releaseDate", "Release Date")
         mapped['blocking_date'] = get_date_val("blocking_date", "blockingDate", "Blocking Date")
         mapped['reservation_date'] = get_date_val("reservation_date", "reservationDate", "Reservation Date")
-        
+
         mapped['contract_delivery_date'] = get_date_val("contract_delivery_date", "contractDeliveryDate", "Contract Delivery Date")
         mapped['construction_delivery_date'] = get_date_val("construction_delivery_date", "constructionDeliveryDate", "Construction Delivery Date")
         mapped['development_delivery_date'] = get_date_val("development_delivery_date", "developmentDeliveryDate", "Development Delivery Date")
@@ -184,14 +209,14 @@ class ERPImportService:
         mapped['contract_payment'] = get_val("contract_payment", "contractPayment", "Contract Payment")
         mapped['delivery_percent'] = get_val("delivery_percent", "deliveryPercent", "Delivery %")
         mapped['delivery_payment'] = get_val("delivery_payment", "deliveryPayment", "Delivery Payment")
-        
+
         # Contract Details
         mapped['contract_payment_plan'] = get_val("contract_payment_plan", "contractPaymentPlan")
         mapped['contract_value'] = get_val("contract_value", "contractValue")
         mapped['collected_amount'] = get_val("collected_amount", "collectedAmount")
         mapped['collected_percent'] = get_val("collected_percent", "collectedPercent")
         mapped['grace_period_months'] = get_val("grace_period_months", "gracePeriodMonths")
-        
+
         # Stakeholders & Analytics
         mapped['contractor_type'] = get_val("contractor_type", "contractorType")
         mapped['contractor'] = get_val("contractor")

@@ -91,7 +91,7 @@
             flex-direction: column;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             border-radius: 4px;
-            min-width: 180px;
+            min-width: 230px;
             z-index: 2000;
             color:black;
         }
@@ -296,7 +296,9 @@
                             <div class="dropdown-menu">
                                 <a class="dropdown-item-2" href="{% url 'import_hub' %}">Inventory Hub</a>
                                 <a class="dropdown-item-2" href="{% url 'units_data' %}">Manage Inventory</a>
+                                <a class="dropdown-item-2" href="{% url 'pivot_units_builder' %}">Analysis</a>
                                 <a class="dropdown-item-2" href="{% url 'unit_layout_manager' %}">Unit Brochure</a>
+                                <a class="dropdown-item-2" href="{% url 'unit_reservation_cancellation' %}">Cancellation</a>
                             </div>
                         </div>
                         
@@ -317,6 +319,9 @@
                             <div class="dropdown-menu">
                                 <a class="dropdown-item-2" href="{% url 'market_research_model_master_data' %}">Master Data</a>
                                 <a class="dropdown-item-2" href="{% url 'market_unit_data_list' %}">Units Data</a>
+                                <a class="dropdown-item-2" href="{% url 'market_units_performance_report' %}">Team Performance</a>
+                                <a class="dropdown-item-2" href="{% url 'market_dashboard' %}">Manager Analysis</a>
+                                
                                 <a class="dropdown-item-2" href="{% url 'market_explorer' %}">Market Explorer</a>
                             </div>
                         </div>
@@ -337,6 +342,7 @@
                                 <a class="dropdown-item-2" href="{% url 'manage_companies' %}">Manage Companies</a>
                                 <a class="dropdown-item-2" href="{% url 'management_dashboard_view' %}">Attendance Sheet</a>
                                 <a class="dropdown-item-2" href="{% url 'manage_google_service_accounts' %}">Google Sheets</a>
+                                <a class="dropdown-item-2" href="{% url 'erp_unit_mapping' %}">Map ERP Codes</a>
                                 {% if request.user.is_superuser %}
                                     <a class="dropdown-item-2" href="{% url 'dashboard_home' %}">Database</a>
                                 {% endif %}
@@ -376,6 +382,7 @@
                                 <a class="dropdown-item-2" href="{% url 'unit_mapping' %}">Masterplan Settings</a>
                                 <a class="dropdown-item-2" href="{% url 'dual_payments_input' %}">Payments Input</a>
                                 <a class="dropdown-item-2" href="{% url 'special_offers_input' %}">Special Offer Input</a>
+                                <a class="dropdown-item-2"  href="{% url 'project_web_config' %}">Web Configurations</a>
                             </div>
                         </div>
 
@@ -384,8 +391,9 @@
                             <div class="dropdown-menu">
                                 <a class="dropdown-item-2" href="{% url 'import_hub' %}">Inventory Hub</a>
                                 <a class="dropdown-item-2" href="{% url 'units_data' %}">Manage Inventory</a>
-                                <a class="dropdown-item-2" href="{% url 'manage_companies' %}">Sync Google Sheets</a>
+                                <a class="dropdown-item-2" href="{% url 'pivot_units_builder' %}">Analysis</a>
                                 <a class="dropdown-item-2" href="{% url 'unit_layout_manager' %}">Unit Brochure</a>
+                                <a class="dropdown-item-2" href="{% url 'unit_reservation_cancellation' %}">Cancellation</a>
                             </div>
                         </div>
                         
@@ -433,7 +441,9 @@
                             <div class="dropdown-menu">
                                 <a class="dropdown-item-2" href="{% url 'import_hub' %}">Inventory Hub</a>
                                 <a class="dropdown-item-2" href="{% url 'units_data' %}">Manage Inventory</a>
+                                <a class="dropdown-item-2" href="{% url 'pivot_units_builder' %}">Analysis</a>
                                 <a class="dropdown-item-2" href="{% url 'unit_layout_manager' %}">Unit Brochure</a>
+                                <a class="dropdown-item-2" href="{% url 'unit_reservation_cancellation' %}">Cancellation</a>
                             </div>
                         </div>
                         
@@ -441,6 +451,7 @@
                          
                             <a  style="color:#333;" href="{% url 'sales_requests_list' %}">Sales Requests</a>    
                             <a style="color:#333;"  href="{% url 'units_data' %}">Inventory</a>
+                            <a style="color:#333;"  href="{% url 'unit_reservation_cancellation' %}">Cancellation</a>
 
                     
                     {% elif group.name == 'Manager' %}
@@ -464,6 +475,7 @@
                             <span class="dropdown-toggle">Inventory</span>
                             <div class="dropdown-menu">
                                 <a class="dropdown-item-2" href="{% url 'units_data' %}">Manage Inventory</a>
+                                <a class="dropdown-item-2" href="{% url 'pivot_units_builder' %}">Analysis</a>
                                 <a class="dropdown-item-2" href="{% url 'unit_layout_manager' %}">Unit Brochure</a>
                             </div>
                         </div>
@@ -475,7 +487,8 @@
                             <div class="dropdown-menu">
                                 <a class="dropdown-item-2" href="{% url 'inventory_model' %}">Inventory Report</a>
                                 <a class="dropdown-item-2" href="{% url 'sales_performance_analysis' %}">Sales Performance Analysis</a>
-                                <a class="dropdown-item-2" href="{% url 'sales_dashboard' %}">Sales Report</a>
+                                <a class="dropdown-item-2" href="{% url 'pivot_units_managers' %}">Required Reports</a>
+                                <a class="dropdown-item-2" href="{% url 'sales_dashboard' %}">Sales Requests Report</a>
                                 <a class="dropdown-item-2" href="{% url 'historical_sales_requests_analysis_page' %}">Approvals History</a>
                                 <a class="dropdown-item-2" href="{% url 'sales_team_report' %}">Sales Team Performance</a>
 

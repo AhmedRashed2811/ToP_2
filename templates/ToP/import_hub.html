@@ -5,32 +5,86 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
-    .source-card {
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
+
+    .container {
+        margin-top: 0;
         padding: 20px;
+    }
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl {
+            max-width: 100%;
+        }
+    }
+
+
+    @media (min-width: 576px) {
+        .container, .container-sm {
+            max-width: 100%;
+        }
+    }
+
+    .source-card {
+        border: 0;
+        border-radius: 12px;
+        padding: 25px;
         margin-bottom: 20px;
-        transition: transform 0.2s;
+        transition: all 0.3s ease;
         background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        height: 100%; /* Uniform height */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
     .source-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.1);
     }
     .source-icon {
-        font-size: 2rem;
-        margin-bottom: 10px;
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+        display: inline-block;
     }
+    
+    /* Specific Border Accents */
+    .card-csv { border-bottom: 4px solid #0d6efd; }
+    .card-sheet { border-bottom: 4px solid #198754; }
+    .card-erp { border-bottom: 4px solid #ffc107; }
+    
+    /* Maintenance Cards */
+    .card-rename { 
+        background: linear-gradient(to bottom right, #ffffff, #f8f9fa);
+        border: 1px solid #e9ecef;
+        border-left: 5px solid #6f42c1;
+    }
+    .card-delete { 
+        background: linear-gradient(to bottom right, #ffffff, #fff5f5);
+        border: 1px solid #e9ecef;
+        border-left: 5px solid #dc3545;
+    }
+
     .hidden { display: none; }
+    
+    .section-title {
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #6c757d;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 0.5rem;
+    }
+
     .log-box {
         background: #1e1e1e;
         color: #00ff00;
         padding: 15px;
-        border-radius: 5px;
-        font-family: monospace;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
         height: 200px;
         overflow-y: auto;
         margin-top: 20px;
+        box-shadow: inset 0 0 10px #000;
     }
 
     /* --- Styles for Tag Input --- */
@@ -40,11 +94,12 @@
         align-items: center;
         gap: 8px;
         min-height: 48px;
-        padding: 6px;
+        padding: 8px;
         border: 1px solid #ced4da;
         border-radius: 0.375rem;
         background-color: #fff;
         cursor: text;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
     }
     .tag-container:focus-within {
         border-color: #86b7fe;
@@ -52,172 +107,268 @@
         box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
     }
     .tag {
-        background-color: #dc3545; /* Red for delete context */
+        background-color: #dc3545;
         color: white;
-        padding: 4px 10px;
-        border-radius: 16px;
+        padding: 5px 12px;
+        border-radius: 20px;
         font-size: 0.9rem;
         display: flex;
         align-items: center;
+        box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
     }
     .tag .close-tag {
         margin-left: 8px;
         cursor: pointer;
         font-weight: bold;
         line-height: 1;
+        opacity: 0.7;
     }
+    .tag .close-tag:hover { opacity: 1; }
     .tag-input {
         border: none;
         outline: none;
         flex-grow: 1;
         padding: 4px;
         min-width: 150px;
+        background: transparent;
     }
+    .input-group {
+        gap: 0px
+    }
+    
 </style>
 
-<div class="container mt-4">
+<div class="container mt-5 pb-5">
     {% csrf_token %}
 
     <div class="text-center mb-5">
-        <h1>Unit Warehouse Import Hub</h1>
-        <p class="text-muted">Aggregate inventory data from multiple sources into a single warehouse.</p>
+        <h1 class="fw-bold text-dark">Unit Warehouse Hub</h1>
+        <p class="text-muted">Centralized inventory aggregation and management console.</p>
     </div>
 
-    {# --- Company Selector (hidden for uploader) --- #}
+    {# --- Company Selector --- #}
     <div class="row justify-content-center mb-5" id="companySelectRow" {% if is_uploader %}style="display:none"{% endif %}>
         <div class="col-md-6">
-            <label class="form-label fw-bold">Select Warehouse (Company)</label>
-            <select id="companySelect" class="form-select form-select-lg">
-                <option value="" selected disabled>Choose a company.</option>
-                {% for company in companies %}
-                    <option value="{{ company.id }}"
-                        {% if is_uploader and locked_company_id and company.id|stringformat:"s" == locked_company_id|stringformat:"s" %}selected{% endif %}>
-                        {{ company.name }}
-                    </option>
-                {% endfor %}
-            </select>
+            <div class="input-group input-group-lg shadow-sm">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-building"></i></span>
+                <select id="companySelect" class="form-select border-start-0 ps-0">
+                    <option value="" selected disabled>Select a Warehouse (Company)...</option>
+                    {% for company in companies %}
+                        <option value="{{ company.id }}"
+                            {% if is_uploader and locked_company_id and company.id|stringformat:"s" == locked_company_id|stringformat:"s" %}selected{% endif %}>
+                            {{ company.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
     </div>
 
     {% if is_uploader %}
         <div class="row justify-content-center mb-4">
-            <div class="col-md-6">
-                <div class="alert alert-info mb-0">
-                    Warehouse locked to: <strong>{{ locked_company_name }}</strong>
-                </div>
+            <div class="col-md-6 text-center">
+                <span class="badge bg-info text-dark p-2 fs-6 shadow-sm">
+                    🔒 Context Locked: {{ locked_company_name }}
+                </span>
             </div>
         </div>
     {% endif %}
 
-    <div id="sourcesPanel" class="row hidden">
-        <div class="col-md-4">
-            <div class="source-card text-center">
-                <div class="source-icon">📄</div>
-                <h3>CSV Upload</h3>
-                <p class="text-muted small">Upload manual files. Good for bulk historical data.</p>
-                <input type="file" id="csvInput" class="form-control mb-3" accept=".csv">
-                <button class="btn btn-primary w-100" onclick="triggerImport('csv')">Upload & Merge</button>
-            </div>
-        </div>
-
-        <div class="col-md-4" id="card-sheet">
-            <div class="source-card text-center">
-                <div class="source-icon">📊</div>
-                <h3>Google Sheets</h3>
-                <p class="text-muted small">Fetch live data from configured spreadsheet.</p>
-                <div class="alert alert-light py-1 small mb-3" id="sheetUrlDisplay">Not Configured</div>
-                <button class="btn btn-success w-100" onclick="triggerImport('sheet')">Fetch & Merge</button>
-            </div>
-        </div>
-
-        <div class="col-md-4" id="card-erp">
-            <div class="source-card text-center">
-                <div class="source-icon">🔌</div>
-                <h3>ERP API</h3>
-                <p class="text-muted small">Connect to external ERP endpoint.</p>
-                <div class="alert alert-light py-1 small mb-3" id="erpUrlDisplay">Not Configured</div>
-                <button class="btn btn-warning w-100" onclick="triggerImport('erp')">Request & Merge</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="deletePanel" class="row hidden justify-content-center">
-        <div class="col-md-12">
-            <div class="source-card">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h3 class="text-danger m-0"><span class="source-icon" style="font-size:1.5rem;">🗑️</span>Units</h3>
-                    <button class="btn btn-outline-danger" onclick="executeDelete()" title="Delete Selected">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
-                            <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528M8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5"/>
-                        </svg>
-                    </button>
+    <div id="mainInterface" class="hidden">
+        
+        <div class="mb-5">
+            <h6 class="section-title">Import Data Sources</h6>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="source-card card-csv text-center">
+                        <div>
+                            <div class="source-icon text-primary">📂</div>
+                            <h4 class="fw-bold">CSV Upload</h4>
+                            <p class="text-muted small">Upload manual files for bulk historical data or initial setup.</p>
+                        </div>
+                        <div>
+                            <input type="file" id="csvInput" class="form-control form-control-sm mb-3" accept=".csv">
+                            <button class="btn btn-primary w-100" onclick="triggerImport('csv')">Upload & Merge</button>
+                        </div>
+                    </div>
                 </div>
-                <p class="text-muted small">Type a unit code and press <strong>Enter</strong> to add it to the deletion list.</p>
 
-                <div class="tag-container" id="tagContainer" onclick="document.getElementById('unitTagInput').focus()">
-                    <input type="text" id="unitTagInput" class="tag-input" placeholder="Type unit code (e.g. A-101)...">
+                <div class="col-md-4" id="card-sheet">
+                    <div class="source-card card-sheet text-center">
+                        <div>
+                            <div class="source-icon text-success">📊</div>
+                            <h4 class="fw-bold">Google Sheets</h4>
+                            <p class="text-muted small">Sync with live spreadsheets.</p>
+                            <div class="alert alert-light py-1 small mb-0 border" id="sheetUrlDisplay">Not Configured</div>
+                        </div>
+                        <button class="btn btn-success w-100 mt-3" onclick="triggerImport('sheet')">Fetch & Merge</button>
+                    </div>
+                </div>
+
+                <div class="col-md-4" id="card-erp">
+                    <div class="source-card card-erp text-center">
+                        <div>
+                            <div class="source-icon text-warning">🔄</div>
+                            <h4 class="fw-bold">ERP API</h4>
+                            <p class="text-muted small">Pull data from external ERP.</p>
+                            <div class="alert alert-light py-1 small mb-0 border" id="erpUrlDisplay">Not Configured</div>
+                        </div>
+                        <button class="btn btn-warning w-100 mt-3" onclick="triggerImport('erp')">Request & Merge</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div id="consolePanel" class="hidden">
-        <h5>Import Logs</h5>
-        <div id="consoleLog" class="log-box">
-            <div>> Waiting for command...</div>
+        <div class="mb-4">
+            <h6 class="section-title">Database Operations</h6>
+            <div class="row g-4">
+                
+                <div class="col-md-6">
+                    <div class="source-card card-rename">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-3 text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 50px; background-color: #6f42c1; font-size: 1.5rem;">
+                                🏷️
+                            </div>
+                            <div>
+                                <h4 class="m-0 fw-bold" style="color: #563d7c;">Bulk Rename</h4>
+                                <small class="text-muted">Migrate unit codes while preserving history.</small>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-light p-3 rounded mb-3 border">
+                            <code class="text-dark">Required Columns:</code> <span class="badge bg-secondary">Old Unit Code</span> <span class="badge bg-secondary">New Unit Code</span>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <input type="file" id="renameCsvInput" class="form-control" accept=".csv">
+                            <button class="btn btn-outline-primary" style="color: #6f42c1; border-color: #6f42c1;" 
+                                onmouseover="this.style.backgroundColor='#6f42c1'; this.style.color='white';" 
+                                onmouseout="this.style.backgroundColor='transparent'; this.style.color='#6f42c1';" 
+                                onclick="triggerRename()">
+                                Execute
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="source-card card-delete">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3 text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 50px; background-color: #dc3545; font-size: 1.5rem;">
+                                    🗑️
+                                </div>
+                                <div>
+                                    <h4 class="m-0 fw-bold text-danger">Deletion</h4>
+                                    <small class="text-muted">Permanently remove units.</small>
+                                </div>
+                            </div>
+                            <button class="btn btn-danger btn-sm px-3" onclick="executeDelete()">Delete Selected</button>
+                        </div>
+
+                        <div class="tag-container" id="tagContainer" onclick="document.getElementById('unitTagInput').focus()">
+                            <input type="text" id="unitTagInput" class="tag-input" placeholder="Type unit code & press Enter...">
+                        </div>
+                        <div class="text-end mt-1">
+                            <small class="text-muted fst-italic">Supports bulk tag entry</small>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="consolePanel" class="mt-4">
+            <h6 class="section-title">System Log</h6>
+            <div id="consoleLog" class="log-box shadow-sm">
+                <div>> System Ready. Waiting for user input...</div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    // Configuration loaded from Django
     const companyConfigs = {{ company_configs|safe }};
 
-    // DOM refs (define FIRST)
+    // DOM refs
     const companySelect = document.getElementById('companySelect');
-    const sourcesPanel = document.getElementById('sourcesPanel');
-    const deletePanel = document.getElementById('deletePanel');
+    const mainInterface = document.getElementById('mainInterface'); // New container
 
     const cardSheet = document.getElementById('card-sheet');
     const cardErp = document.getElementById('card-erp');
     const sheetDisplay = document.getElementById('sheetUrlDisplay');
     const erpDisplay = document.getElementById('erpUrlDisplay');
     const consoleLog = document.getElementById('consoleLog');
-    const consolePanel = document.getElementById('consolePanel');
-
-    // Uploader locking flags
-    const IS_UPLOADER = {{ is_uploader|yesno:"true,false" }};
-    const LOCKED_COMPANY_ID = "{{ locked_company_id|default:'' }}";
-
-    function getSelectedCompanyId() {
-        return IS_UPLOADER ? LOCKED_COMPANY_ID : companySelect.value;
-    }
-
-    // --- Tag System Logic ---
+    
+    // Tag System refs
     const unitTagInput = document.getElementById('unitTagInput');
     const tagContainer = document.getElementById('tagContainer');
     let unitsToDelete = new Set();
 
+    const IS_UPLOADER = {{ is_uploader|yesno:"true,false" }};
+    const LOCKED_COMPANY_ID = "{{ locked_company_id|default:'' }}";
+
+    function getSelectedCompanyId() { return IS_UPLOADER ? LOCKED_COMPANY_ID : companySelect.value; }
+    function getCsrfToken() { return document.querySelector('[name=csrfmiddlewaretoken]').value; }
+
+    // --- Logging ---
+    function log(msg, type='info') {
+        const color = type === 'error' ? '#ff6b6b' : (type === 'success' ? '#51cf66' : '#e9ecef');
+        const time = new Date().toLocaleTimeString();
+        consoleLog.innerHTML += `<div style="color:${color}; border-bottom: 1px solid #333; padding: 2px 0;">[${time}] ${msg}</div>`;
+        consoleLog.scrollTop = consoleLog.scrollHeight;
+    }
+
+    // --- Interface Logic ---
+    function applyCompanySelection(id) {
+        const config = companyConfigs[id];
+        if (!config) return;
+
+        // Reveal Interface
+        mainInterface.classList.remove('hidden');
+        log(`Switched context to: Company ID ${id}`, 'info');
+
+        // Clear tags
+        unitsToDelete.clear();
+        document.querySelectorAll('.tag').forEach(t => t.remove());
+        unitTagInput.value = '';
+
+        // Configure Import Cards
+        cardSheet.style.display = config.has_sheets ? 'block' : 'none';
+        cardErp.style.display = config.has_erp ? 'block' : 'none';
+
+        // Update Text
+        sheetDisplay.innerText = config.sheet_url ? 'Link: ' + config.sheet_url.substring(0, 35) + '...' : 'No URL Configured';
+        erpDisplay.innerText = config.erp_url ? 'Endpoint: ' + config.erp_url.substring(0, 35) + '...' : 'No URL Configured';
+        
+        // Colors for missing configs
+        sheetDisplay.className = config.sheet_url ? "alert alert-success py-1 small mb-0 border" : "alert alert-secondary py-1 small mb-0 border";
+        erpDisplay.className = config.erp_url ? "alert alert-warning py-1 small mb-0 border" : "alert alert-secondary py-1 small mb-0 border";
+    }
+
+    companySelect.addEventListener('change', function() { applyCompanySelection(this.value); });
+
+    // Initial Load
+    if (IS_UPLOADER && LOCKED_COMPANY_ID) {
+        companySelect.value = LOCKED_COMPANY_ID;
+        applyCompanySelection(LOCKED_COMPANY_ID);
+    }
+
+    // --- Tag System ---
     unitTagInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             const code = this.value.trim();
-            if (code && !unitsToDelete.has(code)) {
-                addTag(code);
-            }
+            if (code && !unitsToDelete.has(code)) addTag(code);
             this.value = '';
         }
     });
 
     function addTag(code) {
         unitsToDelete.add(code);
-
         const tag = document.createElement('div');
         tag.className = 'tag';
-        tag.innerHTML = `
-            ${code}
-            <span class="close-tag" onclick="removeTag(this, '${code}')">&times;</span>
-        `;
+        tag.innerHTML = `${code}<span class="close-tag" onclick="removeTag(this, '${code}')">&times;</span>`;
         tagContainer.insertBefore(tag, unitTagInput);
     }
 
@@ -226,169 +377,136 @@
         element.parentElement.remove();
     }
 
-    // Retrieve CSRF Token from the DOM
-    function getCsrfToken() {
-        return document.querySelector('[name=csrfmiddlewaretoken]').value;
-    }
+    // --- Actions ---
 
-    function log(msg, type='info') {
-        const color = type === 'error' ? 'red' : (type === 'success' ? '#00ff00' : 'white');
-        const time = new Date().toLocaleTimeString();
-        consoleLog.innerHTML += `<div style="color:${color}">[${time}] ${msg}</div>`;
-        consoleLog.scrollTop = consoleLog.scrollHeight;
-    }
-
-    function applyCompanySelection(id) {
-        const config = companyConfigs[id];
-        if (!config) return;
-
-        // Show panels
-        sourcesPanel.classList.remove('hidden');
-        deletePanel.classList.remove('hidden');
-        consolePanel.classList.add('hidden');
-        consoleLog.innerHTML = '<div>> Ready.</div>';
-
-        // Clear tags on company switch
-        unitsToDelete.clear();
-        document.querySelectorAll('.tag').forEach(t => t.remove());
-        unitTagInput.value = '';
-
-        // Toggle Cards
-        cardSheet.style.display = config.has_sheets ? 'block' : 'none';
-        cardErp.style.display = config.has_erp ? 'block' : 'none';
-
-        // Update Info
-        sheetDisplay.innerText = config.sheet_url ? 'Link: ' + config.sheet_url.substring(0, 30) + '...' : 'No URL Configured';
-        erpDisplay.innerText = config.erp_url ? 'Endpoint: ' + config.erp_url.substring(0, 30) + '...' : 'No URL Configured';
-    }
-
-    // Handle Selection Change (Admin/Dev/TeamMember)
-    companySelect.addEventListener('change', function() {
-        applyCompanySelection(this.value);
-    });
-
-    // Auto-init for uploader (no dropdown)
-    if (IS_UPLOADER && LOCKED_COMPANY_ID) {
-        companySelect.value = LOCKED_COMPANY_ID;
-        applyCompanySelection(LOCKED_COMPANY_ID);
-    }
-
-    // Existing Import Function (updated to support uploader)
     async function triggerImport(sourceType) {
         const companyId = getSelectedCompanyId();
+        if (!companyId) return Swal.fire('Error', "Select a company first", 'error');
 
-        if (!companyId) {
-            return alert("Select a company first");
-        }
-
-        consolePanel.classList.remove('hidden');
-        log(`Starting ${sourceType.toUpperCase()} import...`);
+        log(`----------------------------------------`);
+        log(`Initiating ${sourceType.toUpperCase()} import...`);
 
         const formData = new FormData();
-        formData.append('company_id', companyId); // backend ignores it for uploader, but ok
+        formData.append('company_id', companyId); 
         formData.append('source_type', sourceType);
 
         if (sourceType === 'csv') {
             const fileInput = document.getElementById('csvInput');
-            if (fileInput.files.length === 0) {
-                return log("Error: No file selected", 'error');
-            }
+            if (fileInput.files.length === 0) return log("Error: No file selected", 'error');
             formData.append('csv_file', fileInput.files[0]);
         }
 
         try {
             const response = await fetch("{% url 'trigger_unified_import' %}", {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': getCsrfToken()
-                }
+                method: 'POST', body: formData, headers: {'X-CSRFToken': getCsrfToken()}
             });
-
             if (response.status === 403) throw new Error("Permission Denied (CSRF).");
-
             const data = await response.json();
 
             if (data.success) {
                 const s = data.stats;
-                log(`Success! Received ${s.total_received} rows.`, 'success');
-                log(`-> Created: ${s.created}`, 'success');
-                log(`-> Updated: ${s.updated}`, 'success');
-                log(`-> Skipped: ${s.skipped}`);
-
+                log(`Success! Processed ${s.total_received} rows.`, 'success');
+                log(`+ Created: ${s.created}`, 'success');
+                log(`~ Updated: ${s.updated}`, 'success');
+                log(`- Skipped: ${s.skipped}`);
                 if (s.errors && s.errors.length > 0) {
-                    log(`Warning: ${s.errors.length} row errors occurred.`, 'error');
-                    s.errors.slice(0, 5).forEach(err => log(err, 'error'));
+                    log(`Warning: ${s.errors.length} errors.`, 'error');
+                    s.errors.slice(0, 5).forEach(err => log(`Err: ${err}`, 'error'));
                 }
             } else {
                 log(`Failed: ${data.error}`, 'error');
+                Swal.fire('Import Failed', data.error, 'error');
             }
+        } catch (err) { log(`System Error: ${err.message}`, 'error'); }
+    }
 
+    async function triggerRename() {
+        const companyId = getSelectedCompanyId();
+        if (!companyId) return Swal.fire('Error', "Select a company first", 'error');
+
+        const fileInput = document.getElementById('renameCsvInput');
+        if (fileInput.files.length === 0) return Swal.fire('Input Missing', 'Please select a CSV file first.', 'warning');
+
+        const formData = new FormData();
+        formData.append('company_id', companyId);
+        formData.append('csv_file', fileInput.files[0]);
+
+        log(`----------------------------------------`);
+        log('Starting Bulk Rename Operation...');
+
+        try {
+            const response = await fetch("{% url 'rename_hub_units' %}", { 
+                method: 'POST', body: formData, headers: { 'X-CSRFToken': getCsrfToken() }
+            });
+            if (response.status === 403) throw new Error("Permission Denied.");
+            const data = await response.json();
+
+            if (data.success) {
+                const s = data.stats;
+                log(`Operation Successful.`, 'success');
+                log(`✓ Renamed: ${s.renamed}`, 'success');
+                log(`! Not Found: ${s.skipped_not_found}`);
+                log(`! Duplicates: ${s.skipped_duplicate}`);
+                
+                if (s.errors && s.errors.length > 0) {
+                    log('Encountered Errors (first 5):', 'error');
+                    s.errors.slice(0,5).forEach(e => log(e, 'error'));
+                }
+                fileInput.value = '';
+                Swal.fire('Success', `Renamed ${s.renamed} units.`, 'success');
+            } else {
+                log(`Failed: ${data.error}`, 'error');
+                Swal.fire('Error', data.error, 'error');
+            }
         } catch (err) {
             log(`System Error: ${err.message}`, 'error');
+            Swal.fire('System Error', err.message, 'error');
         }
     }
 
-    // Delete Units Function (updated to support uploader)
     async function executeDelete() {
         const companyId = getSelectedCompanyId();
-
         if (!companyId) return Swal.fire('Error', 'Please select a company first.', 'error');
-
+        
         const unitsArray = Array.from(unitsToDelete);
-
-        if (unitsArray.length === 0) {
-            return Swal.fire('No Units Selected', 'Please type a unit code and press Enter.', 'warning');
-        }
+        if (unitsArray.length === 0) return Swal.fire('No Selection', 'Type unit codes in the red box to delete.', 'warning');
 
         const result = await Swal.fire({
-            title: 'Are you sure?',
-            text: `You are about to delete ${unitsArray.length} units from the database. This cannot be undone!`,
+            title: 'Delete Confirmation',
+            html: `Deleting <b>${unitsArray.length}</b> units.<br>This action cannot be undone.`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete them!'
+            confirmButtonColor: '#dc3545',
+            confirmButtonText: 'Yes, permanently delete'
         });
 
         if (!result.isConfirmed) return;
 
         try {
-            consolePanel.classList.remove('hidden');
-            log(`Deleting ${unitsArray.length} units...`, 'info');
-
+            log(`----------------------------------------`);
+            log(`Attempting delete of ${unitsArray.length} units...`, 'info');
+            
             const response = await fetch("{% url 'delete_hub_units' %}", {
                 method: 'POST',
-                body: JSON.stringify({
-                    company_id: companyId, // backend ignores it for uploader, but ok
-                    unit_codes: unitsArray
-                }),
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCsrfToken()
-                }
+                body: JSON.stringify({ company_id: companyId, unit_codes: unitsArray }),
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }
             });
-
+            
             if (response.status === 403) throw new Error("Permission Denied.");
-
             const data = await response.json();
 
             if (data.success) {
-                Swal.fire('Deleted!', `Successfully deleted ${data.deleted_count} units.`, 'success');
-
-                log(`Deleted ${data.deleted_count} units successfully.`, 'success');
-                if (data.not_found_count > 0) {
-                    log(`Note: ${data.not_found_count} units were not found.`, 'info');
-                }
-
+                Swal.fire('Deleted', `${data.deleted_count} units removed.`, 'success');
+                log(`✓ Deleted: ${data.deleted_count}`, 'success');
+                if (data.not_found_count > 0) log(`? Not Found: ${data.not_found_count}`, 'info');
+                
                 unitsToDelete.clear();
                 document.querySelectorAll('.tag').forEach(t => t.remove());
                 unitTagInput.value = '';
             } else {
-                Swal.fire('Error', data.error || 'Deletion failed', 'error');
+                Swal.fire('Error', data.error, 'error');
                 log(`Deletion Failed: ${data.error}`, 'error');
             }
-
         } catch (err) {
             Swal.fire('System Error', err.message, 'error');
             log(`System Error: ${err.message}`, 'error');

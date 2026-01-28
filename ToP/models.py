@@ -72,12 +72,85 @@ class Company(models.Model):
     google_sheet_title = models.CharField(max_length=128, blank=True, null=True)
 
     logo = models.ImageField(upload_to='company_logos/', blank=True, null=True)
+    
+    auto_sync = models.BooleanField(default=False)
+    auto_sync_timer = models.IntegerField(default=0)
+    last_auto_sync_at = models.DateTimeField(null=True, blank=True)
+    auto_sync_running = models.BooleanField(default=False) 
 
     def __str__(self):
         return self.name
 
 
+class ERPUnitFieldMapping(models.Model):
+    company = models.ForeignKey(
+        "Company",
+        on_delete=models.CASCADE,
+        related_name="erp_unit_field_mappings"
+    )
+    provided_name = models.CharField(max_length=255)   # e.g. "price"
+    needed_name = models.CharField(max_length=255)     # e.g. "interest_free_unit_price"
+    is_active = models.BooleanField(default=True)
 
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("company", "provided_name")
+        indexes = [
+            models.Index(fields=["company", "provided_name"]),
+        ]
+
+    def __str__(self):
+        return f"{self.company_id}: {self.provided_name} -> {self.needed_name}"
+
+
+
+
+class ERPLeadsFieldMapping(models.Model):
+    company = models.ForeignKey("Company", on_delete=models.CASCADE, related_name="erp_leads_field_mappings")
+    provided_name = models.CharField(max_length=255)
+    needed_name = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("company", "provided_name")
+        indexes = [models.Index(fields=["company", "provided_name"])]
+
+    def __str__(self):
+        return f"{self.company_id}: {self.provided_name} -> {self.needed_name}"
+    
+
+
+
+class ERPHoldPostFieldMapping(models.Model):
+    """
+    Mapping for outgoing POST payload keys.
+    UI stays consistent with other mappings:
+      provided_name = ERP expected key
+      needed_name   = our internal key (what we use in code)
+    Example:
+      provided_name="ced_name", needed_name="unit_code"
+      provided_name="status_reason", needed_name="type"
+    """
+    company = models.ForeignKey("Company", on_delete=models.CASCADE, related_name="erp_hold_post_field_mappings")
+    provided_name = models.CharField(max_length=255)
+    needed_name = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("company", "provided_name")
+        indexes = [models.Index(fields=["company", "provided_name"])]
+
+    def __str__(self):
+        return f"{self.company_id}: {self.provided_name} -> {self.needed_name}"
+    
+    
+    
 # ---------------- Project Model ----------------
 class Project(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
@@ -306,10 +379,11 @@ class Unit(models.Model):
     building_style = models.CharField(max_length=255, null=True, blank=True)
     building_type = models.CharField(max_length=255, null=True, blank=True)
     unit_type = models.CharField(max_length=255, null=True, blank=True)
+    owner = models.CharField(max_length=255, null=True, blank=True)
     
     # Specs
     num_bedrooms = models.CharField(max_length=255, null=True, blank=True)
-    num_bathrooms = models.IntegerField(null=True, blank=True)
+    num_bathrooms = models.CharField(max_length=255, null=True, blank=True)
     num_parking_slots = models.IntegerField(null=True, blank=True)
     
     # Areas
@@ -329,7 +403,7 @@ class Unit(models.Model):
     
     # Status & Dates
     status = models.CharField(max_length=255, null=True, blank=True)
-    creation_date = models.DateTimeField(auto_now_add=True)
+    creation_date = models.DateField(null=True, blank=True)
     contract_date = models.DateField(null=True, blank=True)
     delivery_date = models.DateField(null=True, blank=True)
     
@@ -511,7 +585,7 @@ class SalesRequestAnalytical(models.Model):
     is_fake = models.BooleanField(default=False)
 
     def __str__(self):
-        unit_code = self.unit.unit_code if self.unit else "------"
+        unit_code = self.unit_code
         sales_man = self.sales_man.full_name if self.sales_man else "Unknown Salesman"
         return f"SalesRequest by {sales_man} for Unit {unit_code}"
 
@@ -595,6 +669,7 @@ class MarketUnitData(models.Model):
     months_from_update = models.IntegerField(null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
     dp_percentage = models.TextField(null=True, blank=True)
+    offering = models.CharField(max_length=255,null=True, blank=True)
 
     def __str__(self):
         return f"{self.project_name} - {self.unit_type}"
@@ -930,3 +1005,35 @@ class ModificationRecords(models.Model):
     type = models.CharField(max_length=255)
     description = models.CharField(max_length = 300, null=True, blank=True)
     timestamp = models.DateTimeField(default=now)  # 👈 added datetime with default
+
+
+
+
+class PivotUnitsSnapshot(models.Model):
+    """
+    One snapshot per company (overwritten each time "Send Managers" is pressed).
+    """
+    company = models.OneToOneField(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="pivot_units_snapshot"
+    )
+
+    table_html = models.TextField(blank=True, default="")
+    meta_text = models.TextField(blank=True, default="")
+    measures_text = models.TextField(blank=True, default="")
+
+    sent_at = models.DateTimeField(null=True, blank=True)
+    sent_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="sent_pivot_units_snapshots"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"PivotUnitsSnapshot({self.company_id})"

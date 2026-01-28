@@ -1,0 +1,373 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+{% block title %}Pivot Snapshot - Managers{% endblock %}
+
+{% block content %}
+
+<style>
+    .container { margin-top: 80px; padding: 0; }
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl { max-width: 100%; }
+    }
+    @media (min-width: 576px) {
+        .container, .container-sm { max-width: 100%; }
+    }
+
+    table { margin-top:0%; }
+
+    body{
+        background:#f3f3f3;
+        font-family:"Times New Roman", Times, serif !important;
+    }
+    *{ font-family:"Times New Roman", Times, serif !important; }
+
+    .wrap{ padding: 12px; }
+    .topbar{
+        margin: 12px;
+        background:#fff;
+        border:1px solid #c8c8c8;
+        border-radius:10px;
+        padding: 10px 12px;
+        display:flex;
+        gap:10px;
+        justify-content: space-between;
+        align-items:center;
+        flex-wrap:wrap;
+        box-shadow: 0 6px 18px rgba(0,0,0,.06);
+    }
+    .title{
+        font-weight:900;
+        font-size:14px;
+        color:#1f1f1f;
+        display:flex;
+        gap:10px;
+        align-items:center;
+        flex-wrap:wrap;
+    }
+    .badge{
+        display:inline-flex;
+        align-items:center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid #c8c8c8;
+        background: #fff;
+        font-size: 12px;
+        font-weight: 900;
+        color: #1f1f1f;
+    }
+
+    .controls{
+        display:flex;
+        gap:10px;
+        flex-wrap:wrap;
+        align-items:center;
+    }
+    .select{
+        min-width: 260px;
+        padding: 8px 10px;
+        border:1px solid #c8c8c8;
+        border-radius:8px;
+        background:#fff;
+        font-weight:800;
+        font-size:13px;
+        color:#1f1f1f;
+    }
+    .btn{
+        padding: 8px 12px;
+        border:1px solid #bfbfbf;
+        background:#fff;
+        border-radius:8px;
+        cursor:pointer;
+        font-weight:900;
+        color:#1f1f1f;
+        user-select:none;
+    }
+    .btn:hover{ transform: translateY(-1px); }
+
+    .sheet{
+        margin: 12px;
+        background:#fff;
+        border:1px solid #c8c8c8;
+        border-radius:10px;
+        overflow:hidden;
+        box-shadow: 0 6px 18px rgba(0,0,0,.06);
+    }
+    .sheet-head{
+        padding: 10px 12px;
+        border-bottom:1px solid #e3e3e3;
+        display:flex;
+        justify-content:space-between;
+        gap:10px;
+        flex-wrap:wrap;
+        background: linear-gradient(#fdfdfd, #f6f6f6);
+    }
+    .mini{ font-size:12px; font-weight:800; color:#6a6a6a; }
+
+    .scroll{
+        overflow:auto;
+        max-height: 75vh;
+        background:
+            repeating-linear-gradient(0deg, #ffffff 0px, #ffffff 23px, #f6f6f6 24px),
+            repeating-linear-gradient(90deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 59px, #f6f6f6 60px);
+    }
+
+    table.pivot{
+        width:100%;
+        border-collapse:collapse;
+        font-size:13px;
+        background:#fff;
+    }
+    table.pivot th, table.pivot td{
+        border:1px solid #e3e3e3;
+        padding:6px 8px;
+        white-space:nowrap;
+    }
+    table.pivot thead th{
+        position: sticky;
+        top:0;
+        z-index:3;
+        background:#d9e1f2;
+        font-weight:900;
+        color:#0f1f3d;
+    }
+    table.pivot thead tr.header-2 th{ top:31px; z-index:2; }
+
+    .num{ text-align:right; font-variant-numeric: tabular-nums; }
+    .gt-row td{ background:#b4c6e7; font-weight:900; color:#0f1f3d; }
+    .gt-col{ background: rgba(180,198,231,.55); font-weight:900; color:#0f1f3d; }
+
+    .sticky-col{
+        position: sticky;
+        left:0;
+        z-index:4;
+        background:#fff;
+    }
+    table.pivot thead .sticky-col{ z-index:6; background:#d9e1f2; }
+
+    .placeholder{
+        padding: 14px 12px;
+        font-weight:900;
+        color:#6a6a6a;
+        background:#fff;
+    }
+
+    .error{
+        margin: 0 12px 12px;
+        display:none;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(185, 28, 28, .25);
+        background: rgba(239, 68, 68, .10);
+        color: #b91c1c;
+        font-weight: 900;
+        font-size: 13px;
+    }
+</style>
+
+<div class="topbar">
+    <div class="title">
+        <span class="badge">Pivot Snapshot (Managers)</span>
+
+        {% if user_is_scoped %}
+            <span class="badge">Company: {{ user_company_name }}</span>
+        {% endif %}
+    </div>
+
+    <div class="controls">
+        {% if not user_is_scoped %}
+            <select id="companySelect" class="select">
+                <option value="">Select Company...</option>
+                {% for c in companies %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        {% else %}
+            <!-- Scoped users: no selector -->
+            <input type="hidden" id="companyIdHidden" value="{{ user_company_id }}">
+        {% endif %}
+
+        <button class="btn" id="refreshBtn" type="button">Refresh</button>
+    </div>
+</div>
+
+<div class="error" id="errorBox"></div>
+
+<div class="sheet">
+    <div class="sheet-head">
+        <div class="mini" id="metaText">No snapshot loaded.</div>
+        <div class="mini" id="byText"></div>
+    </div>
+
+    <div class="scroll" id="scrollHost">
+        <div class="placeholder" id="placeholder">Loading...</div>
+        <div id="snapshotHost"></div>
+    </div>
+</div>
+
+<script>
+(function(){
+    const isScoped = {% if user_is_scoped %}true{% else %}false{% endif %};
+
+    const companySelect = document.getElementById("companySelect");
+    const companyIdHidden = document.getElementById("companyIdHidden");
+    const refreshBtn = document.getElementById("refreshBtn");
+
+    const snapshotHost = document.getElementById("snapshotHost");
+    const placeholder = document.getElementById("placeholder");
+    const metaText = document.getElementById("metaText");
+    const byText = document.getElementById("byText");
+    const errorBox = document.getElementById("errorBox");
+
+    {% if user_is_scoped %}
+        const snapUrlFixed = "{% url 'pivot_units_snapshot_data' user_company_id %}";
+        function buildSnapUrl(){ return snapUrlFixed; }
+    {% else %}
+        const snapUrlTpl = "{% url 'pivot_units_snapshot_data' 0 %}";
+        function buildSnapUrl(companyId){
+            return snapUrlTpl.replace(/\/0\/?$/, `/${companyId}/`);
+        }
+    {% endif %}
+
+    let lastStickyCount = 0;
+
+    function setError(msg){
+        errorBox.style.display = msg ? "block" : "none";
+        errorBox.textContent = msg || "";
+    }
+
+    function getCompanyId(){
+        if(isScoped){
+            return companyIdHidden ? companyIdHidden.value : "";
+        }
+        return companySelect ? companySelect.value : "";
+    }
+
+    function fmtDate(iso){
+        if(!iso) return "";
+        try{
+            return new Date(iso).toLocaleString();
+        }catch(e){
+            return iso;
+        }
+    }
+
+    async function loadSnapshot(){
+        const companyId = getCompanyId();
+
+        if(!companyId){
+            snapshotHost.innerHTML = "";
+            placeholder.style.display = "block";
+            placeholder.textContent = "Select a company to load the latest snapshot.";
+            metaText.textContent = "No snapshot loaded.";
+            byText.textContent = "";
+            return;
+        }
+
+        setError("");
+        placeholder.style.display = "block";
+        placeholder.textContent = "Loading snapshot...";
+        snapshotHost.innerHTML = "";
+
+        try{
+            const res = await fetch(isScoped ? buildSnapUrl() : buildSnapUrl(companyId));
+            const data = await res.json();
+            if(!res.ok || !data.success){
+                throw new Error(data.error || "Failed to load snapshot");
+            }
+
+            metaText.textContent = data.meta_text || "Snapshot loaded.";
+            byText.textContent = data.sent_at
+                ? (`Last sent: ${fmtDate(data.sent_at)}${data.sent_by ? (" • " + data.sent_by) : ""}`)
+                : "";
+
+            if(!data.table_html){
+                placeholder.style.display = "block";
+                placeholder.textContent = "No snapshot yet. Ask the team to press Send Managers.";
+                snapshotHost.innerHTML = "";
+                return;
+            }
+
+            placeholder.style.display = "none";
+            snapshotHost.innerHTML = data.table_html;
+
+            const table = snapshotHost.querySelector("table.pivot");
+            if(table){
+                const tbodyFirstRow = table.querySelector("tbody tr");
+                const guess = Math.min(6, tbodyFirstRow ? Math.max(1, findLeadingGroupCols(tbodyFirstRow)) : 1);
+                lastStickyCount = guess;
+                applyStickyCols(table, guess);
+            }
+        }catch(err){
+            setError(err.message || "Error");
+            placeholder.style.display = "block";
+            placeholder.textContent = "Failed to load snapshot.";
+            snapshotHost.innerHTML = "";
+        }
+    }
+
+    function findLeadingGroupCols(tr){
+        const tds = tr.querySelectorAll("td");
+        let c = 0;
+        for(const td of tds){
+            const txt = (td.textContent || "").trim();
+            const numeric = txt !== "" && !Number.isNaN(Number(txt.replaceAll(",","")));
+            if(numeric) break;
+            c += 1;
+        }
+        return Math.max(1, c);
+    }
+
+    function applyStickyCols(table, count){
+        table.querySelectorAll(".sticky-col").forEach(el => {
+            el.classList.remove("sticky-col");
+            el.style.left = "";
+            el.style.position = "";
+            el.style.zIndex = "";
+        });
+
+        let left = 0;
+        for(let colIndex = 1; colIndex <= count; colIndex++){
+            const sample =
+                table.querySelector(`tbody tr td:nth-child(${colIndex})`) ||
+                table.querySelector(`thead tr th:nth-child(${colIndex})`);
+            const width = sample ? sample.getBoundingClientRect().width : 0;
+
+            const cells = table.querySelectorAll(`tr > *:nth-child(${colIndex})`);
+            cells.forEach(cell => {
+                cell.classList.add("sticky-col");
+                cell.style.position = "sticky";
+                cell.style.left = left + "px";
+                cell.style.zIndex = (cell.tagName === "TH") ? 7 : 5;
+            });
+
+            left += width;
+        }
+    }
+
+    window.addEventListener("resize", () => {
+        const table = snapshotHost.querySelector("table.pivot");
+        if(table && lastStickyCount){
+            applyStickyCols(table, lastStickyCount);
+        }
+    });
+
+    if(companySelect){
+        companySelect.addEventListener("change", loadSnapshot);
+    }
+    refreshBtn.addEventListener("click", loadSnapshot);
+
+    // ✅ Auto-load:
+    // - Scoped users: load immediately
+    // - Admins: load only after selecting company (or pressing Refresh)
+    if(isScoped){
+        loadSnapshot();
+    }else{
+        // start empty
+        placeholder.style.display = "block";
+        placeholder.textContent = "Select a company (or Refresh) to load the latest snapshot.";
+    }
+})();
+</script>
+
+{% endblock %}

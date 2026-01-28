@@ -28,6 +28,7 @@ from ..models import (
 )
 
 from django.template.loader import render_to_string
+from ..services.erp_hold_post_mapping_service import ERPHoldPostMappingService
 
 from ..utils.sales_pdf_utils import (
     build_sales_pdf_rows,
@@ -170,10 +171,25 @@ class SalesRequestManagementService:
                 try:
                     code_to_send = unit.unit_code if unit else ""
                     if code_to_send:
-                        # Direct request - Fixed the missing POST execution
+                        # Internal payload (your code keys)
+                        payload = {"unit_code": code_to_send, "type": "unblock"}
+
+                        # ERP key -> internal key (e.g. "ced_name" -> "unit_code")
+                        external_to_internal = ERPHoldPostMappingService.get_mapping_dict(company=company)
+
+                        # Invert to internal -> ERP key
+                        internal_to_external = {v: k for k, v in (external_to_internal or {}).items()}
+
+                        # Build mapped ERP payload
+                        erp_payload = {
+                            internal_to_external.get(k, k): v
+                            for k, v in payload.items()
+                        }
+
+                        # Direct request (mapped)
                         requests.post(
                             company.erp_hold_url,
-                            json={"ced_name": code_to_send, "status_reason": "unblock"},
+                            json=erp_payload,
                             headers=headers,
                             timeout=15
                         )

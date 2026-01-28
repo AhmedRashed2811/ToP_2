@@ -1,0 +1,23 @@
+<div class="pagination">
+    <div class="hint">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} —
+        Total: {{ page_obj.paginator.count }}
+    </div>
+
+    <div class="pages">
+        {% if page_obj.has_previous %}
+            <button class="page-btn" data-page-btn data-page="{{ page_obj.previous_page_number }}">Prev</button>
+        {% endif %}
+
+        {% for n in page_obj.paginator.page_range %}
+            {% if n >= page_obj.number|add:"-3" and n <= page_obj.number|add:"3" %}
+                <button class="page-btn {% if n == page_obj.number %}active{% endif %}"
+                        data-page-btn data-page="{{ n }}">{{ n }}</button>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <button class="page-btn" data-page-btn data-page="{{ page_obj.next_page_number }}">Next</button>
+        {% endif %}
+    </div>
+</div>

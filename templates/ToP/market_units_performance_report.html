@@ -1,0 +1,798 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+{% block title %}Market Units Performance Report{% endblock %}
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+    /* REQUIRED BY YOU (TOP) */
+    .container { margin-top: 0; padding: 0; }
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl { max-width: 100%; }
+    }
+    @media (min-width: 576px) { .container, .container-sm { max-width: 100%; } }
+    table{ margin-top: 0; }
+
+    :root{
+        --bg:#f6f7fb;
+        --card:#ffffff;
+        --text:#0f172a;
+        --muted:#64748b;
+        --border: rgba(15,23,42,.10);
+        --shadow-sm: 0 10px 22px rgba(15,23,42,.06);
+        --primary:#2563eb;
+        --primary-2:#1d4ed8;
+        --radius: 16px;
+
+        --chip-bg: rgba(37,99,235,.10);
+        --chip-border: rgba(37,99,235,.25);
+        --chip-text: #1d4ed8;
+    }
+
+    .page{ padding: 18px; margin-top: 80px; }
+
+    .header{
+        display:flex; justify-content:space-between; align-items:flex-start;
+        gap: 12px; margin-bottom: 12px;
+    }
+    .header h1{ margin:0; font-size: 20px; color: var(--text); font-weight: 950; }
+    .header p{ margin:6px 0 0; color: var(--muted); font-size: 13px; }
+
+    .panel{
+        background: var(--card);
+        border:1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+        overflow:hidden;
+    }
+
+    .toolbar{
+        padding: 14px 14px 12px;
+        border-bottom:1px solid var(--border);
+        display:flex;
+        flex-wrap:wrap;
+        align-items:flex-end;
+        gap: 10px;
+        background: linear-gradient(180deg, #fbfbfd 0%, #f8fafc 100%);
+    }
+
+    .fgroup{
+        display:flex;
+        flex-direction:column;
+        gap: 6px;
+        min-width: 220px;
+    }
+    .fgroup label{
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 900;
+        letter-spacing: .2px;
+    }
+
+    .input, .select{
+        border:1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 13px;
+        outline:none;
+        background:#fff;
+        color: var(--text);
+        transition: .15s ease;
+    }
+    .input:focus, .select:focus{
+        border-color: rgba(37,99,235,.55);
+        box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+    }
+
+    .btn{
+        border:none; border-radius: 12px;
+        padding: 10px 12px;
+        font-weight: 900;
+        cursor:pointer;
+        transition: .15s ease;
+        font-size: 13px;
+        display:inline-flex;
+        align-items:center;
+        gap: 8px;
+        white-space:nowrap;
+        user-select:none;
+    }
+    .btn-ghost{ background:#fff; border:1px solid var(--border); color: var(--text); }
+    .btn-ghost:hover{ box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+
+    .toolbar-right{
+        margin-left:auto;
+        display:flex;
+        gap:10px;
+        flex-wrap:wrap;
+        align-items:flex-end;
+    }
+
+    .grid{
+        display:grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 12px;
+        background: var(--bg);
+    }
+    @media (min-width: 1100px){
+        .grid{ grid-template-columns: 1.35fr .65fr; }
+    }
+
+    .card{
+        background:#fff;
+        border:1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+        overflow:hidden;
+    }
+    .card-head{
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        background: #fbfbfd;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap: 10px;
+    }
+    .card-head h2{
+        margin:0;
+        font-size: 14px;
+        color: var(--text);
+        font-weight: 950;
+    }
+    .card-body{ padding: 12px 14px; }
+
+    .badge{
+        display:inline-flex;
+        align-items:center;
+        gap:6px;
+        padding: 5px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 950;
+        border:1px solid rgba(37,99,235,.20);
+        background: rgba(37,99,235,.08);
+        color: var(--primary-2);
+    }
+
+    .kpis{
+        display:grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .kpi{
+        border:1px solid var(--border);
+        border-radius: 14px;
+        padding: 12px;
+        position: relative;
+        overflow:hidden;
+    }
+    .kpi:before{
+        content:"";
+        position:absolute;
+        inset:0;
+        background: radial-gradient(900px 200px at 0% 0%, rgba(37,99,235,.08), transparent 60%);
+        pointer-events:none;
+    }
+    .kpi .t{ font-size: 11px; color: var(--muted); font-weight: 950; position:relative; }
+    .kpi .v{ margin-top: 6px; font-size: 18px; color: var(--text); font-weight: 950; position:relative; }
+
+    .table-shell{
+        padding: 12px;
+        background: var(--bg);
+    }
+    .table-scroll{
+        max-height: 540px;
+        overflow:auto;
+    }
+    table{
+        width: 100%;
+        border-collapse: collapse;
+        background:#fff;
+    }
+    th, td{
+        border-bottom: 1px solid rgba(15,23,42,.08);
+        padding: 10px 12px;
+        text-align:left;
+        font-size: 12px;
+        color: var(--text);
+        white-space: nowrap;
+    }
+    th{
+        background:#fbfbfd;
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: .2px;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        font-weight: 950;
+    }
+    tr:hover td{ background: rgba(15,23,42,.02); }
+
+    /* =========================
+       Custom Members Multi-Select
+       ========================= */
+    .mshell{ min-width: 360px; flex: 1 1 auto; }
+    .mcontrol{
+        border:1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 10px;
+        background:#fff;
+        display:flex;
+        align-items:center;
+        gap:8px;
+        min-height: 44px;
+        cursor:pointer;
+        transition:.15s ease;
+    }
+    .mcontrol:focus-within{
+        border-color: rgba(37,99,235,.55);
+        box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+    }
+    .mtags{
+        display:flex;
+        gap:6px;
+        flex-wrap:wrap;
+        align-items:center;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .mchip{
+        display:inline-flex;
+        align-items:center;
+        gap:6px;
+        border-radius: 999px;
+        padding: 6px 10px;
+        border: 1px solid var(--chip-border);
+        background: var(--chip-bg);
+        color: var(--chip-text);
+        font-size: 12px;
+        font-weight: 900;
+        max-width: 100%;
+    }
+    .mchip .x{
+        border:none;
+        background: transparent;
+        cursor:pointer;
+        color: var(--chip-text);
+        font-size: 12px;
+        padding: 0;
+        line-height: 1;
+    }
+    .mplaceholder{
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 800;
+        padding-left: 6px;
+    }
+    .mcaret{
+        color: var(--muted);
+        font-size: 14px;
+        padding: 0 6px;
+    }
+
+    .mdrop{
+        position: absolute;
+        margin-top: 8px;
+        width: min(560px, 100%);
+        background:#fff;
+        border:1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: 0 24px 70px rgba(0,0,0,.12);
+        overflow:hidden;
+        display:none;
+        z-index: 9999;
+    }
+    .mdrop.show{ display:block; }
+
+    .mdrop-head{
+        padding: 10px;
+        border-bottom:1px solid var(--border);
+        background:#fbfbfd;
+        display:flex;
+        gap: 8px;
+        align-items:center;
+    }
+    .msearch{
+        width:100%;
+        border:1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 13px;
+        outline:none;
+    }
+    .msearch:focus{
+        border-color: rgba(37,99,235,.55);
+        box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+    }
+
+    .moptlist{
+        max-height: 280px;
+        overflow:auto;
+        padding: 6px;
+    }
+    .mopt{
+        display:flex;
+        align-items:center;
+        gap:10px;
+        padding: 10px 10px;
+        border-radius: 12px;
+        cursor:pointer;
+        transition:.12s ease;
+    }
+    .mopt:hover{
+        background: rgba(37,99,235,.06);
+    }
+    .mopt input{
+        width: 16px;
+        height: 16px;
+        cursor:pointer;
+    }
+    .mopt .name{
+        font-weight: 900;
+        font-size: 13px;
+        color: var(--text);
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow:hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .mopt .sub{
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 800;
+    }
+
+</style>
+
+<div class="page">
+    <div class="header">
+        <div>
+            <h1>Market Units — Updated By Performance</h1>
+        </div>
+    </div>
+
+    <div class="panel">
+
+        <div class="toolbar">
+            <div class="fgroup">
+                <label>Start Date</label>
+                <input class="input" type="date" id="startDate"
+                       value="{{ start_date }}"
+                       data-default="{{ defaults.start_date }}">
+            </div>
+
+            <div class="fgroup">
+                <label>End Date</label>
+                <input class="input" type="date" id="endDate"
+                       value="{{ end_date }}"
+                       data-default="{{ defaults.end_date }}">
+            </div>
+
+            <div class="fgroup" style="min-width:170px;">
+                <label>Granularity</label>
+                <select class="select" id="granularity" data-default="{{ defaults.granularity }}">
+                    <option value="day" {% if granularity == "day" %}selected{% endif %}>Day</option>
+                    <option value="week" {% if granularity == "week" %}selected{% endif %}>Week</option>
+                    <option value="month" {% if granularity == "month" %}selected{% endif %}>Month</option>
+                </select>
+            </div>
+
+            <!-- Custom members multi-select -->
+            <div class="fgroup mshell" style="position:relative;">
+                <label>Members (only active in the selected period)</label>
+
+                <div class="mcontrol" id="membersControl" tabindex="0">
+                    <div class="mtags" id="membersTags"></div>
+                    <div class="mcaret"><i class="fa-solid fa-chevron-down"></i></div>
+                </div>
+
+                <div class="mdrop" id="membersDrop">
+                    <div class="mdrop-head">
+                        <input class="msearch" id="membersSearch" placeholder="Search members...">
+                    </div>
+                    <div class="moptlist" id="membersOptions"></div>
+                </div>
+            </div>
+
+            <div class="toolbar-right">
+                <button class="btn btn-ghost" type="button" id="resetBtn">
+                    <i class="fa-solid fa-rotate-left"></i> Reset
+                </button>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-head">
+                    <h2>Activity Over Time</h2>
+                    <span class="badge" id="rangeBadge">{{ start_date }} → {{ end_date }}</span>
+                </div>
+                <div class="card-body">
+                    <canvas id="membersChart" height="110"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">
+                    <h2>KPIs</h2>
+                </div>
+                <div class="card-body">
+                    <div class="kpis">
+                        <div class="kpi">
+                            <div class="t">Members (shown)</div>
+                            <div class="v" id="kpiMembers">{{ totals.members }}</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="t">Touched Units</div>
+                            <div class="v" id="kpiTouched">{{ totals.touched }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-shell">
+            <div class="card">
+                <div class="card-head">
+                    <h2>Member Breakdown</h2>
+                    <span style="font-size:12px;color:var(--muted);font-weight:900;">(Zero members hidden)</span>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="table-scroll">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Updated By</th>
+                                    <th>Touched (in period)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="membersTableBody">
+                                {% for r in summary_rows %}
+                                    <tr>
+                                        <td>{{ r.member }}</td>
+                                        <td>{{ r.touched }}</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr><td colspan="2" style="color:#6b7280;">No data found for this period.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<form id="csrfProvider" style="display:none;">{% csrf_token %}</form>
+
+{{ report_json|json_script:"report-data" }}
+{{ members_options|json_script:"members-options" }}
+{{ selected_members|json_script:"selected-members" }}
+
+<script>
+    const POST_URL = window.location.pathname;
+
+    function getCSRFToken(){
+        const el = document.querySelector('#csrfProvider [name=csrfmiddlewaretoken]');
+        if(el && el.value) return el.value;
+        return document.cookie.split('; ').find(r => r.startsWith('csrftoken='))?.split('=')[1];
+    }
+
+    // Remove buckets where ALL datasets have 0 at that index
+    function pruneZeroBuckets(reportJson){
+        const labels = reportJson?.labels || [];
+        const datasets = reportJson?.datasets || [];
+
+        if(!labels.length || !datasets.length) return reportJson;
+
+        const keepIdx = [];
+        for(let i = 0; i < labels.length; i++){
+            let sum = 0;
+            for(const ds of datasets){
+                const v = Number(ds?.data?.[i] ?? 0);
+                sum += v;
+            }
+            if(sum !== 0) keepIdx.push(i);
+        }
+
+        // If everything is zero -> return empty chart data
+        if(!keepIdx.length){
+            return { labels: [], datasets: [] };
+        }
+
+        const newLabels = keepIdx.map(i => labels[i]);
+        const newDatasets = datasets
+            .map(ds => ({
+                ...ds,
+                data: keepIdx.map(i => Number(ds?.data?.[i] ?? 0)),
+            }))
+            // Extra safety: drop any dataset that becomes all zeros after pruning
+            .filter(ds => (ds.data || []).some(v => Number(v) !== 0));
+
+        return { labels: newLabels, datasets: newDatasets };
+    }
+
+    // ======================
+    // Chart (UPDATED)
+    // ======================
+    let chart = null;
+    function renderChart(reportJson){
+        const pruned = pruneZeroBuckets(reportJson || {labels:[], datasets:[]});
+
+        const ctx = document.getElementById("membersChart");
+        const labels = pruned.labels || [];
+        const datasets = (pruned.datasets || []).map(ds => ({
+            label: ds.label,
+            data: ds.data,
+            tension: 0.25,
+            fill: false
+        }));
+
+        if(chart) chart.destroy();
+
+        chart = new Chart(ctx, {
+            type: "line",
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: "index", intersect: false },
+                plugins: { legend: { position: "bottom" } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+    }
+
+
+    // ======================
+    // Custom Members Multi-Select
+    // ======================
+    const membersControl = document.getElementById("membersControl");
+    const membersDrop = document.getElementById("membersDrop");
+    const membersTags = document.getElementById("membersTags");
+    const membersOptionsBox = document.getElementById("membersOptions");
+    const membersSearch = document.getElementById("membersSearch");
+
+    let MEMBERS_OPTIONS = JSON.parse(document.getElementById("members-options").textContent || "[]");
+    let SELECTED_MEMBERS = JSON.parse(document.getElementById("selected-members").textContent || "[]");
+
+    function openMembers(){
+        membersDrop.classList.add("show");
+        setTimeout(() => membersSearch.focus(), 0);
+    }
+    function closeMembers(){
+        membersDrop.classList.remove("show");
+        membersSearch.value = "";
+        renderMembersOptions();
+    }
+
+    membersControl.addEventListener("click", () => {
+        if(membersDrop.classList.contains("show")) closeMembers();
+        else openMembers();
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if(e.key === "Escape") closeMembers();
+    });
+
+    document.addEventListener("click", (e) => {
+        if(!membersControl.contains(e.target) && !membersDrop.contains(e.target)){
+            closeMembers();
+        }
+    });
+
+    membersSearch.addEventListener("input", renderMembersOptions);
+
+    function toggleMember(member){
+        const i = SELECTED_MEMBERS.indexOf(member);
+        if(i >= 0) SELECTED_MEMBERS.splice(i, 1);
+        else SELECTED_MEMBERS.push(member);
+
+        renderMembersTags();
+        renderMembersOptions();
+        scheduleRefresh();
+    }
+
+    function removeMember(member){
+        SELECTED_MEMBERS = SELECTED_MEMBERS.filter(x => x !== member);
+        renderMembersTags();
+        renderMembersOptions();
+        scheduleRefresh();
+    }
+
+    function renderMembersTags(){
+        membersTags.innerHTML = "";
+
+        if(!SELECTED_MEMBERS.length){
+            const ph = document.createElement("div");
+            ph.className = "mplaceholder";
+            ph.textContent = "All active members (top shown in chart)";
+            membersTags.appendChild(ph);
+            return;
+        }
+
+        SELECTED_MEMBERS.forEach(m => {
+            const chip = document.createElement("div");
+            chip.className = "mchip";
+            chip.innerHTML = `
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;">${escapeHtml(m)}</span>
+                <button class="x" type="button" title="Remove"><i class="fa-solid fa-xmark"></i></button>
+            `;
+            chip.querySelector(".x").addEventListener("click", (ev) => {
+                ev.stopPropagation();
+                removeMember(m);
+            });
+            membersTags.appendChild(chip);
+        });
+    }
+
+    function renderMembersOptions(){
+        const q = (membersSearch.value || "").toLowerCase().trim();
+        const filtered = MEMBERS_OPTIONS.filter(m => m.toLowerCase().includes(q));
+
+        membersOptionsBox.innerHTML = "";
+        if(!filtered.length){
+            membersOptionsBox.innerHTML = `<div style="padding:12px;color:#64748b;font-weight:900;">No matching members</div>`;
+            return;
+        }
+
+        filtered.forEach(m => {
+            const row = document.createElement("div");
+            row.className = "mopt";
+            const checked = SELECTED_MEMBERS.includes(m);
+            row.innerHTML = `
+                <input type="checkbox" ${checked ? "checked" : ""} />
+                <div class="name">${escapeHtml(m)}</div>
+            `;
+            row.addEventListener("click", (ev) => {
+                // allow checkbox click to toggle
+                ev.preventDefault();
+                toggleMember(m);
+            });
+            membersOptionsBox.appendChild(row);
+        });
+    }
+
+    function setMembersOptions(newOptions){
+        MEMBERS_OPTIONS = Array.isArray(newOptions) ? newOptions : [];
+        // Remove selections that no longer exist (requirement: hide zeros)
+        SELECTED_MEMBERS = SELECTED_MEMBERS.filter(m => MEMBERS_OPTIONS.includes(m));
+        renderMembersTags();
+        renderMembersOptions();
+    }
+
+    function escapeHtml(s){
+        return (s ?? "").toString()
+            .replaceAll("&","&amp;")
+            .replaceAll("<","&lt;")
+            .replaceAll(">","&gt;")
+            .replaceAll('"',"&quot;")
+            .replaceAll("'","&#039;");
+    }
+
+    // ======================
+    // AJAX POST Refresh (NO APPLY BUTTON)
+    // ======================
+    let refreshTimer = null;
+
+    function scheduleRefresh(){
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(refreshReport, 250);
+    }
+
+    ["startDate","endDate","granularity"].forEach(id => {
+        const el = document.getElementById(id);
+        if(!el) return;
+        el.addEventListener("change", scheduleRefresh);
+        el.addEventListener("input", () => { if(id !== "granularity") scheduleRefresh(); });
+    });
+
+    async function refreshReport(){
+        const start_date = document.getElementById("startDate").value;
+        const end_date = document.getElementById("endDate").value;
+        const granularity = document.getElementById("granularity").value;
+
+        const body = {
+            start_date,
+            end_date,
+            granularity,
+            members: SELECTED_MEMBERS
+        };
+
+        Swal.fire({
+            title: "Loading...",
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try{
+            const res = await fetch(POST_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken(),
+                    "X-Requested-With": "XMLHttpRequest"
+                },
+                body: JSON.stringify(body)
+            });
+
+            const json = await res.json();
+            if(!json.success){
+                Swal.close();
+                Swal.fire("Error", json.error || "Failed to load report", "error");
+                return;
+            }
+
+            const data = json.data;
+
+            // Update badge
+            document.getElementById("rangeBadge").textContent = `${data.start_date} → ${data.end_date}`;
+
+            // KPIs
+            document.getElementById("kpiMembers").textContent = data.totals?.members ?? 0;
+            document.getElementById("kpiTouched").textContent = data.totals?.touched ?? 0;
+
+            // Table (zero already filtered by backend)
+            const tbody = document.getElementById("membersTableBody");
+            const rows = data.summary_rows || [];
+            if(!rows.length){
+                tbody.innerHTML = `<tr><td colspan="2" style="color:#6b7280;">No data found for this period.</td></tr>`;
+            }else{
+                tbody.innerHTML = rows.map(r => `
+                    <tr>
+                        <td>${escapeHtml(r.member)}</td>
+                        <td>${r.touched ?? 0}</td>
+                    </tr>
+                `).join("");
+            }
+
+            // Members options (active only) and selected members cleanup
+            setMembersOptions(data.members_options || []);
+
+            // Chart
+            renderChart(data.report_json || {labels:[], datasets:[]});
+
+            Swal.close();
+
+        }catch(e){
+            Swal.close();
+            Swal.fire("Error", e.message, "error");
+        }
+    }
+
+    // Reset button (no refresh)
+    document.getElementById("resetBtn").addEventListener("click", () => {
+        const s = document.getElementById("startDate");
+        const e = document.getElementById("endDate");
+        const g = document.getElementById("granularity");
+
+        s.value = s.getAttribute("data-default") || "";
+        e.value = e.getAttribute("data-default") || "";
+        g.value = g.getAttribute("data-default") || "day";
+
+        SELECTED_MEMBERS = [];
+        renderMembersTags();
+        renderMembersOptions();
+        scheduleRefresh();
+    });
+
+    // ======================
+    // Init
+    // ======================
+    const INIT_REPORT = JSON.parse(document.getElementById("report-data").textContent || "{}");
+    renderChart(INIT_REPORT);
+
+    renderMembersTags();
+    renderMembersOptions();
+</script>
+
+{% endblock %}

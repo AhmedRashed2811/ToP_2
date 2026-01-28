@@ -1,1304 +1,1494 @@
 {% extends 'ToP/base.html' %}
 {% load static %}
-
-{% block title %}Market Unit Data{% endblock %}
-
+{% block title %}Market Units{% endblock %}
 {% block content %}
-    <h2>Market Unit Data</h2>
 
-    <style>
-        .unit-table-wrapper {
-            overflow-x: auto;
-            margin-top: 1.5rem;
-        }
-    
-        .unit-table {
-            width: auto; /* Changed from 100% to auto */
-            border-collapse: collapse;
-            font-size: 14px;
-            margin-top: 0;
-            table-layout: auto; /* Ensure table layout is auto */
-        }
-    
-        .unit-table th,
-        .unit-table td {
-            border: 1px solid #ccc;
-            padding: 8px 10px;
-            text-align: center !important;
-            vertical-align: middle !important;
-            white-space: nowrap; /* Prevent text wrapping */
-        }
-    
-        .unit-table th {
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            z-index: 2;
-            text-align: center;
-            white-space: nowrap;
-        }
-    
-        .unit-table td[contenteditable="true"] {
-            background-color: #fffdf0;
-            outline: none;
-            cursor: text;
-            text-align: center;
-            padding: 8px 4px;
-        }
-    
-        .unit-table td[contenteditable="true"]:hover {
-            background-color: #fff6d6;
-        }
-    
-        .unit-table tr:nth-child(even) {
-            background-color: #fafafa;
-        }
-    
-        /* Specific column width adjustments */
-        .unit-table th:nth-child(1), /* Actions */
-        .unit-table td:nth-child(1) {
-            width: 1%; /* Minimal width for actions */
-        }
-    
-        .unit-table th:nth-child(2), /* Project Name */
-        .unit-table td:nth-child(2) {
-            min-width: 150px; /* Fixed minimum for dropdown */
-        }
-    
-        .unit-table th:nth-child(3), /* Developer Name */
-        .unit-table td:nth-child(3),
-        .unit-table th:nth-child(4), /* Location */
-        .unit-table td:nth-child(4) {
-            min-width: 120px;
-        }
-    
-        /* Numeric fields - smaller width */
-        .unit-table th:nth-child(7), /* BUA */
-        .unit-table td:nth-child(7),
-        .unit-table th:nth-child(8), /* Land Area */
-        .unit-table td:nth-child(8),
-        .unit-table th:nth-child(9), /* Garden */
-        .unit-table td:nth-child(9),
-        .unit-table th:nth-child(10), /* Unit Price */
-        .unit-table td:nth-child(10),
-        .unit-table th:nth-child(11), /* PSM */
-        .unit-table td:nth-child(11),
-        .unit-table th:nth-child(12), /* Payment Yrs Raw */
-        .unit-table td:nth-child(12),
-        .unit-table th:nth-child(13), /* Payment Yrs */
-        .unit-table td:nth-child(13),
-        .unit-table th:nth-child(14), /* Down Payment */
-        .unit-table td:nth-child(14),
-        .unit-table th:nth-child(15), /* DP % Range */
-        .unit-table td:nth-child(15),
-        .unit-table th:nth-child(16), /* Delivery % */
-        .unit-table td:nth-child(16),
-        .unit-table th:nth-child(17), /* Cash Discount */
-        .unit-table td:nth-child(17),
-        .unit-table th:nth-child(19), /* Maintenance */
-        .unit-table td:nth-child(19),
-        .unit-table th:nth-child(20), /* Phase */
-        .unit-table td:nth-child(20),
-        .unit-table th:nth-child(25), /* Months from Update */
-        .unit-table td:nth-child(25) {
-            min-width: 80px;
-        }
-    
-        /* Date and text fields */
-        .unit-table th:nth-child(18), /* Delivery Date */
-        .unit-table td:nth-child(18),
-        .unit-table th:nth-child(21), /* Date of Update */
-        .unit-table td:nth-child(21),
-        .unit-table th:nth-child(22), /* Updated By */
-        .unit-table td:nth-child(22),
-        .unit-table th:nth-child(23), /* Source of Info */
-        .unit-table td:nth-child(23) {
-            min-width: 100px;
-        }
-    
-        /* Notes field - allow more space */
-        .unit-table th:nth-child(26), /* Notes */
-        .unit-table td:nth-child(26) {
-            min-width: 150px;
-            white-space: normal; /* Allow wrapping for notes */
-        }
-    
-        /* Dropdown specific styles */
-        .select-dropdown {
-            width: 100%;
-            min-width: 120px;
-            padding: 8px 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: white;
-            font-size: 14px;
-            color: #333;
-            cursor: pointer;
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 8px center;
-            background-size: 16px;
-            transition: all 0.2s ease;
-        }
-    
-        /* Make readonly inputs compact */
-        .unit-table input[readonly] {
-            width: 100%;
-            border: none;
-            background: transparent;
-            text-align: center;
-            padding: 8px 4px;
-        }
-    
-        @media (max-width: 768px) {
-            .unit-table {
-                font-size: 12px;
-            }
-            
-            .unit-table th,
-            .unit-table td {
-                padding: 6px 8px;
-            }
-        }
-    
-        /* Rest of your existing styles remain the same */
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #222;
-            color: #fff;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 14px;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: 9999;
-        }
-    
-        .toast.error {
-            background: #d32f2f;
-        }
-    
-        @media (min-width: 1200px) {
-            .container, .container-lg, .container-md, .container-sm, .container-xl {
-                max-width: 1341px;
-            }
-        }
-    
-        @media (max-width: 576px) {
-            .container, .container-sm {
-                max-width: 682px;
-            }
-        }
-    
-        .th-class {
-            background-color: #2393b3;
-            color:white;
-        }
-    
-        .btn {
-            padding: 8px 16px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .btn:hover {
-            background-color: #45a049;
-        }
-        
-        .text-right {
-            text-align: right;
-        }
-        
-        .mt-3 {
-            margin-top: 1rem;
-        }
-    
-        .actions-cell {
-            text-align: center;
-            white-space: nowrap;
-        }
-        
-        .delete-btn {
-            padding: 6px 12px;
-            background-color: #f44336;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .delete-btn:hover {
-            background-color: #d32f2f;
-            transform: translateY(-1px);
-        }
-        
-        .delete-btn i {
-            font-size: 14px;
-        }
-        
-        .confirm-dialog {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s;
-        }
-        
-        .confirm-dialog.active {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .dialog-content {
-            background: white;
-            padding: 25px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-        
-        .dialog-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        
-        .dialog-btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .dialog-btn.cancel {
-            background-color: #e0e0e0;
-        }
-        
-        .dialog-btn.confirm {
-            background-color: #f44336;
-            color: white;
-        }
-    
-        .import-export-actions {
-            margin-bottom: 1rem;
-            display: flex;
-            gap: 10px;
-        }
-    
-        .btn-secondary {
-            background-color: #6c757d;
-        }
-    
-        .btn-secondary:hover {
-            background-color: #5a6268;
-        }
-    
-        .pagination {
-            display: flex;
-            justify-content: center;
-            margin: 20px 0;
-            flex-wrap: wrap;
-        }
-        
-        .pagination a, .pagination span {
-            color: #333;
-            padding: 8px 16px;
-            text-decoration: none;
-            border: 1px solid #ddd;
-            margin: 0 4px;
-            border-radius: 4px;
-            transition: background-color .3s;
-        }
-        
-        .pagination a:hover {
-            background-color: #f5f5f5;
-        }
-        
-        .pagination .current {
-            background-color: #4CAF50;
-            color: white;
-            border: 1px solid #4CAF50;
-        }
-        
-        .pagination a.disabled {
-            color: #aaa;
-            pointer-events: none;
-            cursor: default;
-        }
-        
-        .pagination-info {
-            text-align: center;
-            margin: 10px 0;
-            color: #666;
-        }
-        
-        .page-size-selector {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .page-size-selector label {
-            font-weight: 500;
-        }
-        
-        .page-size-selector select {
-            padding: 6px 10px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-        }
-    </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+<style>
+    /* REQUIRED BY YOU */
+    .container { margin-top: 0; padding: 0; }
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl { max-width: 100%; }
+    }
+    @media (min-width: 576px) { .container, .container-sm { max-width: 100%; } }
+    table{ margin-top: 0; }
 
-    <!-- Add page size selector -->
-    <div class="page-size-selector">
-        <label for="page-size">Items per page:</label>
-        <select id="page-size" onchange="updatePageSize(this.value)">
-            <option value="10" {% if page_size == 10 %}selected{% endif %}>10</option>
-            <option value="25" {% if page_size == 25 %}selected{% endif %}>25</option>
-            <option value="50" {% if page_size == 50 %}selected{% endif %}>50</option>
-            <option value="100" {% if page_size == 100 %}selected{% endif %}>100</option>
-        </select>
+    .modal-backdrop{
+        --bs-backdrop-opacity: 1.5;
+    }
+    th { min-width: 150px; }
+
+    :root{
+        --bg:#f6f7fb;
+        --card:#ffffff;
+        --text:#111827;
+        --muted:#6b7280;
+        --border: rgba(17,24,39,.10);
+        --shadow-sm: 0 10px 22px rgba(17,24,39,.06);
+        --shadow-lg: 0 30px 90px rgba(0,0,0,.25);
+
+        --primary:#2563eb;
+        --primary-2:#1d4ed8;
+
+        --danger:#ef4444;
+        --danger-2:#dc2626;
+
+        --input-bg: rgba(37,99,235,.10);
+        --calc-bg: rgba(17,24,39,.08);
+
+        --radius: 16px;
+    }
+
+    .page{ padding: 18px; margin-top: 80px; }
+
+    .header{
+        display:flex; justify-content:space-between; align-items:flex-start;
+        gap: 12px; margin-bottom: 12px;
+    }
+    .header h1{ margin:0; font-size: 20px; color: var(--text); }
+    .header p{ margin:6px 0 0; color: var(--muted); font-size: 13px; }
+
+    .panel{
+        background: var(--card);
+        border:1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+        overflow:hidden;
+    }
+
+    .toolbar{
+        padding: 12px;
+        border-bottom:1px solid var(--border);
+        display:flex;
+        flex-wrap:wrap;
+        align-items:center;
+        gap: 10px;
+        background: #fbfbfd;
+    }
+
+    .btn{
+        border:none; border-radius: 12px;
+        padding: 10px 12px;
+        font-weight: 900;
+        cursor:pointer;
+        transition: .15s ease;
+        font-size: 13px;
+        display:inline-flex;
+        align-items:center;
+        gap: 8px;
+        white-space:nowrap;
+        user-select:none;
+    }
+    .btn-primary{ background: var(--primary); color:#fff; }
+    .btn-primary:hover{ background: var(--primary-2); }
+    .btn-ghost{ background:#fff; border:1px solid var(--border); color: var(--text); }
+    .btn-ghost:hover{ box-shadow: var(--shadow-sm); }
+    .btn-danger{ background: var(--danger); color:#fff; }
+    .btn-danger:hover{ background: var(--danger-2); }
+
+    .input, .select{
+        border:1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 13px;
+        outline:none;
+        background:#fff;
+        color: var(--text);
+        min-width: 260px;
+        max-width: 480px;
+    }
+    .input:focus, .select:focus{
+        border-color: rgba(37,99,235,.55);
+        box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+    }
+
+    .table-wrap{ overflow:auto; border-top: 1px solid var(--border); }
+
+    table{
+        border-collapse: collapse;
+        background:#fff;
+        table-layout: auto;
+        width: max-content;
+        min-width: 100%;
+    }
+
+    th, td{
+        border-bottom: 1px solid rgba(17,24,39,.08);
+        padding: 10px 12px;
+        text-align:left;
+        font-size: 12px;
+        vertical-align: top;
+        color: var(--text);
+        white-space: nowrap;
+    }
+    th{
+        position: sticky; top: 0; z-index: 3;
+        background: #fbfbfd;
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: .2px;
+    }
+    tr:hover td{ background:#fafafa; }
+
+    .cell-input{
+        width: 100%;
+        min-width: 0;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(37,99,235,.18);
+        background: var(--input-bg);
+        outline:none;
+        font-size: 12px;
+        box-sizing: border-box;
+    }
+    .cell-calc{
+        width: 100%;
+        min-width: 0;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(17,24,39,.14);
+        background: var(--calc-bg);
+        outline:none;
+        font-size: 12px;
+        color: #111827;
+        box-sizing: border-box;
+    }
+    .cell-readonly{
+        background: rgba(17,24,39,.05);
+        border: 1px solid rgba(17,24,39,.12);
+    }
+
+    .trash{
+        border: none; background: transparent;
+        color: var(--danger);
+        cursor:pointer;
+        font-size: 16px;
+        padding: 6px 8px;
+        border-radius: 10px;
+    }
+    .trash:hover{ background: rgba(239,68,68,.08); }
+
+    .pagination{
+        padding: 12px;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap: 10px;
+        flex-wrap:wrap;
+        border-top:1px solid var(--border);
+        background: #fbfbfd;
+    }
+    .pages{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+    .page-btn{
+        border:1px solid var(--border);
+        background:#fff;
+        padding: 7px 10px;
+        border-radius: 10px;
+        cursor:pointer;
+        font-weight:900;
+        font-size: 12px;
+        color: var(--text);
+        user-select:none;
+    }
+    .page-btn:hover{ box-shadow: var(--shadow-sm); }
+    .page-btn.active{ background: var(--primary); color:#fff; border-color: rgba(37,99,235,.25); }
+    .hint{ font-size: 12px; color: var(--muted); }
+
+    /* =========================
+       EXCEL-LIKE FILTER UI IN TH
+       ========================= */
+    .th-wrap{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap: 8px;
+        width: 100%;
+    }
+    .filter-btn{
+        border: 1px solid rgba(17,24,39,.12);
+        background: #ffffff;
+        color: #6b7280;
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        cursor:pointer;
+        flex: 0 0 auto;
+        box-shadow: 0 1px 0 rgba(17,24,39,.03);
+    }
+    .filter-btn:hover{
+        color: #111827;
+        box-shadow: 0 6px 16px rgba(17,24,39,.08);
+    }
+    .filter-btn.active{
+        color: #1d4ed8;
+        border-color: rgba(29,78,216,.28);
+        background: rgba(37,99,235,.08);
+    }
+
+    .filter-pop{
+        position: fixed;
+        z-index: 10000;
+        min-width: 280px;
+        max-width: 340px;
+        max-height: 440px;
+        background: #fff;
+        border: 1px solid rgba(17,24,39,.14);
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.22);
+        overflow:hidden;
+        display:none;
+    }
+    .filter-pop.show{ display:block; }
+
+    .filter-head{
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(17,24,39,.10);
+        background: #fbfbfd;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap: 8px;
+    }
+    .filter-head .title{
+        font-weight: 900;
+        font-size: 12px;
+        color: #111827;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
+    }
+    .filter-head .x{
+        border:none;
+        background: transparent;
+        cursor:pointer;
+        color:#6b7280;
+        padding: 6px 8px;
+        border-radius: 10px;
+    }
+    .filter-head .x:hover{ background: rgba(17,24,39,.06); color:#111827; }
+
+    .filter-body{
+        padding: 10px 12px;
+        display:flex;
+        flex-direction:column;
+        gap: 10px;
+    }
+    .filter-search{
+        width: 100%;
+        border: 1px solid rgba(17,24,39,.12);
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 12px;
+        outline:none;
+    }
+    .filter-search:focus{
+        border-color: rgba(37,99,235,.55);
+        box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+    }
+
+    .filter-actions{
+        display:flex;
+        gap: 8px;
+        flex-wrap:wrap;
+    }
+    .mini-btn{
+        border:1px solid rgba(17,24,39,.12);
+        background:#fff;
+        padding: 7px 9px;
+        border-radius: 10px;
+        cursor:pointer;
+        font-weight: 900;
+        font-size: 11px;
+        color:#111827;
+    }
+    .mini-btn:hover{ box-shadow: 0 10px 22px rgba(17,24,39,.06); }
+
+    .filter-list{
+        border: 1px solid rgba(17,24,39,.10);
+        border-radius: 10px;
+        overflow:auto;
+        max-height: 250px;
+        background:#fff;
+    }
+    .filter-item{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap: 10px;
+        padding: 8px 10px;
+        font-size: 12px;
+        border-bottom: 1px solid rgba(17,24,39,.06);
+    }
+    .filter-item:last-child{ border-bottom:none; }
+    .filter-item:hover{ background: rgba(17,24,39,.03); }
+    .filter-item label{
+        display:flex;
+        align-items:center;
+        gap: 8px;
+        margin:0;
+        cursor:pointer;
+        flex: 1 1 auto;
+        overflow:hidden;
+    }
+    .filter-item .val{
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
+        color:#111827;
+        font-weight: 800;
+    }
+    .filter-item .count{
+        flex: 0 0 auto;
+        color:#6b7280;
+        font-size: 11px;
+        font-weight: 900;
+    }
+
+    .filter-foot{
+        padding: 10px 12px;
+        border-top: 1px solid rgba(17,24,39,.10);
+        background: #fbfbfd;
+        display:flex;
+        justify-content:flex-end;
+        gap: 8px;
+    }
+
+    /* =========================
+       MODAL (Create Unit) — using your required styles
+       ========================= */
+    .modal-backdrop{
+        position: fixed;
+        inset: 0;
+        background: rgba(17,24,39,.58);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        z-index: 9999;
+    }
+    .modal-backdrop.show{ display:flex; }
+
+    .modal-card{
+        width: min(980px, 100%);
+        background: var(--card);
+        border: 1px solid rgba(255,255,255,.15);
+        border-radius: 18px;
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        max-height: 92vh;
+        display:flex;
+        flex-direction: column;
+    }
+
+    .modal-head{
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(180deg, #ffffff 0%, #fbfbfd 100%);
+        display:flex;
+        justify-content: space-between;
+        align-items:center;
+        gap: 10px;
+    }
+    .modal-title{
+        display:flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .modal-head h2{ margin:0; font-size: 16px; color: var(--text); }
+    .modal-head .sub{
+        font-size: 12px;
+        color: var(--muted);
+        margin:0;
+    }
+
+    .modal-close{
+        border:none;
+        background: rgba(17,24,39,.04);
+        font-size: 18px;
+        cursor:pointer;
+        color: var(--muted);
+        padding: 8px 10px;
+        border-radius: 12px;
+        transition: .15s ease;
+        line-height: 1;
+    }
+    .modal-close:hover{ background: rgba(17,24,39,.08); color: #111827; }
+
+    .modal-body{
+        padding: 16px;
+        overflow:auto;
+        background: var(--bg);
+    }
+
+    /* REQUIRED BY YOU */
+    .form-shell{
+        padding: 14px;
+        background:#fff;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(17,24,39,.06);
+    }
+    /* REQUIRED BY YOU */
+    .form-grid{
+        display:flex;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items:flex-start;
+    }
+
+    .fgroup{
+        display:flex;
+        flex-direction:column;
+        gap: 6px;
+        width: 100%;
+    }
+    .col-12{ flex: 0 0 100%; }
+    .col-6{ flex: 0 0 100%; }
+    .col-4{ flex: 0 0 100%; }
+    .col-3{ flex: 0 0 100%; }
+
+    @media (min-width: 900px){
+        .col-6{ flex: 0 0 calc(50% - 12px); }
+        .col-4{ flex: 0 0 calc(33.333% - 12px); }
+        .col-3{ flex: 0 0 calc(25% - 12px); }
+        .col-12{ flex: 0 0 100%; }
+    }
+
+    .fgroup label{
+        display:flex;
+        align-items:center;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 900;
+        letter-spacing: .2px;
+    }
+    .fgroup input, .fgroup select, .fgroup textarea{
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 13px;
+        outline:none;
+        background:#fff;
+        box-sizing: border-box;
+    }
+    .fgroup textarea{ resize: vertical; }
+    .fgroup input:focus, .fgroup select:focus, .fgroup textarea:focus{
+        border-color: rgba(37,99,235,.55);
+        box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+    }
+    .fgroup .readonly{
+        background: rgba(17,24,39,.05);
+    }
+
+    .modal-foot{
+        padding: 14px 16px;
+        border-top: 1px solid var(--border);
+        background: #fbfbfd;
+        display:flex;
+        justify-content: space-between;
+        align-items:center;
+        gap: 10px;
+        flex-wrap:wrap;
+    }
+    .modal-foot .left-hint{
+        color: var(--muted);
+        font-size: 12px;
+    }
+</style>
+
+<div class="page">
+    <div class="header">
+        <div>
+            <h1>Market Unit Data</h1>
+        </div>
     </div>
 
-    <!-- Add this near the top of your content block, before the table -->
-    <div class="import-export-actions">
-        <form id="import-form" enctype="multipart/form-data" style="display: inline-block;">
-            {% csrf_token %}
-            <input type="file" id="csv-file" name="csv_file" accept=".csv" style="display: none;">
-            <button type="button" id="import-btn" class="btn btn-secondary">
-                <i class="fas fa-file-import"></i> Import from CSV
+    <div class="panel">
+        <div class="toolbar">
+            <button class="btn btn-primary" id="addUnitBtn" type="button">
+                <i class="fa-solid fa-plus"></i> Add Unit
             </button>
-        </form>
-    </div>
 
-    <script>
-        // Add this to your script section
-        document.getElementById('import-btn').addEventListener('click', function() {
-            document.getElementById('csv-file').click();
-        });
+            <button class="btn btn-danger" id="clearAllBtn" type="button" title="Delete all units">
+                <i class="fa-solid fa-triangle-exclamation"></i> Clear All
+            </button>
 
-        document.getElementById('csv-file').addEventListener('change', function(e) {
-            if (this.files.length === 0) return;
-            
-            const formData = new FormData(document.getElementById('import-form'));
-            const toast = document.getElementById('toast');
-            
-            fetch("{% url 'import_market_units' %}", {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': getCSRFToken()
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showToast(`✅ Successfully imported ${data.imported_count} units`);
-                    // Reload the page to show new data
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    showToast(`❌ Import failed: ${data.error || 'Unknown error'}`, true);
-                }
-            })
-            .catch(error => {
-                showToast(`❌ Import failed: ${error.message}`, true);
-            });
-        });
-    </script>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <input class="input" id="searchInput" type="text" placeholder="Global search (Developer first, then Project)...">
+                <select class="select" id="pageSizeSelect" style="min-width:140px;">
+                    {% for s in page_size_options %}
+                        <option value="{{ s }}" {% if page_size == s %}selected{% endif %}>{{ s }}/page</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-
-    <!-- Pagination info -->
-    <div class="pagination-info">
-        Showing {{ units.start_index }} to {{ units.end_index }} of {{ units.paginator.count }} entries
-    </div>
-
-
-
-
-    <div class="unit-table-wrapper">
-        <div class="text-right mt-3">
-            <button id="add-new-row" class="btn btn-primary">Add New Row</button>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-left:auto;">
+                <input class="input" id="csvFile" type="file" accept=".csv" style="min-width:260px;">
+                <button class="btn btn-ghost" id="importBtn" type="button">
+                    <i class="fa-solid fa-file-import"></i> Import CSV
+                </button>
+            </div>
         </div>
 
-        <table class="unit-table">
-            <thead>
-                <tr>
-                    <th class="th-class">Actions</th>
-                    <th class="th-class">Project Name</th>
-                    <th style = "background-color: #595959; !important; color:white;">Developer Name</th>
-                    <th style = "background-color: #595959; !important; color:white;">Location</th>
-                    <th class="th-class">Asset Type</th>
-                    <th class="th-class">Unit Type</th>
-                    <th class="th-class">BUA</th>
-                    <th class="th-class">Land Area</th>
-                    <th class="th-class">Garden</th>
-                    <th class="th-class">Unit Price</th>
-                    <th style="background-color: #595959; !important; color:white;">PSM</th>
-                    <th class="th-class">Payment Yrs Raw</th>
-                    <th style="background-color: #595959; !important; color:white;">Payment Yrs</th>
-                    <th class="th-class">Down Payment</th>
-                    <th style="background-color: #595959; !important; color:white;">DP % Range</th>
-                    <th class="th-class">Delivery %</th>
-                    <th class="th-class">Cash Discount</th>
-                    <th class="th-class">Delivery Date</th>
-                    <th class="th-class">Finishing Specs</th>
-                    <th class="th-class">Maintenance</th>
-                    <th class="th-class">Phase</th>
-                    <th style="background-color: #595959; !important; color:white;">Date of Update</th>
-                    <th style="background-color: #595959; !important; color:white;">Updated By</th>
-                    <th class="th-class">Source of Info</th>
-                    <th style="background-color: #595959; !important; color:white;">Months from Update</th>
-                    <th class="th-class">Notes</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for unit in units %}
-                <tr>
-                    <td class="actions-cell">
-                        <button class="delete-btn" data-id="{{ unit.id }}" onclick="confirmDelete(this)">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    </td>
+        <div class="table-wrap">
+            <table id="unitsTable">
+                <thead>
+                    <tr id="unitsHeaderRow">
+                        <th data-field="_actions" style="min-width: 5px;">Actions</th>
+                        <th data-field="project_name">Project</th>
+                        <th data-field="developer_name">Developer</th>
+                        <th data-field="location">Location</th>
+                        <th data-field="asset_type">Asset Type</th>
+                        <th data-field="unit_type">Unit Type</th>
+                        <th data-field="offering">Offering</th>
+                        <th data-field="finishing_specs">Finishing</th>
+                        <th data-field="bua">BUA</th>
+                        <th data-field="land_area">Land</th>
+                        <th data-field="garden">Garden</th>
+                        <th data-field="unit_price">Unit Price</th>
+                        <th data-field="psm">PSM</th>
+                        <th data-field="payment_yrs_raw">Payment yrs raw</th>
+                        <th data-field="payment_yrs">Payment yrs</th>
+                        <th data-field="down_payment">Down Payment</th>
+                        <th data-field="delivery_percentage">Delivery %</th>
+                        <th data-field="cash_discount">Cash Discount</th>
+                        <th data-field="delivery_date">Delivery Date</th>
+                        <th data-field="maintenance">Maintenance</th>
+                        <th data-field="phase">Phase</th>
+                        <th data-field="date_of_update">Date of Update</th>
+                        <th data-field="months_from_update">Months From Update</th>
+                        <th data-field="updated_by">Updated By</th>
+                        <th data-field="source_of_info">Source</th>
+                        <th data-field="dp_percentage">DP %</th>
+                        <th data-field="notes">Notes</th>
+                    </tr>
+                </thead>
 
-                    <td>
-                        <select class="select-dropdown" onchange="handleProjectChange(this)" data-id="{{ unit.id }}" data-field="project_name">
-                            <option value="">-- Select Project --</option>
-                            {% for project in projects %}
-                                <option value="{{ project.name }}" data-developer="{{ project.developer.name }}" data-location="{{ project.location.name }}"
-                                    {% if unit.project_name == project.name %}selected{% endif %}>
-                                    {{ project.name }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </td>
-                    
-                    <td><input type="text" readonly value="{{ unit.developer_name|default:'' }}" data-id="{{ unit.id }}" data-field="developer_name" /></td>
-                    <td><input type="text" readonly value="{{ unit.location|default:'' }}" data-id="{{ unit.id }}" data-field="location" /></td>
-
-                    <!-- Asset Type -->
-                    <td>
-                        <select class="select-dropdown" onchange="updateDropdown(this)" data-id="{{ unit.id }}" data-field="asset_type">
-                            <option value="">-- Select --</option>
-                            {% for at in asset_types %}
-                                <option value="{{ at.name }}" {% if unit.asset_type == at.name %}selected{% endif %}>{{ at.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
-
-                    <!-- Unit Type -->
-                    <td>
-                        <select class="select-dropdown" onchange="updateDropdown(this)" data-id="{{ unit.id }}" data-field="unit_type">
-                            <option value="">-- Select --</option>
-                            {% for ut in unit_types %}
-                                <option value="{{ ut.name }}" {% if unit.unit_type == ut.name %}selected{% endif %}>{{ ut.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
-                    <td contenteditable="true" data-id="{{ unit.id }}" data-field="bua" onblur="updateCell(this)">{{ unit.bua|default:"" }}</td>
-                    <td contenteditable="true" data-id="{{ unit.id }}" data-field="land_area" onblur="updateCell(this)">{{ unit.land_area|default:"" }}</td>
-                    <td contenteditable="true" data-id="{{ unit.id }}" data-field="garden" onblur="updateCell(this)">{{ unit.garden|default:"" }}</td>
-                    <td contenteditable="true" data-id="{{ unit.id }}" data-field="unit_price" onblur="updateCell(this)">{{ unit.unit_price|default:"" }}</td>
-                    <td contenteditable="false" data-id="{{ unit.id }}" data-field="psm" onblur="updateCell(this)">{{ unit.psm|default:"" }}</td>
-                    <td contenteditable="true" data-id="{{ unit.id }}" data-field="payment_yrs_raw" onblur="updateCell(this)">{{ unit.payment_yrs_raw|default:"" }}</td>
-                    <td contenteditable="false" data-id="{{ unit.id }}" data-field="payment_yrs" onblur="updateCell(this)">{{ unit.payment_yrs|default:"" }}</td>
-                    <td contenteditable="true" data-id="{{ unit.id }}" data-field="down_payment" onblur="updateCell(this)">{{ unit.down_payment|default:"" }}</td>
-                    <td contenteditable="false" data-id="{{ unit.id }}" data-field="dp_percentage" onblur="updateCell(this)">{{ unit.dp_percentage|default:"" }}</td>
-                    <td contenteditable="true" data-id="{{ unit.id }}" data-field="delivery_percentage" onblur="updateCell(this)">{{ unit.delivery_percentage|default:"" }}</td>
-                    <td contenteditable="true" data-id="{{ unit.id }}" data-field="cash_discount" onblur="updateCell(this)">{{ unit.cash_discount|default:"" }}</td>
-                    <td contenteditable="true" data-id="{{ unit.id }}" data-field="delivery_date" onblur="updateCell(this)">{{ unit.delivery_date|default:"" }}</td>
-                    
-                    <!-- Finishing Specs -->
-                    <td>
-                        <select class="select-dropdown" onchange="updateDropdown(this)" data-id="{{ unit.id }}" data-field="finishing_specs">
-                            <option value="">-- Select --</option>
-                            {% for fs in finishing_specs %}
-                                <option value="{{ fs.name }}" {% if unit.finishing_specs == fs.name %}selected{% endif %}>{{ fs.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>                
-                    <td contenteditable="true" data-id="{{ unit.id }}" data-field="maintenance" onblur="updateCell(this)">{{ unit.maintenance|default:"" }}</td>
-                    <td contenteditable="true" data-id="{{ unit.id }}" data-field="phase" onblur="updateCell(this)">{{ unit.phase|default:"" }}</td>
-                    <td contenteditable="false" data-id="{{ unit.id }}" data-field="date_of_update" onblur="updateCell(this)">{{ unit.date_of_update|date:"M/y"|default:"" }}</td>
-                    <td contenteditable="false" data-id="{{ unit.id }}" data-field="updated_by" onblur="updateCell(this)">{{ unit.updated_by|default:"" }}</td>
-                    <td contenteditable="true" data-id="{{ unit.id }}" data-field="source_of_info" onblur="updateCell(this)">{{ unit.source_of_info|default:"" }}</td>
-                    <td contenteditable="false" data-id="{{ unit.id }}" data-field="months_from_update" onblur="updateCell(this)">
-                        {% if unit.months_from_update == 0 %}-{% else %}{{ unit.months_from_update|default:"" }}{% endif %}
-                    </td>                
-                    <td contenteditable="true" data-id="{{ unit.id }}" data-field="notes" onblur="updateCell(this)">{{ unit.notes|default:"" }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td class="actions-cell">
-                        <button class="delete-btn" data-id="" onclick="confirmDelete(this)">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    </td>
-
-                    <td>
-                        <select class="select-dropdown" onchange="handleProjectChange(this)" data-id="" data-field="project_name">
-                            <option value="">-- Select Project --</option>
-                            {% for project in projects %}
-                                <option value="{{ project.name }}" data-developer="{{ project.developer.name }}" data-location="{{ project.location.name }}">
-                                    {{ project.name }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </td>
-                    <td><input type="text" readonly value="" data-id="" data-field="developer_name" /></td>
-                    <td><input type="text" readonly value="" data-id="" data-field="location" /></td>
-
-                    <td>
-                        <select class="select-dropdown" onchange="updateDropdown(this)" data-id="" data-field="asset_type">
-                            <option value="">-- Select --</option>
-                            {% for at in asset_types %}
-                                <option value="{{ at.name }}">{{ at.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
-
-                    <td>
-                        <select class="select-dropdown" onchange="updateDropdown(this)" data-id="" data-field="unit_type">
-                            <option value="">-- Select --</option>
-                            {% for ut in unit_types %}
-                                <option value="{{ ut.name }}">{{ ut.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
-
-                    <td contenteditable="true" data-id="" data-field="bua" onblur="updateCell(this)"></td>
-                    <td contenteditable="true" data-id="" data-field="land_area" onblur="updateCell(this)"></td>
-                    <td contenteditable="true" data-id="" data-field="garden" onblur="updateCell(this)"></td>
-                    <td contenteditable="true" data-id="" data-field="unit_price" onblur="updateCell(this)"></td>
-                    <td contenteditable="false" data-id="" data-field="psm" onblur="updateCell(this)"></td>
-                    <td contenteditable="true" data-id="" data-field="payment_yrs_raw" onblur="updateCell(this)"></td>
-                    <td contenteditable="false" data-id="" data-field="payment_yrs" onblur="updateCell(this)"></td>
-                    <td contenteditable="true" data-id="" data-field="down_payment" onblur="updateCell(this)"></td>
-                    <td contenteditable="false" data-id="" data-field="dp_percentage" onblur="updateCell(this)"></td>
-                    <td contenteditable="true" data-id="" data-field="delivery_percentage" onblur="updateCell(this)"></td>
-                    <td contenteditable="true" data-id="" data-field="cash_discount" onblur="updateCell(this)"></td>
-                    <td contenteditable="true" data-id="" data-field="delivery_date" onblur="updateCell(this)"></td>
-
-                    <td>
-                        <select class="select-dropdown" onchange="updateDropdown(this)" data-id="" data-field="finishing_specs">
-                            <option value="">-- Select --</option>
-                            {% for fs in finishing_specs %}
-                                <option value="{{ fs.name }}">{{ fs.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
-
-                    <td contenteditable="true" data-id="" data-field="maintenance" onblur="updateCell(this)"></td>
-                    <td contenteditable="true" data-id="" data-field="phase" onblur="updateCell(this)"></td>
-                    <td contenteditable="false" data-id="" data-field="date_of_update" onblur="updateCell(this)"></td>
-                    <td contenteditable="false" data-id="" data-field="updated_by" onblur="updateCell(this)"></td>
-                    <td contenteditable="true" data-id="" data-field="source_of_info" onblur="updateCell(this)"></td>
-                    <td contenteditable="false" data-id="" data-field="months_from_update" onblur="updateCell(this)"></td>
-                    <td contenteditable="true" data-id="" data-field="notes" onblur="updateCell(this)"></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <!-- Pagination controls -->
-        <div class="pagination">
-            {% if units.has_previous %}
-                <a href="?page=1&page_size={{ page_size }}">&laquo; First</a>
-                <a href="?page={{ units.previous_page_number }}&page_size={{ page_size }}">Previous</a>
-            {% else %}
-                <span class="disabled">&laquo; First</span>
-                <span class="disabled">Previous</span>
-            {% endif %}
-            
-            {% for num in units.paginator.page_range %}
-                {% if units.number == num %}
-                    <span class="current">{{ num }}</span>
-                {% elif num > units.number|add:'-3' and num < units.number|add:'3' %}
-                    <a href="?page={{ num }}&page_size={{ page_size }}">{{ num }}</a>
-                {% endif %}
-            {% endfor %}
-            
-            {% if units.has_next %}
-                <a href="?page={{ units.next_page_number }}&page_size={{ page_size }}">Next</a>
-                <a href="?page={{ units.paginator.num_pages }}&page_size={{ page_size }}">Last &raquo;</a>
-            {% else %}
-                <span class="disabled">Next</span>
-                <span class="disabled">Last &raquo;</span>
-            {% endif %}
+                <tbody id="rowsTbody">
+                    {% include "ToP/partials/market_unit_data_rows.html" %}
+                </tbody>
+            </table>
         </div>
 
-
-        <script>
-
-            function formatNumber(num) {
-                if (num === null || num === undefined || num === '') return '-';
-                
-                // Convert to number if it's a string
-                const numValue = typeof num === 'string' ? parseFloat(num.replace(/,/g, '')) : num;
-                
-                // Return formatted number or '-' if invalid
-                return isNaN(numValue) ? '-' : Math.round(numValue).toLocaleString('en-US');
-            }
-            
-            // Pagination functionality
-            document.addEventListener('DOMContentLoaded', function() {
-                // Handle page size changes
-                const pageSizeSelect = document.getElementById('page-size');
-                if (pageSizeSelect) {
-                    pageSizeSelect.addEventListener('change', function() {
-                        updatePageSize(this.value);
-                    });
-                }
-        
-                // Initialize pagination controls
-                setupPagination();
-            });
-        
-            // Update page size and reload
-            function updatePageSize(size) {
-                const url = new URL(window.location.href);
-                url.searchParams.set('page_size', size);
-                url.searchParams.set('page', '1'); // Reset to first page
-                window.location.href = url.toString();
-            }
-        
-            // Setup pagination event listeners and UI
-            function setupPagination() {
-                const paginationLinks = document.querySelectorAll('.pagination a');
-                
-                paginationLinks.forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        
-                        // Get the target page from the href
-                        const targetUrl = new URL(this.href);
-                        const targetPage = targetUrl.searchParams.get('page');
-                        const currentPageSize = getCurrentPageSize();
-                        
-                        // Navigate to the target page with current page size
-                        navigateToPage(targetPage, currentPageSize);
-                    });
-                });
-            }
-        
-            // Get current page size from URL or default to 25
-            function getCurrentPageSize() {
-                const urlParams = new URLSearchParams(window.location.search);
-                return urlParams.get('page_size') || 25;
-            }
-        
-            // Navigate to specific page while maintaining current page size
-            function navigateToPage(page, pageSize) {
-                const url = new URL(window.location.href);
-                url.searchParams.set('page', page);
-                url.searchParams.set('page_size', pageSize);
-                window.location.href = url.toString();
-            }
-        
-            // Helper function to reload the current page with updated pagination
-            function reloadWithPagination(page, pageSize) {
-                navigateToPage(page || 1, pageSize || getCurrentPageSize());
-            }
-        
-            // After adding a new record, determine if we should stay on current page or go to last page
-            function handlePostAddPagination(totalRecords, pageSize) {
-                const currentPage = new URLSearchParams(window.location.search).get('page') || 1;
-                const totalPages = Math.ceil(totalRecords / pageSize);
-                
-                // If new record would appear on current page, stay
-                // Otherwise go to last page where the new record appears
-                if (currentPage < totalPages) {
-                    reloadWithPagination(totalPages, pageSize);
-                } else {
-                    reloadWithPagination(currentPage, pageSize);
-                }
-            }
-        
-            // After deleting a record, handle pagination
-            function handlePostDeletePagination(currentPage, remainingRecords, pageSize) {
-                const totalPages = Math.ceil(remainingRecords / pageSize);
-                
-                // If current page is empty after deletion and not first page, go to previous page
-                if (remainingRecords > 0 && currentPage > totalPages) {
-                    reloadWithPagination(Math.max(1, currentPage - 1), pageSize);
-                } else {
-                    reloadWithPagination(currentPage, pageSize);
-                }
-            }
-        </script>
-
-        
-        <div class="text-right mt-3">
-            <button id="add-new-row" class="btn btn-primary">Add New Row</button>
+        <div id="paginationBox">
+            {% include "ToP/partials/market_unit_data_pagination.html" %}
         </div>
-
     </div>
+</div>
 
-    <div id="toast" class="toast"></div>
+<form id="csrfProvider" style="display:none;">{% csrf_token %}</form>
 
-    <div id="confirm-dialog" class="confirm-dialog">
-        <div class="dialog-content">
-            <h3>Confirm Deletion</h3>
-            <p>Are you sure you want to delete this record? This action cannot be undone.</p>
-            <div class="dialog-actions">
-                <button class="dialog-btn cancel" onclick="closeDialog()">Cancel</button>
-                <button class="dialog-btn confirm" id="confirm-delete-btn">Delete</button>
+<!-- Filter popup (single global instance) -->
+<div class="filter-pop" id="filterPop" aria-hidden="true">
+    <div class="filter-head">
+        <div class="title" id="filterTitle">Filter</div>
+        <button class="x" type="button" id="filterCloseBtn" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+    <div class="filter-body">
+        <input class="filter-search" id="filterSearch" type="text" placeholder="Search values...">
+
+        <div class="filter-actions">
+            <button class="mini-btn" type="button" id="filterSelectAll">Select All</button>
+            <button class="mini-btn" type="button" id="filterClear">Clear</button>
+        </div>
+
+        <div class="filter-list" id="filterList"></div>
+    </div>
+    <div class="filter-foot">
+        <button class="mini-btn" type="button" id="filterCancel">Cancel</button>
+        <button class="mini-btn" type="button" id="filterApply" style="border-color: rgba(29,78,216,.28); background: rgba(37,99,235,.08); color:#1d4ed8;">
+            Apply
+        </button>
+    </div>
+</div>
+
+<!-- =========================
+     CREATE UNIT MODAL
+     ========================= -->
+<div class="modal-backdrop" id="createModalBackdrop" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="createUnitTitle">
+        <div class="modal-head">
+            <div class="modal-title">
+                <h2 id="createUnitTitle">Add Market Unit</h2>
+                <p class="sub">Date of Update defaults to today. Press ESC or click outside to close.</p>
+            </div>
+            <button class="modal-close" id="closeModalBtn" type="button" title="Close (Esc)">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <div class="form-shell">
+                <form id="createUnitForm">
+                    <div class="form-grid">
+
+                        <div class="fgroup col-6">
+                            <label>Project <span style="color:#ef4444;">*</span></label>
+                            <select name="project_name" id="modalProjectSelect" required>
+                                <option value="">Select</option>
+                                {% for p in projects %}
+                                    <option value="{{ p.id }}"
+                                            data-dev="{{ p.developer.name|default_if_none:'' }}"
+                                            data-loc="{{ p.location.name|default_if_none:'' }}">
+                                        {{ p.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="fgroup col-3">
+                            <label>Developer</label>
+                            <input name="developer_name" id="modalDeveloper" class="readonly" readonly>
+                        </div>
+
+                        <div class="fgroup col-3">
+                            <label>Location</label>
+                            <input name="location" id="modalLocation" class="readonly" readonly>
+                        </div>
+
+                        <div class="fgroup col-4">
+                            <label>Asset Type</label>
+                            <select name="asset_type">
+                                <option value="">Select</option>
+                                {% for a in asset_types %}
+                                    <option value="{{ a.name }}">{{ a.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="fgroup col-4">
+                            <label>Unit Type <span style="color:#ef4444;">*</span></label>
+                            <select name="unit_type" required>
+                                <option value="">Select</option>
+                                {% for t in unit_types %}
+                                    <option value="{{ t.name }}">{{ t.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="fgroup col-4"><label>Offering</label><input name="offering"></div>
+
+
+                        <div class="fgroup col-4">
+                            <label>Finishing Specs</label>
+                            <select name="finishing_specs">
+                                <option value="">Select</option>
+                                {% for f in finishing_specs %}
+                                    <option value="{{ f.name }}">{{ f.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="fgroup col-3"><label>BUA</label><input name="bua" type="number" step="any"></div>
+                        <div class="fgroup col-3"><label>Land Area</label><input name="land_area" type="number" step="any"></div>
+                        <div class="fgroup col-3"><label>Garden</label><input name="garden" type="number" step="any"></div>
+                        <div class="fgroup col-3"><label>Unit Price</label><input name="unit_price" type="number" step="any"></div>
+
+                        <div class="fgroup col-4"><label>Payment yrs raw</label><input name="payment_yrs_raw"></div>
+                        <div class="fgroup col-4"><label>Down Payment</label><input name="down_payment" type="number" step="any"></div>
+                        <div class="fgroup col-4"><label>Delivery %</label><input name="delivery_percentage" type="number" step="any"></div>
+
+                        <div class="fgroup col-4"><label>Cash Discount</label><input name="cash_discount" type="number" step="any"></div>
+                        <div class="fgroup col-4"><label>Delivery Date</label><input name="delivery_date"></div>
+                        <div class="fgroup col-4"><label>Maintenance</label><input name="maintenance" type="number" step="any"></div>
+
+                        <div class="fgroup col-3"><label>Phase</label><input name="phase" type="number" step="any"></div>
+
+                        <div class="fgroup col-3">
+                            <label>Date of Update</label>
+                            <input name="date_of_update" id="modalDateOfUpdate" type="date">
+                        </div>
+
+                        <div class="fgroup col-6"><label>Source of Info</label><input name="source_of_info"></div>
+
+                        <div class="fgroup col-3"><label>DP %</label><input name="dp_percentage"></div>
+                        <div class="fgroup col-9"><label>Notes</label><textarea name="notes" rows="2"></textarea></div>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="modal-foot">
+            <div class="left-hint">Fields marked with <span style="color:#ef4444; font-weight:900;">*</span> are required.</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+                <button class="btn btn-ghost" type="button" id="cancelModalBtn">Cancel</button>
+                <button class="btn btn-primary" type="button" id="submitCreateBtn">
+                    <i class="fa-solid fa-circle-plus"></i> Add
+                </button>
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        // Field validation rules
-        const validationRules = {
-            'bua': value => !isNaN(parseFloat(value)) || value === '',
-            'land_area': value => !isNaN(parseFloat(value)) || value === '',
-            'garden': value => !isNaN(parseFloat(value)) || value === '',
-            'unit_price': value => !isNaN(parseFloat(value)) || value === '',
-            'psm': value => !isNaN(parseFloat(value)) || value === '',
-            'down_payment': value => !isNaN(parseFloat(value)) || value === '',
-            'delivery_percentage': value => !isNaN(parseFloat(value)) || value === '',
-            'cash_discount': value => !isNaN(parseFloat(value)) || value === '',
-            'maintenance': value => !isNaN(parseFloat(value)) || value === '',
-            'phase': value => !isNaN(parseFloat(value)) || value === '',
-            'months_from_update': value => !isNaN(parseInt(value)) || value === '',
-            
-            'date_of_update': value => {
-                if (value === '') return true;
-                // Simple date format validation (YYYY-MM-DD)
-                return /^\d{4}-\d{2}-\d{2}$/.test(value) || 
-                    /^\d{2}\/\d{2}\/\d{4}$/.test(value) ||
-                    /^\d{2}-\d{2}-\d{4}$/.test(value);
+<script>
+    const LIST_URL   = "{% url 'market_unit_data_list' %}";
+    const UPDATE_URL = "{% url 'update_market_unit_field' %}";
+    const CREATE_URL = "{% url 'create_market_unit' %}";
+    const DELETE_URL = "{% url 'delete_market_unit' %}";
+    const IMPORT_URL = "{% url 'import_market_units' %}";
+    const CLEAR_ALL_URL = "{% url 'clear_all_market_units' %}";
+
+    const tableEl = document.getElementById("unitsTable");
+    const tbodyEl = document.getElementById("rowsTbody");
+
+    // Column field map (must match the row inputs/selects data-field used in partial)
+    const HEADER_FIELDS = Array.from(document.querySelectorAll("#unitsHeaderRow th")).map(th => th.dataset.field || "");
+
+    // Filters state: { field: Set(values) }
+    const activeFilters = {};
+    let currentGlobalQuery = "";
+
+    // Filter popup state
+    const filterPop = document.getElementById("filterPop");
+    const filterTitle = document.getElementById("filterTitle");
+    const filterList = document.getElementById("filterList");
+    const filterSearch = document.getElementById("filterSearch");
+    let filterTargetField = null;
+    let filterAnchorBtn = null;
+
+    function getCSRFToken(){
+        const el = document.querySelector('#csrfProvider [name=csrfmiddlewaretoken]');
+        if(el && el.value) return el.value;
+        return document.cookie.split('; ').find(r => r.startsWith('csrftoken='))?.split('=')[1];
+    }
+
+    // =========================
+    // Date helpers + Months calc (always on load)
+    // =========================
+    function todayISO(){
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth()+1).padStart(2,"0");
+        const day = String(d.getDate()).padStart(2,"0");
+        return `${y}-${m}-${day}`;
+    }
+
+    // months_from_update = TEXT(MIN(12,ROUND((TODAY()-date)/365.25*12,0)),"00")
+    function calcMonthsFromUpdate(dateStr){
+        if(!dateStr) return "";
+        const d = new Date(dateStr + "T00:00:00");
+        if(isNaN(d.getTime())) return "";
+        const now = new Date();
+        const diffMs = now.getTime() - d.getTime();
+        const diffDays = diffMs / (1000*60*60*24);
+        let months = Math.round((diffDays / 365.25) * 12);
+        months = Math.min(12, Math.max(0, months));
+        return String(months).padStart(2, "0");
+    }
+
+    function refreshMonthsFromUpdateOnPage(){
+        document.querySelectorAll("#rowsTbody tr").forEach(tr => {
+            const dateInp = tr.querySelector("[data-field='date_of_update']");
+            const monthsInp = tr.querySelector("[data-field='months_from_update']");
+            if(!monthsInp) return;
+
+            const dateVal = (dateInp && dateInp.value) ? dateInp.value.trim() : "";
+            monthsInp.value = calcMonthsFromUpdate(dateVal);
+        });
+    }
+
+    // =========================
+    // Sorting (current page) by date_of_update desc
+    // =========================
+    function sortRowsByDateDesc(){
+        const rows = Array.from(tbodyEl.querySelectorAll("tr"));
+        rows.sort((a, b) => {
+            const ad = a.querySelector("[data-field='date_of_update']")?.value || "";
+            const bd = b.querySelector("[data-field='date_of_update']")?.value || "";
+            // empty dates go last
+            if(!ad && !bd) return 0;
+            if(!ad) return 1;
+            if(!bd) return -1;
+            return bd.localeCompare(ad);
+        });
+        rows.forEach(r => tbodyEl.appendChild(r));
+    }
+
+    // =========================
+    // AJAX pagination
+    // =========================
+    async function fetchPage(page){
+        const pageSize = document.getElementById("pageSizeSelect").value;
+        const url = `${LIST_URL}?ajax=1&page=${page}&page_size=${pageSize}`;
+        const res = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+        const data = await res.json();
+        if(!data.success){
+            Swal.fire("Error", data.error || "Failed to load page", "error");
+            return;
+        }
+        tbodyEl.innerHTML = data.rows_html;
+        document.getElementById("paginationBox").innerHTML = data.pagination_html;
+
+        // Always enforce:
+        // - months computed on load (not static)
+        // - sort by date desc (page view)
+        refreshMonthsFromUpdateOnPage();
+        sortRowsByDateDesc();
+
+        bindRowEvents();
+        bindPaginationEvents();
+        installHeaderFilters();   // rebuild filter buttons each load
+        applyAllFiltering();      // reapply global + column filters
+    }
+
+    function bindPaginationEvents(){
+        document.querySelectorAll("[data-page-btn]").forEach(btn => {
+            btn.addEventListener("click", () => fetchPage(btn.getAttribute("data-page")));
+        });
+    }
+    document.getElementById("pageSizeSelect").addEventListener("change", () => fetchPage(1));
+
+    // =========================
+    // Global search (Developer first, then Project)
+    // =========================
+    const searchInputEl = document.getElementById("searchInput");
+    searchInputEl.addEventListener("input", () => {
+        currentGlobalQuery = (searchInputEl.value || "").trim().toLowerCase();
+        applyAllFiltering();
+    });
+
+    function rowValue(tr, field){
+        // project_name is a select: use selected option text
+        if(field === "project_name"){
+            const sel = tr.querySelector("select[data-field='project_name']");
+            return (sel?.selectedOptions?.[0]?.textContent || "").trim();
+        }
+
+        // selects use selected option text
+        const sel = tr.querySelector(`select[data-field='${field}']`);
+        if(sel){
+            return (sel.selectedOptions?.[0]?.textContent || "").trim();
+        }
+
+        // inputs/textarea use value
+        const inp = tr.querySelector(`[data-field='${field}']`);
+        if(inp){
+            return (inp.value || "").trim();
+        }
+
+        return "";
+    }
+
+    function globalMatch(tr){
+        const q = currentGlobalQuery;
+        if(!q) return true;
+
+        const dev = (rowValue(tr, "developer_name") || "").toLowerCase();
+        if(dev.includes(q)) return true;
+
+        const proj = (rowValue(tr, "project_name") || "").toLowerCase();
+        return proj.includes(q);
+    }
+
+    function filtersMatch(tr){
+        for(const field in activeFilters){
+            const set = activeFilters[field];
+            if(!set || set.size === 0) continue;
+            const v = rowValue(tr, field);
+            if(!set.has(v)) return false;
+        }
+        return true;
+    }
+
+    function applyAllFiltering(){
+        // Always compute months before filtering (so visible values are correct)
+        refreshMonthsFromUpdateOnPage();
+
+        // Keep sorted view
+        sortRowsByDateDesc();
+
+        document.querySelectorAll("#rowsTbody tr").forEach(tr => {
+            const ok = globalMatch(tr) && filtersMatch(tr);
+            tr.style.display = ok ? "" : "none";
+        });
+
+        // Update filter buttons "active" state
+        document.querySelectorAll(".filter-btn").forEach(btn => {
+            const f = btn.getAttribute("data-filter-field");
+            const set = activeFilters[f];
+            btn.classList.toggle("active", !!(set && set.size));
+        });
+    }
+
+    // =========================
+    // Excel-like Filters (dependent)
+    // =========================
+    function installHeaderFilters(){
+        // Wrap header labels + add filter button (except actions)
+        document.querySelectorAll("#unitsHeaderRow th").forEach((th, idx) => {
+            const field = th.dataset.field;
+            if(!field || field === "_actions") return;
+
+            // Already installed?
+            if(th.querySelector(".filter-btn")) return;
+
+            const originalText = th.textContent.trim();
+            th.textContent = "";
+
+            const wrap = document.createElement("div");
+            wrap.className = "th-wrap";
+
+            const label = document.createElement("span");
+            label.textContent = originalText;
+
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "filter-btn";
+            btn.setAttribute("data-filter-field", field);
+            btn.title = "Filter";
+            btn.innerHTML = `<i class="fa-solid fa-filter" style="font-size:11px;"></i>`;
+
+            wrap.appendChild(label);
+            wrap.appendChild(btn);
+            th.appendChild(wrap);
+
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                openFilterPopup(btn, field, originalText);
+            });
+        });
+    }
+
+    function collectVisibleDataset(){
+        // dataset from current page rows (regardless of display state)
+        const rows = Array.from(document.querySelectorAll("#rowsTbody tr"));
+        return rows.map(tr => {
+            const obj = {};
+            HEADER_FIELDS.forEach(f => {
+                if(!f || f === "_actions") return;
+                obj[f] = rowValue(tr, f);
+            });
+            obj.__tr = tr;
+            return obj;
+        });
+    }
+
+    function datasetAfterApplyingFilters(excludingField=null){
+        const data = collectVisibleDataset();
+        return data.filter(r => {
+            // global search
+            if(currentGlobalQuery){
+                const dev = (r.developer_name || "").toLowerCase();
+                const proj = (r.project_name || "").toLowerCase();
+                const q = currentGlobalQuery;
+                if(!(dev.includes(q) || proj.includes(q))) return false;
             }
+
+            // active filters (except the currently opened column)
+            for(const f in activeFilters){
+                if(f === excludingField) continue;
+                const set = activeFilters[f];
+                if(!set || set.size === 0) continue;
+                if(!set.has(r[f] || "")) return false;
+            }
+            return true;
+        });
+    }
+
+    function openFilterPopup(btn, field, titleText){
+        filterTargetField = field;
+        filterAnchorBtn = btn;
+
+        // build allowed values list based on other filters (dependent)
+        const filteredData = datasetAfterApplyingFilters(field);
+
+        // count values
+        const counts = new Map();
+        filteredData.forEach(r => {
+            const v = (r[field] || "");
+            counts.set(v, (counts.get(v) || 0) + 1);
+        });
+
+        // sort values: blanks last, then alpha
+        const values = Array.from(counts.keys()).sort((a,b) => {
+            if(a === "" && b !== "") return 1;
+            if(b === "" && a !== "") return -1;
+            return a.localeCompare(b);
+        });
+
+        // title
+        filterTitle.textContent = `Filter: ${titleText}`;
+
+        // render list
+        const currentSet = activeFilters[field] || new Set();
+        filterList.innerHTML = "";
+        values.forEach(v => {
+            const row = document.createElement("div");
+            row.className = "filter-item";
+
+            const lab = document.createElement("label");
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.value = v;
+            cb.checked = currentSet.has(v);
+
+            const txt = document.createElement("span");
+            txt.className = "val";
+            txt.textContent = v === "" ? "(Blanks)" : v;
+
+            lab.appendChild(cb);
+            lab.appendChild(txt);
+
+            const cnt = document.createElement("span");
+            cnt.className = "count";
+            cnt.textContent = counts.get(v);
+
+            row.appendChild(lab);
+            row.appendChild(cnt);
+
+            filterList.appendChild(row);
+        });
+
+        // reset search
+        filterSearch.value = "";
+        filterSearch.oninput = () => {
+            const q = (filterSearch.value || "").trim().toLowerCase();
+            filterList.querySelectorAll(".filter-item").forEach(it => {
+                const v = it.querySelector(".val")?.textContent?.toLowerCase() || "";
+                it.style.display = v.includes(q) ? "" : "none";
+            });
         };
 
-        function validateField(field, value) {
-            const validator = validationRules[field];
-            if (validator) {
-                return validator(value);
-            }
-            return true; // No validation rule exists for this field
+        // position popup near button
+        const r = btn.getBoundingClientRect();
+        const popW = 320;
+        const left = Math.min(window.innerWidth - popW - 10, Math.max(10, r.left));
+        const top = Math.min(window.innerHeight - 460, r.bottom + 6);
+        filterPop.style.left = left + "px";
+        filterPop.style.top = top + "px";
+
+        filterPop.classList.add("show");
+        filterPop.setAttribute("aria-hidden", "false");
+
+        // focus search
+        setTimeout(() => filterSearch.focus(), 30);
+    }
+
+    function closeFilterPopup(){
+        filterPop.classList.remove("show");
+        filterPop.setAttribute("aria-hidden", "true");
+        filterTargetField = null;
+        filterAnchorBtn = null;
+        filterSearch.value = "";
+        filterList.innerHTML = "";
+    }
+
+    // filter popup controls
+    document.getElementById("filterCloseBtn").addEventListener("click", closeFilterPopup);
+    document.getElementById("filterCancel").addEventListener("click", closeFilterPopup);
+
+    document.getElementById("filterSelectAll").addEventListener("click", () => {
+        filterList.querySelectorAll("input[type='checkbox']").forEach(cb => cb.checked = true);
+    });
+
+    document.getElementById("filterClear").addEventListener("click", () => {
+        filterList.querySelectorAll("input[type='checkbox']").forEach(cb => cb.checked = false);
+    });
+
+    document.getElementById("filterApply").addEventListener("click", () => {
+        if(!filterTargetField) return;
+
+        const selected = new Set();
+        filterList.querySelectorAll("input[type='checkbox']").forEach(cb => {
+            if(cb.checked) selected.add(cb.value);
+        });
+
+        if(selected.size === 0){
+            delete activeFilters[filterTargetField];
+        }else{
+            activeFilters[filterTargetField] = selected;
         }
 
-        function updateCell(cell) {
-            const id = cell.dataset.id;
-            const field = cell.dataset.field;
-            const value = cell.innerText.trim();
-            const originalValue = cell.dataset.originalValue || '';
+        closeFilterPopup();
+        applyAllFiltering();
+    });
 
-            // Skip if value hasn't changed
-            if (value === originalValue) {
+    // close filter popup on outside click / ESC
+    document.addEventListener("click", (e) => {
+        if(!filterPop.classList.contains("show")) return;
+        if(e.target.closest("#filterPop")) return;
+        if(e.target.closest(".filter-btn")) return;
+        closeFilterPopup();
+    });
+    document.addEventListener("keydown", (e) => {
+        if(e.key === "Escape" && filterPop.classList.contains("show")){
+            closeFilterPopup();
+        }
+    });
+
+    // =========================
+    // Modal helpers (Create)
+    // =========================
+    const backdrop = document.getElementById("createModalBackdrop");
+    const closeModalBtn = document.getElementById("closeModalBtn");
+    const cancelModalBtn = document.getElementById("cancelModalBtn");
+    const addUnitBtn = document.getElementById("addUnitBtn");
+    const submitCreateBtn = document.getElementById("submitCreateBtn");
+
+    function openModal(){
+        backdrop.classList.add("show");
+        backdrop.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+
+        // Default date_of_update = today (your requirement)
+        const dateEl = document.getElementById("modalDateOfUpdate");
+        if(dateEl) dateEl.value = todayISO();
+
+        setTimeout(() => document.getElementById("modalProjectSelect").focus(), 50);
+    }
+    function closeModal(){
+        backdrop.classList.remove("show");
+        backdrop.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+        document.getElementById("createUnitForm").reset();
+        document.getElementById("modalDeveloper").value = "";
+        document.getElementById("modalLocation").value = "";
+    }
+
+    addUnitBtn.addEventListener("click", openModal);
+    closeModalBtn.addEventListener("click", closeModal);
+    cancelModalBtn.addEventListener("click", closeModal);
+
+    // close on ESC
+    document.addEventListener("keydown", (e) => {
+        if(e.key === "Escape" && backdrop.classList.contains("show")){
+            closeModal();
+        }
+    });
+
+    // close on outside click
+    backdrop.addEventListener("click", (e) => {
+        if(e.target === backdrop) closeModal();
+    });
+
+    // project -> auto developer/location in modal
+    document.getElementById("modalProjectSelect").addEventListener("change", (e) => {
+        const opt = e.target.selectedOptions[0];
+        document.getElementById("modalDeveloper").value = opt?.getAttribute("data-dev") || "";
+        document.getElementById("modalLocation").value = opt?.getAttribute("data-loc") || "";
+    });
+
+    // submit create
+    submitCreateBtn.addEventListener("click", async () => {
+        const form = document.getElementById("createUnitForm");
+        const fd = new FormData(form);
+
+        // Ensure date_of_update is always today if empty
+        if(!fd.get("date_of_update")){
+            fd.set("date_of_update", todayISO());
+        }
+
+        const payload = Object.fromEntries(fd.entries());
+
+        if(!payload.project_name || !payload.unit_type){
+            Swal.fire("Missing fields", "Project and Unit Type are required.", "warning");
+            return;
+        }
+
+        try{
+            const res = await fetch(CREATE_URL, {
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json",
+                    "X-CSRFToken": getCSRFToken()
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if(!data.success){
+                Swal.fire("Error", data.error || "Create failed", "error");
                 return;
             }
 
-            // Validate the field
-            if (!validateField(field, value)) {
-                showToast(`❌ Invalid value for ${field.replace('_', ' ')}`, true);
-                cell.innerText = originalValue; // Revert to original value
+            closeModal();
+            await fetchPage(1);
+
+            // after reload ensure months are computed + sorted
+            refreshMonthsFromUpdateOnPage();
+            sortRowsByDateDesc();
+            applyAllFiltering();
+
+            Swal.fire({ toast:true, position:"bottom", timer:1600, showConfirmButton:false, icon:"success", title:"Unit added" });
+
+        }catch(e){
+            Swal.fire("Error", e.message, "error");
+        }
+    });
+
+    // =========================
+    // Import CSV with spinner
+    // =========================
+    document.getElementById("importBtn").addEventListener("click", async () => {
+        const f = document.getElementById("csvFile").files[0];
+        if(!f){
+            Swal.fire("Missing file", "Please choose a CSV file.", "warning");
+            return;
+        }
+
+        const fd = new FormData();
+        fd.append("csv_file", f);
+
+        Swal.fire({
+            title: "Importing...",
+            text: "Please wait",
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try{
+            const res = await fetch(IMPORT_URL, {
+                method:"POST",
+                body: fd,
+                headers: { "X-CSRFToken": getCSRFToken() }
+            });
+            const data = await res.json();
+
+            if(!data.success){
+                Swal.fire("Import failed", data.error || "Unknown error", "error");
                 return;
             }
 
-            const url = id ? "{% url 'update_market_unit_field' %}" : "{% url 'create_market_unit' %}";
-            const payload = id ? { id, field, value } : { field, value };
+            Swal.fire("Import done", `Created: ${data.created} | Updated: ${data.updated} | Skipped: ${data.skipped}`, "success");
+            await fetchPage(1);
 
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken()
-                },
-                body: JSON.stringify(payload)
-            })
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error('Network response was not ok');
+        }catch(e){
+            Swal.fire("Import failed", e.message, "error");
+        }
+    });
+
+    // =========================
+    // Clear All (advanced confirm)
+    // =========================
+    document.getElementById("clearAllBtn").addEventListener("click", async () => {
+        const { value: text } = await Swal.fire({
+            title: "Danger: Delete ALL units",
+            html: `
+                <div style="text-align:left; font-size:13px; color:#6b7280;">
+                    This will permanently delete <b>all MarketUnitData rows</b>.<br>
+                    To confirm, type exactly:<br>
+                    <code style="display:inline-block; margin-top:8px; padding:6px 10px; border-radius:10px; background:#f3f4f6;">Accept Delete All</code>
+                </div>
+            `,
+            input: "text",
+            inputPlaceholder: "Type confirmation text here...",
+            showCancelButton: true,
+            confirmButtonText: "Delete All",
+            confirmButtonColor: "#ef4444",
+            preConfirm: (v) => {
+                if((v || "").trim() !== "Accept Delete All"){
+                    Swal.showValidationMessage('You must type exactly: "Accept Delete All"');
+                    return false;
                 }
-                return res.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    if (data.id && !id) {
-                        const row = cell.parentElement.children;
-                        for (let c of row) {
-                            c.dataset.id = data.id;
-                        }
-                    }
-                    // Store the new value as original value
-                    cell.dataset.originalValue = formatNumber(value);
-                    showToast("✅ Saved");
-
-                    // ⬅️ Recalculate derived fields for this row
-                    const row = cell.closest('tr');
-                    recalculateDerivedFields(row);
-
-                } else {
-                    showToast("❌ Error: " + (data.error || ''), true);
-                    cell.innerText = originalValue; // Revert to original value
-                }
-            })
-            .catch(error => {
-                showToast("❌ Failed to save: " + error.message, true);
-                cell.innerText = originalValue; // Revert to original value
-            });
-        }
-
-        function recalculateDerivedFields(row) {
-            const id = row.querySelector('[data-field="unit_price"]')?.dataset.id;
-            
-            const getVal = (field) => {
-                const el = row.querySelector(`[data-field="${field}"]`);
-                return el?.innerText?.trim() || el?.value?.trim() || "";
-            };
-        
-            // Recalculate PSM
-            const unitPrice = parseFloat(getVal('unit_price'));
-            const bua = parseFloat(getVal('bua'));
-            const psm = !isNaN(unitPrice) && !isNaN(bua) && bua !== 0 ? (unitPrice / bua).toFixed(2) : "";
-            
-            if (psm && row.querySelector('[data-field="psm"]')) {
-                const psmCell = row.querySelector('[data-field="psm"]');
-                psmCell.innerText = psm;
-                updateField(id, 'psm', psm);
-            }
-        
-            // Recalculate Months from Update
-            const dateStr = getVal('date_of_update');
-            if (dateStr) {
-                const parsedDate = parseDateFlexible(dateStr);
-                if (parsedDate) {
-                    const today = new Date();
-                    const months = Math.min(12, Math.round((today - parsedDate) / (365.25 * 24 * 60 * 60 * 1000) * 12));
-                    const monthsCell = row.querySelector('[data-field="months_from_update"]');
-                    if (monthsCell) {
-                        const displayValue = months === 0 ? "-" : months.toString().padStart(2, '0');
-                        monthsCell.innerText = displayValue;
-                        updateField(id, 'months_from_update', months);
-                    }
-                }
-            }
-        
-            // Recalculate DP Percentage
-            const allRows = Array.from(document.querySelectorAll('.unit-table tbody tr'));
-            const projectName = getVal('project_name');
-            const unitType = getVal('unit_type');
-            
-            // Get all down payment values for this project/unit type
-            const dpValues = allRows
-                .filter(r => 
-                    r.querySelector('[data-field="project_name"]')?.value === projectName &&
-                    r.querySelector('[data-field="unit_type"]')?.value === unitType
-                )
-                .map(r => {
-                    const dp = r.querySelector('[data-field="down_payment"]')?.innerText?.trim();
-                    return dp ? parseFloat(dp) : NaN;
-                })
-                .filter(val => !isNaN(val));
-            
-            if (dpValues.length) {
-                const minDp = Math.min(...dpValues);
-                const maxDp = Math.max(...dpValues);
-                let dpDisplay = "";
-                
-                if (minDp === maxDp) {
-                    dpDisplay = `${Math.round(minDp * 100)}%`;
-                } else {
-                    dpDisplay = `${Math.round(minDp * 100)}% - ${Math.round(maxDp * 100)}%`;
-                }
-                
-                const dpCell = row.querySelector('[data-field="dp_percentage"]');
-                if (dpCell) {
-                    dpCell.innerText = dpDisplay;
-                    updateField(id, 'dp_percentage', dpDisplay);
-                }
-            }
-        }
-        
-        // Helper to parse various date formats
-        function parseDateFlexible(str) {
-            const formats = [
-                { regex: /^\d{4}-\d{2}-\d{2}$/, parser: s => new Date(s) },
-                { regex: /^\d{2}\/\d{2}\/\d{4}$/, parser: s => {
-                    const [m, d, y] = s.split('/').map(Number);
-                    return new Date(y, m - 1, d);
-                }},
-                { regex: /^[A-Za-z]{3}\/\d{1,2}$/, parser: s => {
-                    const [monthStr, dayStr] = s.split('/');
-                    const monthMap = {
-                        Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-                        Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-                    };
-                    const month = monthMap[monthStr];
-                    const day = parseInt(dayStr);
-                    const year = new Date().getFullYear();
-                    return new Date(year, month, day);
-                }}
-            ];
-        
-            for (const { regex, parser } of formats) {
-                if (regex.test(str)) {
-                    try {
-                        return parser(str);
-                    } catch (e) {
-                        return null;
-                    }
-                }
-            }
-            return null;
-        }
-        
-
-        function getCSRFToken() {
-            return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
-        }
-
-        function showToast(message, isError = false) {
-            const toast = document.getElementById("toast");
-            toast.innerText = message;
-            toast.className = isError ? "toast error" : "toast";
-            toast.style.opacity = 1;
-            setTimeout(() => toast.style.opacity = 0, 2000);
-        }
-
-
-
-        // Add this function to format numbers on page load
-        function formatAllNumbersOnLoad() {
-            const numericFields = ['bua', 'land_area', 'garden', 'unit_price', 'psm', 'down_payment', 
-                                'delivery_percentage', 'cash_discount', 'maintenance', 'phase'];
-            
-            numericFields.forEach(field => {
-                document.querySelectorAll(`[data-field="${field}"]`).forEach(cell => {
-                    if (cell.hasAttribute('contenteditable')) {
-                        const value = cell.innerText.trim();
-                        if (value && !isNaN(parseFloat(value.replace(/,/g, '')))) {
-                            const numValue = parseFloat(value.replace(/,/g, ''));
-                            cell.innerText = formatNumber(numValue);
-                            // Store original value
-                            cell.dataset.originalValue = formatNumber(numValue);
-                        }
-                    }
-                });
-            });
-        }
-
-        // Update your DOMContentLoaded event listener to call this function
-        document.addEventListener('DOMContentLoaded', function() {
-            // Format all numbers on page load
-            formatAllNumbersOnLoad();
-            
-            // Store original values for editable cells
-            const editableCells = document.querySelectorAll('[contenteditable="true"]');
-            editableCells.forEach(cell => {
-                cell.dataset.originalValue = cell.innerText.trim();
-            });
-        });
-
-        // Update your formatNumber function to handle existing commas
-        function formatNumber(num) {
-            if (num === null || num === undefined || num === '') return '';
-            
-            // If it's already a string with commas, remove them first
-            if (typeof num === 'string') {
-                num = num.replace(/,/g, '');
-            }
-            
-            // Convert to number
-            const numValue = parseFloat(num);
-            
-            // Return formatted number or empty string if invalid
-            if (isNaN(numValue)) return '';
-            
-            // For numbers between -1 and 1 (excluding 0), keep 2 decimal places
-            if (numValue > -1 && numValue < 1 && numValue !== 0) {
-                return numValue.toLocaleString('en-US', { 
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                });
-            }
-            
-            // For other numbers, round to nearest integer
-            return Math.round(numValue).toLocaleString('en-US');
-        }
-
-
-        
-
-        function handleProjectChange(select) {
-            const selectedOption = select.options[select.selectedIndex];
-            const projectName = select.value;
-            const developer = selectedOption.dataset.developer;
-            const location = selectedOption.dataset.location;
-            const row = select.closest('tr');
-            const id = select.dataset.id;
-        
-            // First create or update the record with project_name
-            updateField(id, 'project_name', projectName, function(newId) {
-                const updatedId = newId || id;
-                
-                // Update all data-id attributes in the row if this was a new record
-                if (!id && newId) {
-                    row.querySelectorAll('[data-field]').forEach(el => {
-                        el.dataset.id = newId;
-                    });
-                }
-        
-                // Update the display values
-                const devInput = row.querySelector('input[data-field="developer_name"]');
-                const locInput = row.querySelector('input[data-field="location"]');
-                devInput.value = developer;
-                locInput.value = location;
-        
-                // Now update both developer_name and location in a single request
-                const url = "{% url 'update_market_unit_field' %}";
-                const payload = {
-                    id: updatedId,
-                    fields: {
-                        developer_name: developer,
-                        location: location
-                    }
-                };
-        
-                fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken()
-                    },
-                    body: JSON.stringify(payload)
-                })
-                .then(res => {
-                    if (!res.ok) throw new Error("Server error");
-                    return res.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        showToast("✅ Project and related fields saved");
-                    } else {
-                        throw new Error(data.error || "Failed to save developer/location");
-                    }
-                })
-                .catch(err => {
-                    showToast("❌ Error: " + err.message, true);
-                });
-            });
-        }
-        
-        
-        
-        function updateDropdown(select) {
-            const id = select.dataset.id;
-            const field = select.dataset.field;
-            const value = select.value;
-            const row = select.closest('tr');
-        
-            updateField(id, field, value, function(newId) {
-                if (!id && newId) {
-                    row.querySelectorAll('[data-field]').forEach(el => {
-                        el.dataset.id = newId;
-                    });
-                }
-            });
-        }
-        
-        
-        function updateField(id, field, value, onSuccess = null) {
-            const url = id ? "{% url 'update_market_unit_field' %}" : "{% url 'create_market_unit' %}";
-            const payload = id ? { id, field, value } : { field, value };
-        
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken()
-                },
-                body: JSON.stringify(payload)
-            })
-            .then(res => {
-                if (!res.ok) throw new Error("Server error");
-                return res.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    // If a new unit was created, assign its ID to all inputs in the row
-                    if (!id && data.id) {
-                        const row = document.querySelector(`[data-field="${field}"][data-id=""]`).closest('tr');
-                        row.querySelectorAll('[data-field]').forEach(el => {
-                            el.dataset.id = data.id;
-                        });
-                    }
-        
-                    showToast("✅ Saved");
-        
-                    if (typeof onSuccess === 'function') {
-                        onSuccess(data.id || id);
-                    }
-                } else {
-                    showToast("❌ Failed to save", true);
-                }
-            })
-            .catch(err => {
-                showToast("❌ Error: " + err.message, true);
-            });
-        }
-        
-
-        // Add new row functionality
-        document.getElementById('add-new-row').addEventListener('click', function() {
-            const tbody = document.querySelector('.unit-table tbody');
-            const newRow = document.createElement('tr');
-
-            // Get today's date in the format we want (e.g., "Aug/24")
-            const today = new Date();
-            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            const formattedDate = `${monthNames[today.getMonth()]}/${today.getDate()}`;
-                
-            // Create the project select dropdown
-            newRow.innerHTML = `
-
-                <td class="actions-cell">
-                    <button class="delete-btn" data-id="{{ unit.id }}" onclick="confirmDelete(this)">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
-                </td>
-
-                <td>
-                    <select class="select-dropdown" onchange="handleProjectChange(this)" data-id="" data-field="project_name">
-                        <option value="">-- Select Project --</option>
-                        {% for project in projects %}
-                            <option value="{{ project.name }}" data-developer="{{ project.developer.name }}" data-location="{{ project.location.name }}">
-                                {{ project.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td><input type="text" readonly value="" data-id="" data-field="developer_name" /></td>
-                <td><input type="text" readonly value="" data-id="" data-field="location" /></td>
-                <td>
-                    <select class="select-dropdown" onchange="updateDropdown(this)" data-id="" data-field="asset_type">
-                        <option value="">-- Select --</option>
-                        {% for at in asset_types %}
-                            <option value="{{ at.name }}">{{ at.name }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td>
-                    <select class="select-dropdown" onchange="updateDropdown(this)" data-id="" data-field="unit_type">
-                        <option value="">-- Select --</option>
-                        {% for ut in unit_types %}
-                            <option value="{{ ut.name }}">{{ ut.name }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td contenteditable="true" data-id="" data-field="bua" onblur="updateCell(this)"></td>
-                <td contenteditable="true" data-id="" data-field="land_area" onblur="updateCell(this)"></td>
-                <td contenteditable="true" data-id="" data-field="garden" onblur="updateCell(this)"></td>
-                <td contenteditable="true" data-id="" data-field="unit_price" onblur="updateCell(this)"></td>
-                <td contenteditable="false" data-id="" data-field="psm" onblur="updateCell(this)"></td>
-                <td contenteditable="true" data-id="" data-field="payment_yrs_raw" onblur="updateCell(this)"></td>
-                <td contenteditable="false" data-id="" data-field="payment_yrs" onblur="updateCell(this)"></td>
-                <td contenteditable="true" data-id="" data-field="down_payment" onblur="updateCell(this)"></td>
-                <td contenteditable="false" data-id="" data-field="dp_percentage" onblur="updateCell(this)"></td>
-                <td contenteditable="true" data-id="" data-field="delivery_percentage" onblur="updateCell(this)"></td>
-                <td contenteditable="true" data-id="" data-field="cash_discount" onblur="updateCell(this)"></td>
-                <td contenteditable="true" data-id="" data-field="delivery_date" onblur="updateCell(this)"></td>
-                <td>
-                    <select class="select-dropdown" onchange="updateDropdown(this)" data-id="" data-field="finishing_specs">
-                        <option value="">-- Select --</option>
-                        {% for fs in finishing_specs %}
-                            <option value="{{ fs.name }}">{{ fs.name }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td contenteditable="true" data-id="" data-field="maintenance" onblur="updateCell(this)"></td>
-                <td contenteditable="true" data-id="" data-field="phase" onblur="updateCell(this)"></td>
-                <td contenteditable="false" data-id="" data-field="date_of_update" onblur="updateCell(this)">${formattedDate}</td>
-                <td contenteditable="false" data-id="" data-field="updated_by" onblur="updateCell(this)"></td>
-                <td contenteditable="true" data-id="" data-field="source_of_info" onblur="updateCell(this)"></td>
-                <td contenteditable="false" data-id="" data-field="months_from_update" onblur="updateCell(this)">-</td>
-                <td contenteditable="true" data-id="" data-field="notes" onblur="updateCell(this)"></td>
-            `;
-            
-            tbody.appendChild(newRow);
-            
-            // Scroll to the new row
-            newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            
-            // Focus on the project select dropdown
-            const projectSelect = newRow.querySelector('select[data-field="project_name"]');
-            if (projectSelect) {
-                projectSelect.focus();
+                return v.trim();
             }
         });
 
+        if(!text) return;
 
-        let currentDeleteId = null;
+        Swal.fire({ title:"Deleting...", allowOutsideClick:false, didOpen: () => Swal.showLoading() });
 
-        function confirmDelete(button) {
-            currentDeleteId = button.dataset.id;
-            document.getElementById('confirm-dialog').classList.add('active');
-        }
+        try{
+            const res = await fetch(CLEAR_ALL_URL, {
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json",
+                    "X-CSRFToken": getCSRFToken()
+                },
+                body: JSON.stringify({ confirm_text: text })
+            });
+            const data = await res.json();
 
-        function closeDialog() {
-            document.getElementById('confirm-dialog').classList.remove('active');
-            currentDeleteId = null;
-        }
-
-        document.getElementById('confirm-delete-btn').addEventListener('click', function() {
-            if (currentDeleteId) {
-                deleteRecord(currentDeleteId);
+            if(!data.success){
+                Swal.fire("Failed", data.error || "Clear all failed", "error");
+                return;
             }
-            closeDialog();
+
+            // reset filters + search after delete all
+            for(const k in activeFilters) delete activeFilters[k];
+            currentGlobalQuery = "";
+            searchInputEl.value = "";
+
+            Swal.fire("Deleted", `All units deleted. Count: ${data.deleted}`, "success");
+            await fetchPage(1);
+        }catch(e){
+            Swal.fire("Error", e.message, "error");
+        }
+    });
+
+    // =========================
+    // Inline updates (AJAX)
+    // =========================
+    function bindRowEvents(){
+        document.querySelectorAll("[data-field='project_name']").forEach(sel => {
+            sel.addEventListener("change", async () => await updateField(sel));
         });
 
-        function deleteRecord(id) {
-            fetch("{% url 'delete_market_unit' %}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken()
+        document.querySelectorAll("select[data-field]").forEach(sel => {
+            if(sel.getAttribute("data-field") === "project_name") return;
+            sel.addEventListener("change", async () => await updateField(sel));
+        });
+
+        document.querySelectorAll("input[data-field], textarea[data-field]").forEach(inp => {
+            inp.addEventListener("blur", async () => await updateField(inp));
+        });
+
+        document.querySelectorAll("[data-delete]").forEach(btn => {
+            btn.addEventListener("click", () => confirmDelete(btn));
+        });
+    }
+
+    async function updateField(el){
+        const tr = el.closest("tr");
+        const id = tr.getAttribute("data-id");
+        const field = el.getAttribute("data-field");
+        const value = el.value;
+
+        try{
+            const res = await fetch(UPDATE_URL, {
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json",
+                    "X-CSRFToken": getCSRFToken()
                 },
-                body: JSON.stringify({ id: id })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    showToast("✅ Record deleted successfully");
-                    // Remove the row from the table
-                    document.querySelector(`[data-id="${id}"]`).closest('tr').remove();
-                } else {
-                    showToast("❌ Error deleting record", true);
-                }
-            })
-            .catch(error => {
-                showToast("❌ Failed to delete: " + error.message, true);
+                body: JSON.stringify({ id, field, value })
             });
+
+            const data = await res.json();
+            if(!data.success){
+                Swal.fire("Error", data.error || "Update failed", "error");
+                return;
+            }
+
+            // After any update, frontend enforces:
+            // - date_of_update should reflect today (if backend does that)
+            // - months computed from date_of_update (not static)
+            // (We set these immediately, so no refresh needed)
+            const dateInp = tr.querySelector("[data-field='date_of_update']");
+            if(dateInp && field !== "date_of_update"){
+                // if backend updates date_of_update automatically, reflect it now
+                dateInp.value = todayISO();
+            }
+
+            // If backend returned computed updates, apply them (developer/location/psm/payment/updated_by)
+            if(data.computed){
+                const c = data.computed;
+                const dev = tr.querySelector("[data-field='developer_name']");
+                const loc = tr.querySelector("[data-field='location']");
+                const psm = tr.querySelector("[data-field='psm']");
+                const pay = tr.querySelector("[data-field='payment_yrs']");
+                const updatedBy = tr.querySelector("[data-field='updated_by']");
+
+                if(dev) dev.value = c.developer_name || dev.value || "";
+                if(loc) loc.value = c.location || loc.value || "";
+                if(psm) psm.value = (c.psm === "" ? "" : Number(c.psm).toFixed(2));
+                if(pay) pay.value = c.payment_yrs || pay.value || "";
+                if(updatedBy) updatedBy.value = c.updated_by || updatedBy.value || "";
+            }
+
+            // Group payment updates
+            if(data.group_updates && data.group_updates.length){
+                data.group_updates.forEach(u => {
+                    const row = document.querySelector(`tr[data-id='${u.id}']`);
+                    if(row){
+                        const payment = row.querySelector("[data-field='payment_yrs']");
+                        if(payment) payment.value = u.payment_yrs || "";
+                    }
+                });
+            }
+
+            // Always recompute months from update on this page (not static)
+            refreshMonthsFromUpdateOnPage();
+
+            // Resort the page view
+            sortRowsByDateDesc();
+
+            // Reapply filters (dependent) and global search
+            applyAllFiltering();
+
+        }catch(e){
+            Swal.fire("Error", e.message, "error");
         }
-    </script>
+    }
+
+    // =========================
+    // Delete with SweetAlert
+    // =========================
+    async function confirmDelete(btn){
+        const tr = btn.closest("tr");
+        const id = tr.getAttribute("data-id");
+
+        const ok = await Swal.fire({
+            title: "Delete this unit?",
+            text: "This action cannot be undone.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Yes, delete",
+            cancelButtonText: "Cancel",
+        });
+
+        if(!ok.isConfirmed) return;
+
+        try{
+            const res = await fetch(DELETE_URL, {
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json",
+                    "X-CSRFToken": getCSRFToken()
+                },
+                body: JSON.stringify({ id })
+            });
+            const data = await res.json();
+            if(!data.success){
+                Swal.fire("Error", data.error || "Delete failed", "error");
+                return;
+            }
+            tr.remove();
+
+            refreshMonthsFromUpdateOnPage();
+            sortRowsByDateDesc();
+            applyAllFiltering();
+
+            Swal.fire({ toast:true, position:"bottom", timer:1500, showConfirmButton:false, icon:"success", title:"Deleted" });
+        }catch(e){
+            Swal.fire("Error", e.message, "error");
+        }
+    }
+
+    // =========================
+    // Initial boot
+    // =========================
+    function boot(){
+        // months always recalculated on load
+        refreshMonthsFromUpdateOnPage();
+
+        // sort current page view by date desc
+        sortRowsByDateDesc();
+
+        // install filters + bind
+        installHeaderFilters();
+
+        bindRowEvents();
+        bindPaginationEvents();
+
+        // apply any existing filters/search
+        applyAllFiltering();
+    }
+
+    boot();
+</script>
+
 {% endblock %}

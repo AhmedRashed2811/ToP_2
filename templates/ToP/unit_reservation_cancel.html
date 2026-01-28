@@ -1,0 +1,332 @@
+{% extends 'ToP/base.html' %}
+{% load static %}
+{% block title %}Cancel Unit Reservation{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl { max-width: 100%; }
+    }
+    @media (min-width: 576px) {
+        .container, .container-sm { max-width: 100%; }
+    }
+
+    .container {
+        margin-top: 2%;
+        padding: 20px;
+    }
+
+    :root{
+        --bg: #f6f7fb;
+        --card: #ffffff;
+        --text: #111827;
+        --muted: #6b7280;
+        --border: rgba(0,0,0,.08);
+        --shadow: 0 14px 40px rgba(17, 24, 39, .08);
+        --shadow-sm: 0 8px 22px rgba(17, 24, 39, .08);
+        --radius: 18px;
+    }
+
+    .page-wrap{ padding: 18px 0; }
+    .cardx{
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+    .cardx-header{
+        padding: 18px 18px 12px 18px;
+        border-bottom: 1px solid var(--border);
+        display:flex; align-items:center; justify-content:space-between; gap:12px;
+    }
+    .title{
+        margin:0; font-size: 18px; font-weight: 800; color: var(--text);
+        display:flex; align-items:center; gap:10px;
+    }
+    .subtitle{ margin: 6px 0 0 0; color: var(--muted); font-size: 13px; }
+    .cardx-body{ padding: 18px; }
+
+    .grid{ display:grid; grid-template-columns: 1fr; gap: 14px; }
+    @media (min-width: 992px){
+        .grid.two{ grid-template-columns: 1.1fr .9fr; }
+    }
+
+    .field label{ font-size: 13px; color: var(--muted); margin-bottom: 6px; display:block; }
+    .inputx{
+        width:100%;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 12px;
+        outline:none;
+        transition: .15s;
+        background:#fff;
+    }
+    .inputx:focus{
+        border-color: rgba(59,130,246,.55);
+        box-shadow: 0 0 0 4px rgba(59,130,246,.12);
+    }
+
+    .btnx{
+        border:0;
+        border-radius: 14px;
+        padding: 12px 14px;
+        font-weight: 800;
+        cursor:pointer;
+        box-shadow: var(--shadow-sm);
+        display:inline-flex;
+        align-items:center;
+        gap:10px;
+        justify-content:center;
+    }
+    .btn-primaryx{ background:#111827; color:#fff; width:100%; }
+    .btn-secondaryx{ background:#eef2ff; color:#111827; }
+
+    .hint{
+        padding: 12px 14px;
+        background: #f9fafb;
+        border: 1px dashed var(--border);
+        border-radius: 14px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+    }
+
+    .badge{
+        font-size: 12px;
+        padding: 6px 10px;
+        background:#f3f4f6;
+        border-radius: 999px;
+        color:#111827;
+        border: 1px solid var(--border);
+        white-space: nowrap;
+    }
+
+    .selected{
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background:#f9fafb;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:10px;
+    }
+</style>
+
+<div class="container page-wrap">
+    <div class="cardx">
+        <div class="cardx-header">
+            <div>
+                <h2 class="title"><i class="fa-solid fa-ban"></i> Cancel Unit Reservation</h2>
+                <p class="subtitle">
+                    Sets status to <b>Blocked Cancellation</b>, clears reservation fields, updates sales_value, and deletes analytical requests.
+                </p>
+            </div>
+            <div class="badge">
+                {% if is_sales_ops %}SalesOperation{% elif is_admin_or_biz %}Admin/Business{% else %}No Access{% endif %}
+            </div>
+        </div>
+
+        <div class="cardx-body">
+
+            <div class="hint" style="margin-bottom:14px;">
+                <b>Operation Steps:</b><br>
+                1) Status → <b>Blocked Cancellation</b><br>
+                2) Reservation Date → Cleared, Contract Payment Plan → Cleared<br>
+                3) Sales Value → Interest Free Unit Price<br>
+            </div>
+
+            <form id="cancelForm" method="POST" action="{% url 'unit_reservation_cancellation' %}">
+                {% csrf_token %}
+
+                {% if is_sales_ops %}
+                    <div class="selected" style="margin-bottom:12px;">
+                        <div>
+                            <div style="font-size:12px; color:#6b7280;">Company</div>
+                            <div style="font-weight:900;">
+                                {% if selected_company %}{{ selected_company.name }}{% else %}Not Assigned{% endif %}
+                            </div>
+                        </div>
+                        <div class="badge">Auto</div>
+                    </div>
+
+                    <div class="field" style="margin-bottom:12px;">
+                        <label>Unit Code</label>
+                        <input id="unitCode" name="unit_code" class="inputx" placeholder="e.g. U-101-A" />
+                    </div>
+
+                    <button class="btnx btn-primaryx" type="submit">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Cancel Reservation
+                    </button>
+
+                {% elif is_admin_or_biz %}
+
+                    <div class="grid two">
+
+                        <div>
+                            <div class="field">
+                                <label>Select Company</label>
+                                <select id="companySelect" name="company_id" class="inputx">
+                                    <option value="">-- Choose a company --</option>
+                                    {% for c in companies %}
+                                        <option value="{{ c.id }}" {% if selected_company_id == c.id %}selected{% endif %}>
+                                            {{ c.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div style="height:12px;"></div>
+
+                            <div id="selectedCompanyBox" class="selected" style="{% if selected_company %}display:flex;{% else %}display:none;{% endif %}">
+                                <div>
+                                    <div style="font-size:12px; color:#6b7280;">Selected Company</div>
+                                    <div id="selectedCompanyName" style="font-weight:900;">
+                                        {% if selected_company %}{{ selected_company.name }}{% endif %}
+                                    </div>
+                                </div>
+                                <div class="badge">Selected</div>
+                            </div>
+
+                            <div style="height:12px;"></div>
+
+                            <div class="hint">
+                                Choose a company from the dropdown, then the unit code field will appear.
+                            </div>
+                        </div>
+
+                        <div>
+                            <div id="unitCodeBlock" style="{% if not selected_company %}display:none;{% endif %}">
+                                <div class="field" style="margin-bottom:12px;">
+                                    <label>Unit Code</label>
+                                    <input id="unitCode" name="unit_code" class="inputx" placeholder="e.g. U-101-A" />
+                                </div>
+
+                                <button id="cancelBtn" class="btnx btn-primaryx" type="submit">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> Cancel Reservation
+                                </button>
+                            </div>
+
+                            <div id="unitCodeHint" class="hint" style="{% if selected_company %}display:none;{% endif %}">
+                                Please select a company first.
+                            </div>
+                        </div>
+
+                    </div>
+
+                {% endif %}
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    // You wanted this format:
+    const url = `{% url 'unit_reservation_cancellation' %}`;
+
+    // Admin/Business: show unit code only after selecting company (no API, no GET)
+    document.addEventListener("DOMContentLoaded", () => {
+        const isAdminOrBiz = {{ is_admin_or_biz|yesno:"true,false" }};
+        if(!isAdminOrBiz) return;
+
+        const companySelect = document.getElementById("companySelect");
+        const unitCodeBlock = document.getElementById("unitCodeBlock");
+        const unitCodeHint = document.getElementById("unitCodeHint");
+        const selectedCompanyBox = document.getElementById("selectedCompanyBox");
+        const selectedCompanyName = document.getElementById("selectedCompanyName");
+
+        function toggleUI(){
+            const val = (companySelect?.value || "").trim();
+            const hasCompany = !!val;
+
+            if(unitCodeBlock) unitCodeBlock.style.display = hasCompany ? "block" : "none";
+            if(unitCodeHint) unitCodeHint.style.display = hasCompany ? "none" : "block";
+
+            if(selectedCompanyBox) selectedCompanyBox.style.display = hasCompany ? "flex" : "none";
+            if(selectedCompanyName && hasCompany){
+                const name = companySelect.options[companySelect.selectedIndex]?.text || "";
+                selectedCompanyName.textContent = name;
+            }
+        }
+
+        companySelect?.addEventListener("change", toggleUI);
+        toggleUI();
+    });
+
+    // SweetAlert confirm before submitting POST
+    const cancelForm = document.getElementById("cancelForm");
+    if(cancelForm){
+        cancelForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const unitCodeEl = document.getElementById("unitCode");
+            const unitCode = (unitCodeEl?.value || "").trim();
+
+            if(!unitCode){
+                await Swal.fire({ icon: "warning", title: "Unit code required", text: "Please enter the unit code." });
+                return;
+            }
+
+            const companySelect = document.getElementById("companySelect");
+            const companyId = companySelect ? (companySelect.value || "").trim() : "";
+            const companyName = (companySelect && companyId)
+                ? (companySelect.options[companySelect.selectedIndex]?.text || "")
+                : "";
+
+            const confirm = await Swal.fire({
+                icon: "warning",
+                title: "Confirm Cancellation",
+                html: `
+                    <div style="text-align:left; font-size:14px;">
+                        ${companyId ? `<div><b>Company:</b> ${companyName}</div>` : ``}
+                        <div><b>Unit Code:</b> ${unitCode}</div>
+                        <hr/>
+                        <div>This action will update the unit and delete related analytical requests.</div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: "Yes, Cancel",
+                cancelButtonText: "No",
+            });
+
+            if(confirm.isConfirmed){
+                // === SHOW LOADING SPINNER HERE ===
+                Swal.fire({
+                    title: 'Processing...',
+                    text: 'Please wait while we cancel the reservation.',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Submit the form
+                cancelForm.submit();
+            }
+        });
+    }
+
+    // Show Django messages using SweetAlert2
+    {% if messages %}
+        (async function(){
+            {% for message in messages %}
+                {% if 'success' in message.tags %}
+                    await Swal.fire({ icon: "success", title: "Success", text: "{{ message|escapejs }}" });
+                {% elif 'error' in message.tags %}
+                    await Swal.fire({ icon: "error", title: "Failed", text: "{{ message|escapejs }}" });
+                {% else %}
+                    await Swal.fire({ icon: "info", title: "Info", text: "{{ message|escapejs }}" });
+                {% endif %}
+            {% endfor %}
+        })();
+    {% endif %}
+</script>
+
+{% endblock %}

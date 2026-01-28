@@ -161,6 +161,7 @@ class InventorySyncService:
                 get_from_row(row, ["Adj Status"])
             )
             status = to_str(get_from_row(row, ["Available", "Status"]))
+            owner = to_str(get_from_row(row, ["Owner"]))
             contract_payment_plan = to_str(
                 get_from_row(row, ["Contract Payment Plan"])
             )
@@ -242,6 +243,7 @@ class InventorySyncService:
             area_range=area_range,
             psm=psm,
             adj_status = adj_status,
+            owner =owner,
         )
 
         # -------------------------------

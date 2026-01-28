@@ -203,8 +203,8 @@ class CsvInventoryService:
                 'construction_phasing': row.get('Construction Phasing', None),
                 'handover_phasing': row.get('Handover Phasing', None),
                 'plot_type': row.get('Plot Type', None),
-                'building_style': row.get('Bld. Style', None),
-                'building_type': row.get('Bld. Type', None),
+                'building_style': row.get('Building Style', None),
+                'building_type': row.get('Building Type', None),
                 'unit_type': row.get('Unit Type', None),
                 'unit_model': row.get('Unit Model', None),
                 'mirror': row.get('Mirror', None),
@@ -214,9 +214,9 @@ class CsvInventoryService:
                 'sap_code': row.get('SAP Code', None),
 
                 'finishing_specs': row.get('Finishing Specs', None),
-                'num_bedrooms': clean_numeric(row.get('Num bedrooms', '0')),
-                'num_bathrooms': clean_numeric(row.get('Num bathrooms', '0')),
-                'num_parking_slots': clean_numeric(row.get('No. of Parking Slots', '0')),
+                'num_bedrooms': row.get('Num Bedrooms', '0'),
+                'num_bathrooms': row.get('Num Bathrooms', '0'),
+                'num_parking_slots': clean_numeric(row.get('Num Parking Slots', '0')),
 
                 'footprint': float(row.get('Foot print', 0)) if row.get('Foot print') else None,
                 'internal_area': float(row.get('Internal Area', 0)) if row.get('Internal Area') else None,
@@ -225,7 +225,7 @@ class CsvInventoryService:
                 'penthouse_area': float(row.get('Penthouse Area', 0)) if row.get('Penthouse Area') else None,
                 'garage_area': float(row.get('Garage Area', 0)) if row.get('Garage Area') else None,
                 'basement_area': float(row.get('Basement Area', 0)) if row.get('Basement Area') else None,
-                'net_area': float(row.get('Unit Area (Net Area)', 0)) if row.get('Unit Area (Net Area)') else None,
+                'net_area': float(row.get('Net Area', 0)) if row.get('Net Area') else None,
                 'common_area': float(row.get('Common Area', 0)) if row.get('Common Area') else None,
                 'gross_area': float(row.get('Gross Area', 0)) if row.get('Gross Area') else None,
                 'roof_pergola_area': float(row.get('Roof Pergola Area', 0)) if row.get('Roof Pergola Area') else None,
@@ -259,8 +259,8 @@ class CsvInventoryService:
                 'special_premiums': row.get('Special Premiums & Discounts', None),
                 'special_discounts': row.get('Special Premiums & Discounts', None),
 
-                'total_premium_percent': float(row.get('Total Premium %', 0))
-                    if row.get('Total Premium %') else None,
+                'total_premium_percent': float(row.get('Total Premium Percent', 0))
+                    if row.get('Total Premium Percent') else None,
                 'total_premium_value': float(row.get('Total Premium Value', 0))
                     if row.get('Total Premium Value') else None,
 
@@ -268,34 +268,35 @@ class CsvInventoryService:
                     if row.get('Interest Free Unit Price') else None,
                 'interest_free_psm': float(row.get('Interest Free PSM', 0))
                     if row.get('Interest Free PSM') else None,
-                'interest_free_years': clean_numeric(row.get('Interest Free Yrs.', '0')),
+                'interest_free_years': clean_numeric(row.get('Interest Free Years', '0')),
 
-                'down_payment_percent': float(row.get('Down Payment %', 0))
+                'down_payment_percent': float(row.get('Down Payment Percent', 0))
                     if row.get('Down Payment %') else None,
                 'down_payment': float(row.get('Down Payment', 0))
                     if row.get('Down Payment') else None,
-                'contract_percent': float(row.get('Contract %', 0))
+                'contract_percent': float(row.get('Contract Percent', 0))
                     if row.get('Contract %') else None,
                 'contract_payment': float(row.get('Contract Payment', 0))
                     if row.get('Contract Payment') else None,
-                'delivery_percent': float(row.get('Delivery %', 0))
+                'delivery_percent': float(row.get('Delivery Percent', 0))
                     if row.get('Delivery %') else None,
                 'delivery_payment': float(row.get('Delivery Payment', 0))
                     if row.get('Delivery Payment') else None,
                 'cash_price': float(row.get('Cash Price', 0))
                     if row.get('Cash Price') else None,
 
-                'maintenance_percent': float(row.get('Maintenance %', 0))
-                    if row.get('Maintenance %') else None,
+                'maintenance_percent': float(row.get('Maintenance Percent', 0))
+                    if row.get('Maintenance Percent') else None,
                 'maintenance_value': float(row.get('Maintenance Value', 0))
                     if row.get('Maintenance Value') else None,
 
                 'club': row.get('Club', None),
                 'gas': float(row.get('Gas', 0)) if row.get('Gas') else None,
-                'parking_price': float(row.get('Parking Price / slot', 0))
-                    if row.get('Parking Price / slot') else None,
+                'parking_price': float(row.get('Parking Price', 0))
+                    if row.get('Parking Price') else None,
 
                 'status': row.get('Status', None),
+                'owner': row.get('Owner', None),
                 'blocking_reason': row.get('Blocking Reason', None),
 
                 'release_date': convert_date_format(row.get('Release Date')),
@@ -303,26 +304,26 @@ class CsvInventoryService:
                 'reservation_date': convert_date_format(row.get('Reservation Date')),
                 'contract_date': convert_date_format(row.get('Contract Date')),
                 'contract_payment_plan': row.get('Contract Payment Plan', None),
-
+                'creation_date': convert_date_format(row.get('Creation Date')),
                 'contract_value': float(row.get('Contract Value', 0))
                     if row.get('Contract Value') else None,
                 'collected_amount': float(row.get('Collected Amount', 0))
                     if row.get('Collected Amount') else None,
-                'collected_percent': float(row.get('Collected %', 0))
-                    if row.get('Collected %') else None,
+                'collected_percent': float(row.get('Collected Percent', 0))
+                    if row.get('Collected Percent') else None,
 
                 'contract_delivery_date': convert_date_format(row.get('Contract Delivery Date')),
-                'grace_period_months': clean_numeric(row.get('Grace Period (months)', '0')),
+                'grace_period_months': clean_numeric(row.get('Grace Period Months', '0')),
                 'construction_delivery_date': convert_date_format(row.get('Construction Delivery Date')),
                 'development_delivery_date': convert_date_format(row.get('Development Delivery Date')),
                 'client_handover_date': convert_date_format(row.get('Client Handover Date')),
 
-                'contractor_type': row.get('Contractor / Type', None),
+                'contractor_type': row.get('Contractor Type', None),
                 'contractor': row.get('Contractor', None),
                 'customer': row.get('Customer', None),
                 'broker': row.get('Broker', None),
                 'bulks': row.get('Bulks', None),
-                'direct_indirect_sales': row.get('Direct / Indirect Sales', None),
+                'direct_indirect_sales': row.get('Direct Indirect Sales', None),
 
                 'sales_value': float(row.get('Sales Value', 0))
                     if row.get('Sales Value') else None,
@@ -331,7 +332,7 @@ class CsvInventoryService:
                 'area_range': row.get('Area Range', None),
                 'release_year': clean_numeric(row.get('Release Year', '0')),
                 'sales_year': clean_numeric(row.get('Sales Year', '0')),
-                'adj_status': row.get('Adj. Status 2', None),
+                'adj_status': row.get('Adj Status', None),
                 'ams': row.get('AMS', None),
             }
         )

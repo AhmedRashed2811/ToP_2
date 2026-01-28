@@ -2,875 +2,1183 @@
 {% load static %}
 {% load static custom_filters %}
 
-{% block title %}Market Research Model{% endblock %}
+{% block title %}Market Research Master Data{% endblock %}
 
 {% block content %}
-{% comment %} <h2 class="page-title">Master Data</h2> {% endcomment %}
 
-<!-- Add Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""/>
 
 <style>
-    :root {
-        --primary-color: #4285F4;
-        --primary-hover: #3367d6;
-        --secondary-color: #f8f9fa;
-        --success-color: #28a745;
-        --danger-color: #dc3545;
-        --border-color: #dee2e6;
-        --text-color: #212529;
-        --light-gray: #f1f3f5;
-        --medium-gray: #adb5bd;
-        --dark-gray: #6c757d;
-        --white: #ffffff;
-        --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        --border-radius: 8px;
-        --spacing-xs: 0.25rem;
-        --spacing-sm: 0.5rem;
-        --spacing-md: 1rem;
-        --spacing-lg: 1.5rem;
-        --spacing-xl: 2rem;
-    }
 
     .container {
-        margin-top: 80px;
-        padding: 20px;
-        margin-left: 0;
-    }
-
-    .page-title {
-        margin-bottom: var(--spacing-xl);
-        font-size: 1.75rem;
-        font-weight: 600;
-        color: var(--text-color);
-        text-align: center;
-        padding-bottom: var(--spacing-md);
-        border-bottom: 2px solid var(--primary-color);
-    }
-
-    .form-container {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 0 var(--spacing-md);
-    }
-
-    .form-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: var(--spacing-lg);
-        margin-bottom: var(--spacing-xl);
-    }
-
-    .input-group {
-        display: flex;
-        flex-direction: column;
-        background: var(--white);
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow);
-        padding: var(--spacing-lg);
-        transition: box-shadow 0.3s ease;
-    }
-
-    .input-group:hover {
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    .input-group > label {
-        font-weight: 600;
-        margin-bottom: var(--spacing-sm);
-        color: var(--text-color);
-        font-size: 1.1rem;
-    }
-
-    .input-group input,
-    .input-group select {
-        padding: var(--spacing-sm) var(--spacing-md);
-        font-size: 1rem;
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
-        margin-bottom: var(--spacing-sm);
-        transition: border-color 0.3s ease;
-    }
-
-    .input-group input:focus,
-    .input-group select:focus {
-        outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.25);
-    }
-
-    .input-group button {
-        padding: var(--spacing-sm) var(--spacing-md);
-        background-color: var(--primary-color);
-        color: var(--white);
-        border: none;
-        border-radius: var(--border-radius);
-        cursor: pointer;
-        font-weight: 500;
-        font-size: 0.95rem;
-        transition: background-color 0.3s ease;
-        align-self: flex-start;
-        width: fit-content;
-    }
-
-    .input-group button:hover {
-        background-color: var(--primary-hover);
-    }
-
-    .project-inputs {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-sm);
-        margin-bottom: var(--spacing-sm);
-    }
-
-    .project-inputs input,
-    .project-inputs select {
-        margin-bottom: 0;
-    }
-
-    .data-table-wrapper {
-        margin-top: var(--spacing-md);
-        overflow-x: auto;
-    }
-
-    .data-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: var(--spacing-sm);
-    }
-
-    .data-table th,
-    .data-table td {
-        padding: var(--spacing-sm) var(--spacing-md);
-        text-align: left;
-        border-bottom: 1px solid var(--border-color);
-        white-space: normal; /* Allow text to wrap */
-        word-break: break-word; /* Break long words if necessary */
-        vertical-align: top; /* Align content to top for multi-line text */
-    }
-
-    .data-table th {
-        background-color: var(--secondary-color);
-        font-weight: 600;
-        color: var(--dark-gray);
-        white-space: nowrap; /* Keep headers on one line */
-    }
-
-    .data-table tr:hover {
-        background-color: var(--light-gray);
-    }
-
-    .delete-cell {
-        width: 1%;
-        text-align: center;
-        white-space: nowrap;
-    }
-
-    .delete-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 28px;
-        height: 28px;
-        background-color: var(--danger-color);
-        color: var(--white);
-        border-radius: 50%;
-        border: none;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 1.2rem;
-        transition: background-color 0.3s ease;
-    }
-
-    .delete-btn:hover {
-        background-color: #c82333;
-    }
-
-    .map-btn {
-        background: var(--primary-color);
-        color: white;
-        border: none;
-        border-radius: var(--border-radius);
-        padding: var(--spacing-xs) var(--spacing-sm);
-        cursor: pointer;
-        font-size: 0.85rem;
-        transition: background-color 0.3s ease;
-    }
-
-    .map-btn:hover {
-        background-color: var(--primary-hover);
-    }
-
-    .import-section {
-        margin-top: var(--spacing-md);
-        padding-top: var(--spacing-md);
-        border-top: 1px solid var(--border-color);
-    }
-
-    .csv-import-form {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-sm);
-    }
-
-    .csv-import-form input[type="file"] {
-        padding: var(--spacing-xs);
-    }
-
-    .csv-import-form button {
-        padding: var(--spacing-xs) var(--spacing-sm);
-        font-size: 0.9rem;
-        align-self: flex-start;
-    }
-
-    /* Map Modal Styles */
-    .map-modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.7);
-    }
-
-    .map-modal-content {
-        background-color: var(--white);
-        margin: 5% auto;
-        padding: var(--spacing-lg);
-        border-radius: var(--border-radius);
-        width: 90%;
-        max-width: 1000px;
-        height: 80vh;
-        display: flex;
-        flex-direction: column;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    }
-
-    .map-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: var(--spacing-md);
-    }
-
-    .close-btn {
-        font-size: 2rem;
-        font-weight: bold;
-        color: var(--dark-gray);
-        cursor: pointer;
-        background: none;
-        border: none;
+        margin-top: 0;
         padding: 0;
     }
-
-    .close-btn:hover {
-        color: var(--danger-color);
-    }
-
-    .map-container {
-        flex: 1;
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
-        overflow: hidden;
-    }
-
-    .map-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: var(--spacing-sm);
-        margin-top: var(--spacing-md);
-    }
-
-    .map-actions button {
-        padding: var(--spacing-sm) var(--spacing-md);
-        border: none;
-        border-radius: var(--border-radius);
-        cursor: pointer;
-        font-weight: 500;
-    }
-
-    #saveLocationBtn {
-        background-color: var(--success-color);
-        color: var(--white);
-    }
-
-    #saveLocationBtn:hover {
-        background-color: #218838;
-    }
-
-    #cancelLocationBtn {
-        background-color: var(--medium-gray);
-        color: var(--white);
-    }
-
-    #cancelLocationBtn:hover {
-        background-color: #5a6268;
-    }
-
-    /* Toast Notification */
-    #toast {
-        visibility: hidden;
-        min-width: 250px;
-        background-color: var(--success-color);
-        color: var(--white);
-        text-align: center;
-        border-radius: var(--border-radius);
-        padding: var(--spacing-sm) var(--spacing-md);
-        position: fixed;
-        z-index: 9999;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 1rem;
-    }
-
-    #toast.show {
-        visibility: visible;
-        animation: fadein 0.5s, fadeout 0.5s 2.5s;
-    }
-
-    @keyframes fadein {
-        from {bottom: 0; opacity: 0;}
-        to {bottom: 30px; opacity: 1;}
-    }
-
-    @keyframes fadeout {
-        from {bottom: 30px; opacity: 1;}
-        to {bottom: 0; opacity: 0;}
-    }
-
-    /* Responsive Adjustments */
-    @media (min-width: 768px) {
-        .project-inputs {
-            flex-direction: row;
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl {
+            max-width: 100%;
         }
     }
 
-    @media (min-width: 1200px) {
-        .form-row {
-            grid-template-columns: repeat(6, 1fr);
+    @media (min-width: 576px) {
+        .container, .container-sm {
+            max-width: 100%;
         }
     }
-
-    @media (max-width: 1199px) {
-        .form-row {
-            grid-template-columns: repeat(3, 1fr);
-        }
+    
+    table{
+        margin-top: 0;
     }
 
-    @media (max-width: 767px) {
-        .form-row {
-            grid-template-columns: 1fr;
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-        }
-
-        .map-modal-content {
-            width: 95%;
-            height: 90vh;
-            margin: 2.5% auto;
-        }
+    table.mr-table {
+        min-width: 0;
     }
+
+
+  :root{
+    --bg:#f6f7fb;
+    --card:#ffffff;
+    --text:#111827;
+    --muted:#6b7280;
+    --border: rgba(17,24,39,.10);
+    --shadow: 0 14px 40px rgba(17,24,39,.08);
+    --shadow-sm: 0 8px 22px rgba(17,24,39,.06);
+
+    --primary:#2563eb;
+    --primary-2:#1d4ed8;
+    --danger:#ef4444;
+    --success:#16a34a;
+
+    --radius: 16px;
+  }
+
+  .mr-page{
+    padding: 24px;
+    margin-top: 80px;
+  }
+
+  .mr-header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .mr-title h1{
+    margin:0;
+    font-size: 22px;
+    color: var(--text);
+    letter-spacing: .2px;
+  }
+  .mr-title p{
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .mr-shell{
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+  }
+
+  /* Tabs */
+  .mr-tabs{
+    display:flex;
+    flex-wrap:wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .mr-tab{
+    border:1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 999px;
+    cursor:pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: .15s ease;
+    user-select:none;
+  }
+  .mr-tab:hover{ box-shadow: var(--shadow-sm); }
+  .mr-tab.active{
+    background: var(--primary);
+    border-color: rgba(37,99,235,.25);
+    color:#fff;
+  }
+
+  /* Layout */
+  .mr-grid{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .mr-card{
+    background: var(--card);
+    border:1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    overflow:hidden;
+  }
+
+  .mr-card-h{
+    padding: 14px 14px 10px;
+    border-bottom: 1px solid var(--border);
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap: 10px;
+  }
+
+  .mr-card-h .left h2{
+    margin:0;
+    font-size: 15px;
+    color: var(--text);
+  }
+  .mr-card-h .left p{
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .mr-card-b{
+    padding: 14px;
+  }
+
+  .mr-row{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .mr-form{
+    display:flex;
+    flex-wrap:wrap;
+    gap: 10px;
+    align-items:flex-end;
+    margin-bottom: 12px;
+  }
+
+  .mr-field{
+    display:flex;
+    flex-direction:column;
+    gap: 6px;
+    min-width: 220px;
+    flex: 1;
+  }
+  .mr-field label{
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .mr-input, .mr-select, .mr-file{
+    border:1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 14px;
+    outline:none;
+    transition: .15s ease;
+    background:#fff;
+    color: var(--text);
+  }
+  .mr-input:focus, .mr-select:focus{
+    border-color: rgba(37,99,235,.55);
+    box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+  }
+
+  /* Arabic-friendly input direction */
+  .mr-input[dir="auto"]{ unicode-bidi: plaintext; }
+
+  .mr-actions{
+    display:flex;
+    gap: 10px;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+
+  .btn{
+    border:none;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-weight: 800;
+    cursor:pointer;
+    transition: .15s ease;
+    font-size: 13px;
+    display:inline-flex;
+    gap: 8px;
+    align-items:center;
+  }
+  .btn-primary{ background: var(--primary); color:#fff; }
+  .btn-primary:hover{ background: var(--primary-2); }
+  .btn-ghost{
+    background:#fff;
+    color: var(--text);
+    border:1px solid var(--border);
+  }
+  .btn-ghost:hover{ box-shadow: var(--shadow-sm); }
+  .btn-danger{
+    background: var(--danger);
+    color:#fff;
+  }
+  .btn-danger:hover{ filter: brightness(.95); }
+
+  .mr-tools{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-bottom: 10px;
+  }
+
+  .mr-search{
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .mr-table-wrap{
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow:auto;
+  }
+  table.mr-table{
+    width:100%;
+    border-collapse: collapse;
+    min-width: 100%;
+    background:#fff;
+  }
+  .mr-table th, .mr-table td{
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(17,24,39,.08);
+    text-align:left;
+    vertical-align: top;
+    font-size: 13px;
+    color: var(--text);
+    word-break: break-word;
+  }
+  .mr-table th{
+    font-size: 12px;
+    color: var(--muted);
+    background: #fbfbfd;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .mr-table tr:hover td{ background: #fafafa; }
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background:#fff;
+  }
+
+  /* Map Modal */
+  .map-modal{
+    display:none;
+    position:fixed;
+    inset:0;
+    background: rgba(0,0,0,.55);
+    z-index: 9999;
+    padding: 18px;
+  }
+  .map-modal .box{
+    max-width: 1100px;
+    margin: 0 auto;
+    height: calc(100vh - 36px);
+    background:#fff;
+    border-radius: 18px;
+    border:1px solid var(--border);
+    box-shadow: 0 30px 80px rgba(0,0,0,.25);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .map-modal .head{
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap: 10px;
+  }
+  .map-modal .head h3{ margin:0; font-size: 15px; }
+  .map-modal .close{
+    background: transparent;
+    border: none;
+    font-size: 28px;
+    line-height: 1;
+    cursor:pointer;
+    color: var(--muted);
+  }
+  .map-modal .close:hover{ color: var(--danger); }
+  #map{
+    flex:1;
+  }
+  .map-modal .foot{
+    padding: 12px 14px;
+    border-top: 1px solid var(--border);
+    display:flex;
+    justify-content:flex-end;
+    gap: 10px;
+  }
+
+  /* Toast */
+  #toast{
+    visibility:hidden;
+    min-width: 260px;
+    max-width: 90vw;
+    text-align:center;
+    border-radius: 14px;
+    padding: 10px 14px;
+    position: fixed;
+    z-index: 10000;
+    left: 50%;
+    bottom: 26px;
+    transform: translateX(-50%);
+    color:#fff;
+    background: var(--success);
+    box-shadow: 0 14px 40px rgba(0,0,0,.20);
+    font-weight: 700;
+    font-size: 13px;
+  }
+  #toast.show{
+    visibility: visible;
+    animation: fadein .25s, fadeout .25s 2.6s;
+  }
+  @keyframes fadein { from { opacity:0; transform: translateX(-50%) translateY(10px);} to { opacity:1; transform: translateX(-50%) translateY(0);} }
+  @keyframes fadeout{ from { opacity:1; } to { opacity:0; } }
+
+  /* Responsive */
+  @media (min-width: 992px){
+    .mr-grid{ grid-template-columns: 1fr; }
+    .mr-form .mr-field{ min-width: 260px; }
+  }
 </style>
 
-<div class="form-container">
-    <div class="form-row">
-        <!-- Location -->
-        <div class="input-group">
-            <label>Location</label>
-            <input type="text" placeholder="Enter location..." data-model="location">
-            <button onclick="saveRow(this)">+ Add</button>
-            <div class="data-table-wrapper">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Location</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for location in locations %}
-                            <tr data-id="{{ location.id }}" data-model="location">
-                                <td>{{ location.name }}</td>
-                                <td class="delete-cell">
-                                    <button class="delete-btn" onclick="deleteRow(this)">×</button>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Developer -->
-        <div class="input-group">
-            <label>Developer</label>
-            <input type="text" placeholder="Enter developer..." data-model="developer">
-            <button onclick="saveRow(this)">+ Add</button>
-            <div class="data-table-wrapper">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Developer</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for developer in developers %}
-                            <tr data-id="{{ developer.id }}" data-model="developer">
-                                <td>{{ developer.name }}</td>
-                                <td class="delete-cell">
-                                    <button class="delete-btn" onclick="deleteRow(this)">×</button>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Project -->
-        <div class="input-group">
-            <label>Project</label>
-            <div class="project-inputs">
-                <input type="text" id="project-name" placeholder="Project Name">
-                <select id="developer-select">
-                    <option value="">Select Developer</option>
-                    {% for developer in developers %}
-                        <option value="{{ developer.id }}">{{ developer.name }}</option>
-                    {% endfor %}
-                </select>
-                <select id="location-select">
-                    <option value="">Select Location</option>
-                    {% for location in locations %}
-                        <option value="{{ location.id }}">{{ location.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <button onclick="saveProject()">+ Add Project</button>
-
-            <div class="import-section">
-                <form class="csv-import-form" data-model="project" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <input type="file" name="csv_file" accept=".csv" required>
-                    <button type="submit">Import CSV</button>
-                </form>
-            </div>
-
-            <div class="data-table-wrapper">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Project</th>
-                            <th>Developer</th>
-                            <th>Location</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for project in projects %}
-                            <tr data-id="{{ project.id }}" data-model="project">
-                                <td>{{ project.name }}</td>
-                                <td>{{ project.developer.name }}</td>
-                                <td>{{ project.location.name }}</td>
-                                <td>
-                                    <button class="map-btn" 
-                                            onclick="openMapModal('{{ project.id }}', 
-                                            {% if project.latitude %}{{ project.latitude }}{% else %}null{% endif %}, 
-                                            {% if project.longitude %}{{ project.longitude }}{% else %}null{% endif %})">
-                                        Map
-                                    </button>
-                                    <button class="delete-btn" onclick="deleteRow(this)">×</button>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Unit Type -->
-        <div class="input-group">
-            <label>Unit Type</label>
-            <input type="text" placeholder="Enter unit type..." data-model="unit_type">
-            <button onclick="saveRow(this)">+ Add</button>
-            <div class="data-table-wrapper">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Type</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for type in unit_types %}
-                            <tr data-id="{{ type.id }}" data-model="type">
-                                <td>{{ type.name }}</td>
-                                <td class="delete-cell">
-                                    <button class="delete-btn" onclick="deleteRow(this)">×</button>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Finishing Specs -->
-        <div class="input-group">
-            <label>Finishing Specs</label>
-            <input type="text" placeholder="Enter specs..." data-model="finishing_spec">
-            <button onclick="saveRow(this)">+ Add</button>
-            <div class="data-table-wrapper">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Specs</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for finishing_spec in finishing_specs %}
-                            <tr data-id="{{ finishing_spec.id }}" data-model="finishing_spec">
-                                <td>{{ finishing_spec.name }}</td>
-                                <td class="delete-cell">
-                                    <button class="delete-btn" onclick="deleteRow(this)">×</button>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Asset Type -->
-        <div class="input-group">
-            <label>Asset Type</label>
-            <input type="text" placeholder="Enter asset type..." data-model="asset_type">
-            <button onclick="saveRow(this)">+ Add</button>
-            <div class="data-table-wrapper">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Asset</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for asset_type in asset_types %}
-                            <tr data-id="{{ asset_type.id }}" data-model="asset_type">
-                                <td>{{ asset_type.name }}</td>
-                                <td class="delete-cell">
-                                    <button class="delete-btn" onclick="deleteRow(this)">×</button>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<div class="mr-page">
+  <div class="mr-header">
+    <div class="mr-title">
+      <h1>Market Research – Master Data</h1>
     </div>
+  </div>
+
+  <div class="mr-shell">
+    <!-- Tabs -->
+    <div class="mr-tabs" role="tablist" aria-label="Master data tabs">
+      <button class="mr-tab active" data-tab="tab-location" type="button">Locations</button>
+      <button class="mr-tab" data-tab="tab-developer" type="button">Developers</button>
+      <button class="mr-tab" data-tab="tab-project" type="button">Projects</button>
+      <button class="mr-tab" data-tab="tab-unit-type" type="button">Unit Types</button>
+      <button class="mr-tab" data-tab="tab-finish" type="button">Finishing Specs</button>
+      <button class="mr-tab" data-tab="tab-asset" type="button">Asset Types</button>
+    </div>
+
+    <div class="mr-grid">
+      <!-- Hidden CSRF provider (so JS can read token even if cookie isn't available) -->
+      <form id="csrfProvider" style="display:none">{% csrf_token %}</form>
+
+      <!-- ===================== Locations ===================== -->
+      <section id="tab-location" class="mr-card mr-tab-panel">
+        <div class="mr-card-h">
+          <div class="left">
+            <h2>Locations</h2>
+          </div>
+        </div>
+
+        <div class="mr-card-b">
+          <div class="mr-form">
+            <div class="mr-field">
+              <label>Location name</label>
+              <input class="mr-input" dir="auto" type="text" placeholder="Enter Location Name..." data-model="location" data-role="add-input">
+            </div>
+            <div class="mr-actions">
+              <button class="btn btn-primary" type="button" onclick="saveSimpleRow(this)">+ Add</button>
+            </div>
+          </div>
+
+          <div class="mr-tools">
+            <input class="mr-input mr-search" type="text" placeholder="Search..." oninput="filterTable('location-table', this.value)">
+          </div>
+
+          <div class="mr-table-wrap">
+            <table class="mr-table" id="location-table">
+              <thead>
+                <tr><th style="width:88%">Location</th><th style="width:12%">Action</th></tr>
+              </thead>
+              <tbody>
+                {% for location in locations %}
+                <tr data-id="{{ location.id }}" data-model="location">
+                  <td>{{ location.name }}</td>
+                  <td>
+                    <button class="btn btn-danger" type="button" onclick="deleteRow(this)">Delete</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin-top:12px;">
+            <details>
+              <summary class="pill" style="cursor:pointer;">Import CSV</summary>
+              <div style="padding-top:10px;">
+                <form class="csv-import-form mr-form" data-model="location" enctype="multipart/form-data">
+                  {% csrf_token %}
+                  <div class="mr-field" style="min-width:280px">
+                    <label>CSV file (UTF-8 / cp1256)</label>
+                    <input class="mr-file" type="file" name="csv_file" accept=".csv" required>
+                  </div>
+                  <div class="mr-actions">
+                    <button class="btn btn-ghost" type="submit">Import</button>
+                  </div>
+                </form>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== Developers ===================== -->
+      <section id="tab-developer" class="mr-card mr-tab-panel" style="display:none;">
+        <div class="mr-card-h">
+          <div class="left">
+            <h2>Developers</h2>
+          </div>
+        </div>
+
+        <div class="mr-card-b">
+          <div class="mr-form">
+            <div class="mr-field">
+              <label>Developer name</label>
+              <input class="mr-input" dir="auto" type="text" placeholder="Enter Developer Name..." data-model="developer" data-role="add-input">
+            </div>
+            <div class="mr-actions">
+              <button class="btn btn-primary" type="button" onclick="saveSimpleRow(this)">+ Add</button>
+            </div>
+          </div>
+
+          <div class="mr-tools">
+            <input class="mr-input mr-search" type="text" placeholder="Search..." oninput="filterTable('developer-table', this.value)">
+          </div>
+
+          <div class="mr-table-wrap">
+            <table class="mr-table" id="developer-table">
+              <thead>
+                <tr><th style="width:88%">Developer</th><th style="width:12%">Action</th></tr>
+              </thead>
+              <tbody>
+                {% for developer in developers %}
+                <tr data-id="{{ developer.id }}" data-model="developer">
+                  <td>{{ developer.name }}</td>
+                  <td>
+                    <button class="btn btn-danger" type="button" onclick="deleteRow(this)">Delete</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin-top:12px;">
+            <details>
+              <summary class="pill" style="cursor:pointer;">Import CSV</summary>
+              <div style="padding-top:10px;">
+                <form class="csv-import-form mr-form" data-model="developer" enctype="multipart/form-data">
+                  {% csrf_token %}
+                  <div class="mr-field" style="min-width:280px">
+                    <label>CSV file</label>
+                    <input class="mr-file" type="file" name="csv_file" accept=".csv" required>
+                  </div>
+                  <div class="mr-actions">
+                    <button class="btn btn-ghost" type="submit">Import</button>
+                  </div>
+                </form>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== Projects ===================== -->
+      <section id="tab-project" class="mr-card mr-tab-panel" style="display:none;">
+        <div class="mr-card-h">
+          <div class="left">
+            <h2>Projects</h2>
+          </div>
+        </div>
+
+        <div class="mr-card-b">
+          <div class="mr-form">
+            <div class="mr-field">
+              <label>Project name</label>
+              <input class="mr-input" dir="auto" type="text" id="project-name" placeholder="Enter Project Name">
+            </div>
+
+            <div class="mr-field">
+              <label>Developer</label>
+              <select class="mr-select" id="developer-select">
+                <option value="">Select Developer</option>
+                {% for developer in developers %}
+                  <option value="{{ developer.id }}">{{ developer.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="mr-field">
+              <label>Location</label>
+              <select class="mr-select" id="location-select">
+                <option value="">Select Location</option>
+                {% for location in locations %}
+                  <option value="{{ location.id }}">{{ location.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="mr-actions">
+              <button class="btn btn-primary" type="button" onclick="saveProject()">+ Add Project</button>
+            </div>
+          </div>
+
+          <div style="margin-bottom:12px;">
+            <details open>
+              <summary class="pill" style="cursor:pointer;">Import Projects CSV</summary>
+              <div style="padding-top:10px;">
+                <form class="csv-import-form mr-form" data-model="project" enctype="multipart/form-data">
+                  {% csrf_token %}
+                  <div class="mr-field" style="min-width:280px">
+                    <label>CSV file</label>
+                    <input class="mr-file" type="file" name="csv_file" accept=".csv" required>
+                  </div>
+                  <div class="mr-actions">
+                    <button class="btn btn-ghost" type="submit">Import</button>
+                  </div>
+                </form>
+              </div>
+            </details>
+          </div>
+
+          <div class="mr-tools">
+            <input class="mr-input mr-search" type="text" placeholder="Search..." oninput="filterTable('project-table', this.value)">
+          </div>
+
+          <div class="mr-table-wrap">
+            <table class="mr-table" id="project-table">
+              <thead>
+                <tr>
+                  <th>Project</th>
+                  <th>Developer</th>
+                  <th>Location</th>
+                  <th style="width:220px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for project in projects %}
+                <tr data-id="{{ project.id }}" data-model="project"
+                    data-lat="{% if project.latitude %}{{ project.latitude }}{% else %}{% endif %}"
+                    data-lng="{% if project.longitude %}{{ project.longitude }}{% else %}{% endif %}">
+                  <td>{{ project.name }}</td>
+                  <td>{{ project.developer.name }}</td>
+                  <td>{{ project.location.name }}</td>
+                  <td style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-ghost" type="button"
+                            onclick="openMapFromRow(this)">Map</button>
+                    <button class="btn btn-danger" type="button"
+                            onclick="deleteRow(this)">Delete</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== Unit Types ===================== -->
+      <section id="tab-unit-type" class="mr-card mr-tab-panel" style="display:none;">
+        <div class="mr-card-h">
+          <div class="left">
+            <h2>Unit Types</h2>
+          </div>
+        </div>
+
+        <div class="mr-card-b">
+          <div class="mr-form">
+            <div class="mr-field">
+              <label>Unit type</label>
+              <input class="mr-input" dir="auto" type="text" placeholder="Enter Unit Type..." data-model="unit_type" data-role="add-input">
+            </div>
+            <div class="mr-actions">
+              <button class="btn btn-primary" type="button" onclick="saveSimpleRow(this)">+ Add</button>
+            </div>
+          </div>
+
+          <div class="mr-tools">
+            <input class="mr-input mr-search" type="text" placeholder="Search..." oninput="filterTable('unit-type-table', this.value)">
+          </div>
+
+          <div class="mr-table-wrap">
+            <table class="mr-table" id="unit-type-table">
+              <thead>
+                <tr><th style="width:88%">Type</th><th style="width:12%">Action</th></tr>
+              </thead>
+              <tbody>
+                {% for type in unit_types %}
+                <tr data-id="{{ type.id }}" data-model="unit_type">
+                  <td>{{ type.name }}</td>
+                  <td>
+                    <button class="btn btn-danger" type="button" onclick="deleteRow(this)">Delete</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin-top:12px;">
+            <details>
+              <summary class="pill" style="cursor:pointer;">Import CSV</summary>
+              <div style="padding-top:10px;">
+                <form class="csv-import-form mr-form" data-model="unit_type" enctype="multipart/form-data">
+                  {% csrf_token %}
+                  <div class="mr-field" style="min-width:280px">
+                    <label>CSV file</label>
+                    <input class="mr-file" type="file" name="csv_file" accept=".csv" required>
+                  </div>
+                  <div class="mr-actions">
+                    <button class="btn btn-ghost" type="submit">Import</button>
+                  </div>
+                </form>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== Finishing Specs ===================== -->
+      <section id="tab-finish" class="mr-card mr-tab-panel" style="display:none;">
+        <div class="mr-card-h">
+          <div class="left">
+            <h2>Finishing Specs</h2>
+          </div>
+        </div>
+
+        <div class="mr-card-b">
+          <div class="mr-form">
+            <div class="mr-field">
+              <label>Finishing spec</label>
+              <input class="mr-input" dir="auto" type="text" placeholder="Enter Finishing Specs..." data-model="finishing_spec" data-role="add-input">
+            </div>
+            <div class="mr-actions">
+              <button class="btn btn-primary" type="button" onclick="saveSimpleRow(this)">+ Add</button>
+            </div>
+          </div>
+
+          <div class="mr-tools">
+            <input class="mr-input mr-search" type="text" placeholder="Search..." oninput="filterTable('finish-table', this.value)">
+          </div>
+
+          <div class="mr-table-wrap">
+            <table class="mr-table" id="finish-table">
+              <thead>
+                <tr><th style="width:88%">Spec</th><th style="width:12%">Action</th></tr>
+              </thead>
+              <tbody>
+                {% for finishing_spec in finishing_specs %}
+                <tr data-id="{{ finishing_spec.id }}" data-model="finishing_spec">
+                  <td>{{ finishing_spec.name }}</td>
+                  <td>
+                    <button class="btn btn-danger" type="button" onclick="deleteRow(this)">Delete</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin-top:12px;">
+            <details>
+              <summary class="pill" style="cursor:pointer;">Import CSV</summary>
+              <div style="padding-top:10px;">
+                <form class="csv-import-form mr-form" data-model="finishing_spec" enctype="multipart/form-data">
+                  {% csrf_token %}
+                  <div class="mr-field" style="min-width:280px">
+                    <label>CSV file</label>
+                    <input class="mr-file" type="file" name="csv_file" accept=".csv" required>
+                  </div>
+                  <div class="mr-actions">
+                    <button class="btn btn-ghost" type="submit">Import</button>
+                  </div>
+                </form>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== Asset Types ===================== -->
+      <section id="tab-asset" class="mr-card mr-tab-panel" style="display:none;">
+        <div class="mr-card-h">
+          <div class="left">
+            <h2>Asset Types</h2>
+          </div>
+        </div>
+
+        <div class="mr-card-b">
+          <div class="mr-form">
+            <div class="mr-field">
+              <label>Asset type</label>
+              <input class="mr-input" dir="auto" type="text" placeholder="Enter Asset Type..." data-model="asset_type" data-role="add-input">
+            </div>
+            <div class="mr-actions">
+              <button class="btn btn-primary" type="button" onclick="saveSimpleRow(this)">+ Add</button>
+            </div>
+          </div>
+
+          <div class="mr-tools">
+            <input class="mr-input mr-search" type="text" placeholder="Search..." oninput="filterTable('asset-table', this.value)">
+          </div>
+
+          <div class="mr-table-wrap">
+            <table class="mr-table" id="asset-table">
+              <thead>
+                <tr><th style="width:88%">Asset</th><th style="width:12%">Action</th></tr>
+              </thead>
+              <tbody>
+                {% for asset_type in asset_types %}
+                <tr data-id="{{ asset_type.id }}" data-model="asset_type">
+                  <td>{{ asset_type.name }}</td>
+                  <td>
+                    <button class="btn btn-danger" type="button" onclick="deleteRow(this)">Delete</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin-top:12px;">
+            <details>
+              <summary class="pill" style="cursor:pointer;">Import CSV</summary>
+              <div style="padding-top:10px;">
+                <form class="csv-import-form mr-form" data-model="asset_type" enctype="multipart/form-data">
+                  {% csrf_token %}
+                  <div class="mr-field" style="min-width:280px">
+                    <label>CSV file</label>
+                    <input class="mr-file" type="file" name="csv_file" accept=".csv" required>
+                  </div>
+                  <div class="mr-actions">
+                    <button class="btn btn-ghost" type="submit">Import</button>
+                  </div>
+                </form>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
 </div>
 
 <!-- Map Modal -->
-<div id="mapModal" class="map-modal">
-    <div class="map-modal-content">
-        <div class="map-header">
-            <h3>Select Project Location</h3>
-            <button class="close-btn">&times;</button>
-        </div>
-        <div id="map" class="map-container"></div>
-        <div class="map-actions">
-            <button id="cancelLocationBtn">Cancel</button>
-            <button id="saveLocationBtn">Save Location</button>
-        </div>
+<div id="mapModal" class="map-modal" aria-hidden="true">
+  <div class="box">
+    <div class="head">
+      <h3>Select Project Location</h3>
+      <button class="close" type="button" aria-label="Close">&times;</button>
     </div>
+    <div id="map"></div>
+    <div class="foot">
+      <button class="btn btn-ghost" type="button" id="cancelLocationBtn">Cancel</button>
+      <button class="btn btn-primary" type="button" id="saveLocationBtn">Save Location</button>
+    </div>
+  </div>
 </div>
 
-<!-- Toast Notification -->
-<div id="toast">Operation successful!</div>
+<div id="toast">OK</div>
 
-<!-- Add Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
         crossorigin=""></script>
 
 <script>
-    // Map functionality
-    let currentProjectId = null;
-    let map;
-    let marker;
+  // ===========================
+  // Tabs
+  // ===========================
+  document.querySelectorAll('.mr-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mr-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
 
-    // Initialize the map modal
-    const mapModal = document.getElementById("mapModal");
-    const closeBtn = document.querySelector(".close-btn");
-    const cancelBtn = document.getElementById("cancelLocationBtn");
+      const target = btn.getAttribute('data-tab');
+      document.querySelectorAll('.mr-tab-panel').forEach(p => p.style.display = 'none');
+      document.getElementById(target).style.display = 'block';
+    });
+  });
 
-    closeBtn.onclick = function() {
-        mapModal.style.display = "none";
-        if (map) {
-            map.remove();
-            map = null;
+  // ===========================
+  // Helpers
+  // ===========================
+  function getCSRFToken() {
+    // Prefer hidden token from csrfProvider
+    const el = document.querySelector('#csrfProvider [name=csrfmiddlewaretoken]');
+    if (el && el.value) return el.value;
+
+    // fallback cookie
+    return document.cookie.split('; ')
+      .find(row => row.startsWith('csrftoken='))?.split('=')[1];
+  }
+
+  function showToast(message, isError=false) {
+    const toast = document.getElementById("toast");
+    toast.innerText = message;
+    toast.style.backgroundColor = isError ? "var(--danger)" : "var(--success)";
+    toast.className = "show";
+    setTimeout(() => { toast.className = toast.className.replace("show",""); }, 3000);
+  }
+
+  function filterTable(tableId, q) {
+    const query = (q || "").toLowerCase();
+    const tbody = document.querySelector(`#${tableId} tbody`);
+    if (!tbody) return;
+    [...tbody.querySelectorAll("tr")].forEach(tr => {
+      const text = tr.innerText.toLowerCase();
+      tr.style.display = text.includes(query) ? "" : "none";
+    });
+  }
+
+  function safeTrim(s){ return (s || "").toString().trim(); }
+
+  // ===========================
+  // CSV Import
+  // ===========================
+  document.querySelectorAll('.csv-import-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const model = this.getAttribute('data-model');
+      const formData = new FormData(this);
+      formData.append("model", model);
+
+      fetch("{% url 'import_csv_for_model' %}", {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': getCSRFToken() }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          showToast(`Imported ${data.count} ${model}(s)`);
+          setTimeout(() => location.reload(), 650);
+        } else {
+          showToast(`Import failed: ${data.error || "Unknown error"}`, true);
         }
-    };
+      })
+      .catch(err => showToast(`Import failed: ${err.message}`, true));
+    });
+  });
 
-    cancelBtn.onclick = function() {
-        mapModal.style.display = "none";
-        if (map) {
-            map.remove();
-            map = null;
-        }
-    };
+  // ===========================
+  // Create (Simple Models) - No reload (append row)
+  // ===========================
+  async function saveSimpleRow(button) {
+    const card = button.closest('.mr-card');
+    const input = card.querySelector('[data-role="add-input"]');
+    const model = input.getAttribute('data-model');
+    const value = safeTrim(input.value);
 
-    window.onclick = function(event) {
-        if (event.target === mapModal) {
-            mapModal.style.display = "none";
-            if (map) {
-                map.remove();
-                map = null;
-            }
-        }
-    };
-
-    function openMapModal(projectId, lat, lng) {
-        currentProjectId = projectId;
-        mapModal.style.display = "block";
-
-        // Initialize the map after the modal is displayed
-        setTimeout(() => {
-            initMap(lat, lng);
-        }, 50);
+    if (!value) {
+      showToast("Please enter a value", true);
+      return;
     }
 
-    function initMap(lat, lng) {
-        // Default to a central location if no coordinates provided
-        const defaultLat = 30.0444;
-        const defaultLng = 31.2357;
+    try {
+      const res = await fetch("{% url 'save_market_research_entry' %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCSRFToken()
+        },
+        body: JSON.stringify({ model, value })
+      });
 
-        const initialLat = lat || defaultLat;
-        const initialLng = lng || defaultLng;
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        showToast(data.error || "Save failed", true);
+        return;
+      }
 
-        // Initialize the map
-        map = L.map('map').setView([initialLat, initialLng], 12);
+      input.value = "";
+      showToast("Saved");
 
-        // Base tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+      // append to correct table + update selects if needed
+      appendRowForModel(model, data);
 
-        // Create or update the marker if coordinates exist
-        if (lat && lng) {
-            marker = L.marker([lat, lng], {draggable: true}).addTo(map);
-        }
-
-        // Add click listener to the map
-        map.on('click', function(e) {
-            const clickedLatLng = e.latlng;
-
-            if (!marker) {
-                marker = L.marker(clickedLatLng, {draggable: true}).addTo(map);
-            } else {
-                marker.setLatLng(clickedLatLng);
-            }
-        });
-
-        // Save button handler
-        document.getElementById("saveLocationBtn").onclick = function() {
-            if (marker) {
-                const position = marker.getLatLng();
-                saveProjectLocation(currentProjectId, position.lat, position.lng);
-            } else {
-                showToast("Please select a location on the map first", true);
-            }
-        };
+    } catch (err) {
+      showToast("Save failed: " + err.message, true);
     }
+  }
 
-    function saveProjectLocation(projectId, lat, lng) {
-        fetch("{% url 'save_project_location' %}", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": getCSRFToken()
-            },
-            body: JSON.stringify({
-                project_id: projectId,
-                latitude: lat,
-                longitude: lng
-            })
+  function appendRowForModel(model, data) {
+    const map = {
+      "location": "location-table",
+      "developer": "developer-table",
+      "unit_type": "unit-type-table",
+      "finishing_spec": "finish-table",
+      "asset_type": "asset-table"
+    };
+    const tableId = map[model];
+    if (!tableId) return;
+
+    const tbody = document.querySelector(`#${tableId} tbody`);
+    if (!tbody) return;
+
+    // Prevent duplicate append if already exists
+    if (tbody.querySelector(`tr[data-id="${data.id}"]`)) return;
+
+    const tr = document.createElement("tr");
+    tr.setAttribute("data-id", data.id);
+    tr.setAttribute("data-model", model);
+    tr.innerHTML = `
+      <td>${escapeHtml(data.name || "")}</td>
+      <td><button class="btn btn-danger" type="button" onclick="deleteRow(this)">Delete</button></td>
+    `;
+    tbody.prepend(tr);
+
+    // If location/dev added, update project selects too
+    if (model === "developer") {
+      addOptionToSelect("developer-select", data.id, data.name);
+    }
+    if (model === "location") {
+      addOptionToSelect("location-select", data.id, data.name);
+    }
+  }
+
+  function addOptionToSelect(selectId, value, label) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    if ([...sel.options].some(o => o.value == String(value))) return;
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  }
+
+  // ===========================
+  // Create Project - append row + keep map/delete
+  // ===========================
+  async function saveProject() {
+    const name = safeTrim(document.getElementById("project-name").value);
+    const developer_id = document.getElementById("developer-select").value;
+    const location_id = document.getElementById("location-select").value;
+
+    if (!name) return showToast("Please enter a project name", true);
+    if (!developer_id) return showToast("Please select a developer", true);
+    if (!location_id) return showToast("Please select a location", true);
+
+    try {
+      const res = await fetch("{% url 'save_market_research_entry' %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCSRFToken()
+        },
+        body: JSON.stringify({
+          model: "project",
+          value: { name, developer_id, location_id }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast("Location saved successfully");
-                mapModal.style.display = "none";
-                if (map) {
-                    map.remove();
-                    map = null;
-                }
-            } else {
-                showToast("Error saving location: " + (data.error || "Unknown error"), true);
-            }
-        })
-        .catch(error => {
-            showToast("Error saving location: " + error.message, true);
-        });
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        showToast(data.error || "Save failed", true);
+        return;
+      }
+
+      document.getElementById("project-name").value = "";
+      showToast("Project saved");
+      appendProjectRow(data);
+
+    } catch (err) {
+      showToast("Error saving project: " + err.message, true);
+    }
+  }
+
+  function appendProjectRow(data) {
+    const tbody = document.querySelector("#project-table tbody");
+    if (!tbody) return;
+
+    const tr = document.createElement("tr");
+    tr.setAttribute("data-id", data.id);
+    tr.setAttribute("data-model", "project");
+    tr.setAttribute("data-lat", "");
+    tr.setAttribute("data-lng", "");
+    tr.innerHTML = `
+      <td>${escapeHtml(data.name || "")}</td>
+      <td>${escapeHtml(data.developer || "")}</td>
+      <td>${escapeHtml(data.location || "")}</td>
+      <td style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-ghost" type="button" onclick="openMapFromRow(this)">Map</button>
+        <button class="btn btn-danger" type="button" onclick="deleteRow(this)">Delete</button>
+      </td>
+    `;
+    tbody.prepend(tr);
+  }
+
+  // ===========================
+  // Delete (all models)
+  // ===========================
+  function deleteRow(button) {
+    const row = button.closest('tr');
+    const model = row.getAttribute('data-model');
+    const id = row.getAttribute('data-id');
+
+    if (!confirm("Are you sure you want to delete this item?")) return;
+
+    fetch("{% url 'delete_market_research_entry' %}", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCSRFToken()
+      },
+      body: JSON.stringify({ model, id })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        row.remove();
+        showToast("Deleted");
+      } else {
+        showToast(data.error || "Delete failed", true);
+      }
+    })
+    .catch(() => showToast("Delete failed", true));
+  }
+
+  // ===========================
+  // Map Modal (Projects)
+  // ===========================
+  let currentProjectId = null;
+  let map = null;
+  let marker = null;
+
+  const mapModal = document.getElementById("mapModal");
+  const closeBtn = document.querySelector(".map-modal .close");
+  const cancelBtn = document.getElementById("cancelLocationBtn");
+  const saveBtn = document.getElementById("saveLocationBtn");
+
+  closeBtn.onclick = closeMapModal;
+  cancelBtn.onclick = closeMapModal;
+
+  mapModal.addEventListener("click", (e) => {
+    if (e.target === mapModal) closeMapModal();
+  });
+
+  function openMapFromRow(btn){
+    const row = btn.closest('tr');
+    const projectId = row.getAttribute("data-id");
+    const lat = parseFloat(row.getAttribute("data-lat")) || null;
+    const lng = parseFloat(row.getAttribute("data-lng")) || null;
+    openMapModal(projectId, lat, lng);
+  }
+
+  function openMapModal(projectId, lat, lng) {
+    currentProjectId = projectId;
+    mapModal.style.display = "block";
+    mapModal.setAttribute("aria-hidden", "false");
+
+    setTimeout(() => initMap(lat, lng), 60);
+  }
+
+  function closeMapModal(){
+    mapModal.style.display = "none";
+    mapModal.setAttribute("aria-hidden", "true");
+    if (map) {
+      map.remove();
+      map = null;
+      marker = null;
+    }
+  }
+
+  function initMap(lat, lng) {
+    const defaultLat = 30.0444; // Cairo
+    const defaultLng = 31.2357;
+
+    const initialLat = (lat !== null && !Number.isNaN(lat)) ? lat : defaultLat;
+    const initialLng = (lng !== null && !Number.isNaN(lng)) ? lng : defaultLng;
+
+    map = L.map('map').setView([initialLat, initialLng], 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    if (lat !== null && lng !== null) {
+      marker = L.marker([lat, lng], { draggable: true }).addTo(map);
     }
 
-    // Existing functionality
-    document.querySelectorAll('.csv-import-form').forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const model = this.getAttribute('data-model');
-            let formData = new FormData(this);
-
-            formData.append("model", model);
-            if (!model) {
-                showToast("❌ Import failed: Model not recognized", true);
-                return;
-            }
-
-            fetch("{% url 'import_csv_for_model' %}", {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': getCSRFToken()
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showToast(`✅ Successfully imported ${data.count} ${model}(s)`);
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast(`❌ Import failed: ${data.error || "Unknown error"}`, true);
-                }
-            })
-            .catch(error => {
-                showToast(`❌ Import failed: ${error.message}`, true);
-            });
-        });
+    map.on('click', function(e) {
+      if (!marker) {
+        marker = L.marker(e.latlng, { draggable: true }).addTo(map);
+      } else {
+        marker.setLatLng(e.latlng);
+      }
     });
 
-    function getCSRFToken() {
-        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-               document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
-    }
+    saveBtn.onclick = function() {
+      if (!marker) return showToast("Please select a location on the map first", true);
+      const pos = marker.getLatLng();
+      saveProjectLocation(currentProjectId, pos.lat, pos.lng);
+    };
+  }
 
-    function showToast(message, isError = false) {
-        const toast = document.getElementById("toast");
-        toast.innerText = message;
-        toast.style.backgroundColor = isError ? "var(--danger-color)" : "var(--success-color)";
-        toast.className = "show";
-        setTimeout(() => {
-            toast.className = toast.className.replace("show", "");
-        }, 3000);
-    }
-
-    async function saveRow(button) {
-        const input = button.previousElementSibling;
-        const model = input.getAttribute('data-model');
-        const value = input.value.trim();
-        if (!value) return;
-
-        try {
-            const response = await fetch("{% url 'save_market_research_entry' %}", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCSRFToken()
-                },
-                body: JSON.stringify({ model, value })
-            });
-
-            if (response.ok) {
-                input.value = "";
-                window.location.reload();
-            }
-        } catch (error) {
-            console.error("Error:", error);
-            showToast("Error saving data", true);
+  function saveProjectLocation(projectId, lat, lng) {
+    fetch("{% url 'save_project_location' %}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCSRFToken()
+      },
+      body: JSON.stringify({ project_id: projectId, latitude: lat, longitude: lng })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        // Update row dataset values (no reload)
+        const row = document.querySelector(`tr[data-model="project"][data-id="${projectId}"]`);
+        if (row) {
+          row.setAttribute("data-lat", lat);
+          row.setAttribute("data-lng", lng);
         }
-    }
+        showToast("Location saved");
+        closeMapModal();
+      } else {
+        showToast("Error saving location: " + (data.error || "Unknown error"), true);
+      }
+    })
+    .catch(err => showToast("Error saving location: " + err.message, true));
+  }
 
-    async function saveProject() {
-        const name = document.getElementById("project-name").value.trim();
-        const developer_id = document.getElementById("developer-select").value;
-        const location_id = document.getElementById("location-select").value;
-
-        if (!name) {
-            showToast("Please enter a project name", true);
-            return;
-        }
-
-        if (!developer_id) {
-            showToast("Please select a developer", true);
-            return;
-        }
-
-        if (!location_id) {
-            showToast("Please select a location", true);
-            return;
-        }
-
-        try {
-            const response = await fetch("{% url 'save_market_research_entry' %}", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCSRFToken()
-                },
-                body: JSON.stringify({
-                    model: "project",
-                    value: { name, developer_id, location_id }
-                })
-            });
-
-            if (response.ok) {
-                document.getElementById("project-name").value = "";
-                window.location.reload();
-            }
-        } catch (error) {
-            console.error("Error:", error);
-            showToast("Error saving project", true);
-        }
-    }
-
-    function deleteRow(button) {
-        const row = button.closest('tr');
-        const model = row.getAttribute('data-model');
-        const id = row.getAttribute('data-id');
-
-        if (!confirm("Are you sure you want to delete this item?")) {
-            return;
-        }
-
-        fetch("{% url 'delete_market_research_entry' %}", {
-            method: "DELETE",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": getCSRFToken()
-            },
-            body: JSON.stringify({ model, id })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                row.remove();
-                showToast("Deleted successfully");
-            } else {
-                showToast(data.error || "Delete failed", true);
-            }
-        })
-        .catch(() => {
-            showToast("Delete failed", true);
-        });
-    }
+  function escapeHtml(str){
+    return (str || "").toString()
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
 </script>
+
 {% endblock %}

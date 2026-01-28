@@ -336,6 +336,7 @@
           <input type="checkbox" data-field="is_active" id="is-active-{{ company.id }}" {% if company.is_active %}checked{% endif %} {% if is_team_member %}disabled{% endif %}>
         </td>
 
+
         <td data-label="Type">
             <div id="type-badges-{{ company.id }}">
                 {% if "erp" in company.comp_type %}<span class="badge badge-erp">ERP</span>{% endif %}
@@ -411,6 +412,10 @@
             <input type="hidden" name="google_sheet_url" id="hidden-google_sheet_url-{{ company.id }}" value="{{ company.google_sheet_url|default_if_none:'' }}">
             <input type="hidden" name="google_sheet_gid" id="hidden-google_sheet_gid-{{ company.id }}" value="{{ company.google_sheet_gid|default_if_none:'' }}">
             <input type="hidden" name="google_sheet_title" id="hidden-google_sheet_title-{{ company.id }}" value="{{ company.google_sheet_title|default_if_none:'' }}">
+
+            <input type="hidden" name="auto_sync" id="hidden-auto_sync-{{ company.id }}" value="{% if company.auto_sync %}true{% else %}false{% endif %}">
+            <input type="hidden" name="auto_sync_timer" id="hidden-auto_sync_timer-{{ company.id }}" value="{{ company.auto_sync_timer|default_if_none:0 }}">
+
 
             <button type="submit" class="btn btn-primary btn-sm">Save</button>
           </form>
@@ -496,6 +501,22 @@
                             <input type="date" class="form-control modal-input" data-field="joining_date" value="{{ company.joining_date|date:'Y-m-d' }}">
                         </div>
                      </div>
+
+                    <div class="row mt-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Auto Sync</label>
+                            <input type="checkbox" class="form-check-input ms-2" data-field="auto_sync"
+                                {% if company.auto_sync %}checked{% endif %}>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Auto Sync Timer</label>
+                            <input type="number" min="0" class="form-control modal-input" data-field="auto_sync_timer"
+                                value="{{ company.auto_sync_timer|default_if_none:0 }}">
+                        </div>
+                    </div>
+
+
                 </div>
 
                 <div class="tab-pane fade" id="erp-{{ company.id }}" role="tabpanel">

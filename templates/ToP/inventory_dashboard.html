@@ -1165,9 +1165,7 @@
             </div>
           </div>
         
-          <!-- Filters row (unchanged other than City already added) -->
           <div class="filter-container">
-            <!-- Global toolbar -->
             <div class="filter-card" style="grid-column: 1 / -1;">
               <div class="table-header" style="margin:0">
                 <h3 style="margin:0">Filters</h3>
@@ -1178,7 +1176,6 @@
               </div>
             </div>
         
-            <!-- Project -->
             <div class="filter-card">
               <h3 style="display:flex;justify-content:space-between;align-items:center;">
                 <span>
@@ -1193,7 +1190,6 @@
               <div id="projectFilter" class="filter-options"></div>
             </div>
         
-            <!-- Unit Type -->
             <div class="filter-card">
               <h3 style="display:flex;justify-content:space-between;align-items:center;">
                 <span>
@@ -1208,7 +1204,6 @@
               <div id="unitTypeFilter" class="filter-options"></div>
             </div>
         
-            <!-- Contract Payment Plan (hidden) -->
             <div class="filter-card" style="display: none;">
               <h3 style="display:flex;justify-content:space-between;align-items:center;">
                 <span>
@@ -1223,7 +1218,6 @@
               <div id="contractPaymentPlanFilter" class="filter-options"></div>
             </div>
         
-            <!-- Status -->
             <div class="filter-card">
               <h3 style="display:flex;justify-content:space-between;align-items:center;">
                 <span>
@@ -1238,7 +1232,6 @@
               <div id="statusFilter" class="filter-options"></div>
             </div>
         
-            <!-- Area -->
             <div class="filter-card">
               <h3 style="display:flex;justify-content:space-between;align-items:center;">
                 <span>
@@ -1253,7 +1246,6 @@
               <div id="areaFilter" class="filter-options"></div>
             </div>
         
-            <!-- Fifth Filter changed to City (already done) -->
             <div class="filter-card">
               <h3 style="display:flex;justify-content:space-between;align-items:center;">
                 <span>
@@ -1267,7 +1259,24 @@
               </h3>
               <div id="cityFilter" class="filter-options"></div>
             </div>
-          </div>
+
+            <div class="filter-card">
+              <h3 style="display:flex;justify-content:space-between;align-items:center;">
+                <span>
+                  Owners
+                  <button class="filter-expand-btn" onclick="toggleFilter('ownerFilter')">[+]</button>
+                </span>
+                <span>
+                  <button class="micro-btn" onclick="selectAllIn('ownerFilter')">All</button>
+                  <button class="micro-btn outline" onclick="deselectAllIn('ownerFilter')">None</button>
+                </span>
+              </h3>
+              <div id="ownerFilter" class="filter-options"></div>
+            </div>
+
+          </div> 
+
+
         
           <!-- KPI Cards Row -->
           <div class="kpi-container">
@@ -1803,6 +1812,8 @@
           merges.push({ s: { r: 0, c: 13 }, e: { r: 0, c: 15 } });   // Reserved
           merges.push({ s: { r: 0, c: 16 }, e: { r: 0, c: 18 } });   // Hold
           merges.push({ s: { r: 0, c: 19 }, e: { r: 0, c: 21 } });   // Partner
+          merges.push({ s: { r: 0, c: 21 }, e: { r: 0, c: 24 } });   // Blocked Sales
+          merges.push({ s: { r: 0, c: 24 }, e: { r: 0, c: 27 } });   // Blocked Cancellation
         }
         // Normalize all rows to same length
         ws_data.forEach(row => {
@@ -2108,6 +2119,8 @@
             "Available": { count: 0, sales: 0 },
             "Unreleased": { count: 0, sales: 0 },
             "Blocked Development": { count: 0, sales: 0 },
+            "Blocked Sales": { count: 0, sales: 0 },
+            "Blocked Cancellation": { count: 0, sales: 0 },
             "Reserved": { count: 0, sales: 0 },
             "Contracted": { count: 0, sales: 0 },
             "Partner": { count: 0, sales: 0 },
@@ -2128,6 +2141,8 @@
               Available: total ? ((statusGroups["Available"].count / total) * 100).toFixed(2) : "0",
               Unreleased: total ? ((statusGroups["Unreleased"].count / total) * 100).toFixed(2) : "0",
               BlockedDevelopment: total ? ((statusGroups["Blocked Development"].count / total) * 100).toFixed(2) : "0",
+              BlockedSales: total ? ((statusGroups["Blocked Sales"].count / total) * 100).toFixed(2) : "0",
+              BlockedCancellation: total ? ((statusGroups["Blocked Cancellation"].count / total) * 100).toFixed(2) : "0",
               Reserved: total ? ((statusGroups["Reserved"].count / total) * 100).toFixed(2) : "0",
               Contracted: total ? ((statusGroups["Contracted"].count / total) * 100).toFixed(2) : "0",
               Hold: total ? ((statusGroups["Hold"].count / total) * 100).toFixed(2) : "0",
@@ -2185,9 +2200,11 @@
                 <th colspan="3" style="background:blue; color:white;">Available</th>
                 <th colspan="3" style="background:blue; color:white;">Unreleased</th>
                 <th colspan="3" style="background:blue; color:white;">Blocked Development</th>
-                <th colspan="3" style="background:blue; color:white;">Reserved</th>
-                <th colspan="3" style="background:blue; color:white;">Hold</th>
+                <th colspan="3" style="background:blue; color:white;">Blocked Sales</th>
+                <th colspan="3" style="background:blue; color:white;">Blocked Cancellation</th>
                 <th colspan="3" style="background:blue; color:white;">Partner</th>
+                <th colspan="3" style="background:blue; color:white;">Hold</th>
+                <th colspan="3" style="background:blue; color:white;">Reserved</th>
                 <th colspan="3" style="background:grey; color:white;">Contracted</th>
               </tr>
               <tr>
@@ -2233,18 +2250,26 @@
               <td class="left-border">${formatNumber(p.BlockedDevelopment)}%</td>
               <td>${formatNumber(s["Blocked Development"].count)}</td>
               <td>${formatNumber(s["Blocked Development"].sales)}</td>
+               <!-- Blocked Sales -->
+              <td class="left-border">${formatNumber(p.BlockedSales)}%</td>
+              <td>${formatNumber(s["Blocked Sales"].count)}</td>
+              <td>${formatNumber(s["Blocked Sales"].sales)}</td>
+              <!-- Blocked Cancellation -->
+              <td class="left-border">${formatNumber(p.BlockedCancellation)}%</td>
+              <td>${formatNumber(s["Blocked Cancellation"].count)}</td>
+              <td>${formatNumber(s["Blocked Cancellation"].sales)}</td>
               <!-- Partner -->
-              <td class="left-border">${formatNumber(p.Reserved)}%</td>
-              <td>${formatNumber(s["Reserved"].count)}</td>
-              <td>${formatNumber(s["Reserved"].sales)}</td>
+              <td class="left-border">${formatNumber(p.Partner)}%</td>
+              <td>${formatNumber(s["Partner"].count)}</td>
+              <td>${formatNumber(s["Partner"].sales)}</td>
               <!-- Hold -->
               <td class="left-border">${formatNumber(p.Hold)}%</td>
               <td>${formatNumber(s["Hold"].count)}</td>
               <td>${formatNumber(s["Hold"].sales)}</td>
               <!-- Reserved -->
-              <td class="left-border">${formatNumber(p.Partner)}%</td>
-              <td>${formatNumber(s["Partner"].count)}</td>
-              <td>${formatNumber(s["Partner"].sales)}</td>
+              <td class="left-border">${formatNumber(p.Reserved)}%</td>
+              <td>${formatNumber(s["Reserved"].count)}</td>
+              <td>${formatNumber(s["Reserved"].sales)}</td>
               <!-- Contracted -->
               <td class="left-border">${formatNumber(p.Contracted)}%</td>
               <td>${formatNumber(s["Contracted"].count)}</td>
@@ -2841,7 +2866,8 @@
                 contractPaymentPlans: { prop: 'contract_payment_plan', id: 'contractPaymentPlanFilter' },
                 statuses: { prop: 'status', id: 'statusFilter' },
                 areas: { prop: 'area_range', id: 'areaFilter' },
-                cities: { prop: 'city', id: 'cityFilter' }
+                cities: { prop: 'city', id: 'cityFilter' },
+                owners: { prop: 'owner', id: 'ownerFilter' }
             };
 
             
@@ -2852,6 +2878,7 @@
                 statuses: [],
                 areas: [],
                 cities: [],
+                owners: [],
                 // Add date range filters
                 salesDateRange: { start: null, end: null },
                 deliveryDateRange: { start: null, end: null }
@@ -3214,6 +3241,48 @@
                                 }
                             }
                         };
+
+                        // --- SPECIFIC LOGIC FOR SALES TREND CHART ---
+                        if (canvas.id === 'salesTrendChart') {
+                            // 1. Enable DataLabels with "98.5M" formatting
+                            modalOptions.plugins.datalabels = {
+                                display: true,
+                                align: 'top',
+                                anchor: 'end',
+                                offset: 5,
+                                font: { weight: 'bold', size: 12 },
+                                color: '#333',
+                                formatter: function(value) {
+                                    if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+                                    if (value >= 1000) return (value / 1000).toFixed(0) + 'k';
+                                    return value;
+                                }
+                            };
+
+                            // 2. Custom Tooltip for Units Sold & Avg Value
+                            modalOptions.plugins.tooltip.callbacks.label = function(context) {
+                                const value = context.parsed.y;
+                                const formattedSales = window.dashboard.formatCurrency(value);
+                                
+                                // Access the unitCounts passed from the main chart's dataset
+                                const dataIndex = context.dataIndex;
+                                const count = context.dataset.unitCounts ? context.dataset.unitCounts[dataIndex] : 0;
+                                
+                                const average = count > 0 ? value / count : 0;
+                                const formattedAvg = window.dashboard.formatCurrency(average);
+
+                                // --- NEW: Retrieve and format Avg PSM ---
+                                const avgPsm = context.dataset.avgPsmData ? context.dataset.avgPsmData[dataIndex] : 0;
+                                const formattedPsm = window.dashboard.formatCurrency(avgPsm);
+
+                                return [
+                                    `Sales: ${formattedSales}`,
+                                    `Units: ${count}`,
+                                    `Avg. Sales: ${formattedAvg}`,
+                                    `Avg. PSM: ${formattedPsm}`
+                                ];
+                            };
+                        }
                         
                         if (chartType === 'pie') {
                             modalOptions.cutout = 0;
@@ -3431,6 +3500,7 @@
           const statuses = [...new Set(this.units.map(u => u.status))].filter(Boolean);
           const areas = [...new Set(this.units.map(u => u.area_range))].filter(Boolean);
           const cities = [...new Set(this.units.map(u => u.city))].filter(Boolean); // NEW: Get unique cities
+          const owners = [...new Set(this.units.map(u => u.owner))].filter(Boolean);
           // Populate project filter checkboxes
           const projectFilter = document.getElementById("projectFilter");
           if (projectFilter) {
@@ -3488,6 +3558,17 @@
               areaFilter.classList.remove('active');
               const areaBtn = document.querySelector(`[onclick="toggleFilter('areaFilter')"]`);
               if (areaBtn) areaBtn.textContent = '[+]';
+          }
+          // Populate owener filter checkboxes
+          const ownerFilter = document.getElementById("ownerFilter");
+          if (ownerFilter) {
+              ownerFilter.innerHTML = owners.map(a => `<label><input type="checkbox" value="${a}" checked> ${a}</label>`).join('');
+              // Add event listener for area filter
+              ownerFilter.addEventListener('change', () => this.updateFilters());
+              // NEW: Ensure initial state is collapsed and button shows [+]
+              ownerFilter.classList.remove('active');
+              const ownerBtn = document.querySelector(`[onclick="toggleFilter('ownerFilter')"]`);
+              if (ownerBtn) ownerBtn.textContent = '[+]';
           }
           // Populate city filter checkboxes
           const cityFilter = document.getElementById("cityFilter");
@@ -3778,11 +3859,12 @@
                     axis: isPieOrDoughnut ? undefined : 'x'
                 },
                 plugins: {
-
                     datalabels: {
                         display: (context) => context.dataset.data[context.dataIndex] > 0,
-                        font: { weight: 'bold', size: 11 },
-                        // Logic to determine if label is "Small" (less than 10%)
+                        font: {
+                            weight: 'bold',
+                            size: 11
+                        },
                         anchor: (context) => {
                             if (!isPieOrDoughnut) return isPaymentPlan ? 'end' : 'center';
                             const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
@@ -3831,11 +3913,15 @@
                             const index = legendItem.datasetIndex;
                             const label = legend.chart.data.labels[index];
                             this.applyFilter(this.getFilterTypeFromChartId(legend.chart.canvas.id), label);
+                        },
+                        position: isPieOrDoughnut || isPaymentPlan ? 'bottom' : 'top',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 15
                         }
                     },
                     tooltip: {
                         enabled: true,
-                        // FIX: Removed "position: 'nearest'" so tooltip snaps to the element, not the mouse cursor
                         backgroundColor: 'rgba(0, 0, 0, 0.8)',
                         titleColor: '#fff',
                         bodyColor: '#fff',
@@ -3847,6 +3933,34 @@
                             label: function(context) {
                                 const label = context.label || context.dataset.label || '';
                                 let value = context.parsed.y !== undefined ? context.parsed.y : context.parsed;
+
+                                // --- CUSTOM LOGIC FOR SALES TREND ---
+                                if (context.chart.canvas.id === 'salesTrendChart') {
+                                    // 1. Get formatted Sales Value
+                                    const formattedSales = window.dashboard.formatCurrency(value);
+
+                                    // 2. Retrieve the count (Note: Must be passed in updateSalesTrendWithPeriod)
+                                    const dataIndex = context.dataIndex;
+                                    const count = context.dataset.unitCounts ? context.dataset.unitCounts[dataIndex] : 0;
+
+                                    // 3. Calculate Average
+                                    const average = count > 0 ? value / count : 0;
+                                    const formattedAvg = window.dashboard.formatCurrency(average);
+
+                                    // --- NEW: Retrieve and format Avg PSM ---
+                                    const avgPsm = context.dataset.avgPsmData ? context.dataset.avgPsmData[dataIndex] : 0;
+                                    const formattedPsm = window.dashboard.formatCurrency(avgPsm);
+
+
+                                    // 4. Return Array for multiple lines
+                                    return [
+                                        `Sales: ${formattedSales}`,
+                                        `Units: ${count}`,
+                                        `Avg. Sales: ${formattedAvg}`,
+                                        `Avg. PSM: ${formattedPsm}`
+                                    ];
+                                }
+                                // --- END CUSTOM LOGIC ---
 
                                 if (typeof value === 'number') {
                                     value = value.toLocaleString();
@@ -3896,7 +4010,7 @@
                             }
                         }
                     }
-                },
+                }, 
                 onClick: (e, elements, chart) => {
                     if (elements.length > 0) {
                         try {
@@ -4129,13 +4243,13 @@
           const totalPSM = units.reduce((sum, u) => sum + (parseFloat(u.psm) || 0), 0);
 
           // Calculate totals for sold units
-          const soldUnits = units.filter(u => u.status === 'Contracted'); 
+          const soldUnits = units.filter(u => u.status === 'Contracted' || u.status === 'Reserved');
           const soldCount = soldUnits.length;
           const soldValue = soldUnits.reduce((sum, u) => sum + (parseFloat(u.sales_value) || 0), 0);
           const soldPSM = soldUnits.reduce((sum, u) => sum + (parseFloat(u.psm) || 0), 0);
 
           // Calculate totals for unsold units
-          const unsoldUnits = units.filter(u => u.status !== 'Contracted'); 
+          const unsoldUnits = units.filter(u => u.status !== 'Contracted' && u.status !== 'Reserved');
           const unsoldCount = unsoldUnits.length;
           const unsoldValue = unsoldUnits.reduce((sum, u) => sum + (parseFloat(u.sales_value) || 0), 0);
           const unsoldPSM = unsoldUnits.reduce((sum, u) => sum + (parseFloat(u.psm) || 0), 0);
@@ -4229,7 +4343,7 @@
               }
           });
       
-          const allStatuses = ['Available', 'Unreleased', 'Blocked Development', "Reserved", 'Contracted', 'Partner', 'Hold'];
+          const allStatuses = ['Available', 'Unreleased', 'Blocked Development', "Blocked Sales", "Blocked Cancellation", "Reserved", 'Contracted', 'Partner', 'Hold'];
           const labels = [];
           const data = [];
           const backgroundColors = [
@@ -4238,8 +4352,10 @@
               '#A5A5A5', // Gray
               '#FFC000', // Yellow
               '#70AD47', // Green
-              '#000000', // Black
-              '#fff000'
+              '#ac0202',
+              '#8a6abd', // Black
+              '#fff000',
+              '#da0e8c'
           ];
       
           allStatuses.forEach((status, index) => {
@@ -4522,33 +4638,7 @@
             XLSX.utils.book_append_sheet(wb, ws, "Units Data");
             XLSX.writeFile(wb, `Units_Export_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
-        getFilteredUnits() {
-          const filtered = this.units.filter(unit => {
-              const matchesBasicFilters = (
-                  (this.filters.projects.length === 0 || this.filters.projects.includes(unit.project)) &&
-                  (this.filters.unitTypes.length === 0 || this.filters.unitTypes.includes(unit.unit_type)) &&
-                  (this.filters.contractPaymentPlans.length === 0 || this.filters.contractPaymentPlans.includes(unit.contract_payment_plan)) &&
-                  (this.filters.statuses.length === 0 || this.filters.statuses.includes(unit.status)) &&
-                  (this.filters.areas.length === 0 || this.filters.areas.includes(unit.area_range)) &&
-                  (this.filters.cities.length === 0 || this.filters.cities.includes(unit.city))
-              );
         
-              if (!matchesBasicFilters) return false;
-        
-              // Apply sales date range filter to ALL units
-              const matchesSalesDate = this.matchesSalesDateRange(unit);
-              
-              // If sales date range is set, unit must match it
-              if (this.filters.salesDateRange.start || this.filters.salesDateRange.end) {
-                  return matchesSalesDate;
-              }
-              
-              // No date filters applied
-              return true;
-          });
-          
-          return filtered;
-        }
         showLoading(show) {
             const loader = document.getElementById("dashboardLoader");
             if (show) {
@@ -4615,7 +4705,8 @@
                   (this.filters.contractPaymentPlans.length === 0 || this.filters.contractPaymentPlans.includes(unit.contract_payment_plan)) &&
                   (this.filters.statuses.length === 0 || this.filters.statuses.includes(unit.status)) &&
                   (this.filters.areas.length === 0 || this.filters.areas.includes(unit.area_range)) &&
-                  (this.filters.cities.length === 0 || this.filters.cities.includes(unit.city))
+                  (this.filters.cities.length === 0 || this.filters.cities.includes(unit.city)) &&
+                  (this.filters.owners.length === 0 || this.filters.owners.includes(unit.owner)) 
               );
 
               if (!matchesBasicFilters) return false;
@@ -4810,7 +4901,7 @@
           // ---------------------------------------------------------
           // MODIFICATION: Filter strictly for 'Contracted' units only
           // ---------------------------------------------------------
-          const contractedUnits = dateFilteredUnits.filter(unit => unit.status === 'Contracted');
+          const contractedUnits = dateFilteredUnits.filter(unit => unit.status === 'Contracted' || unit.status === 'Reserved');
           
           // Group data based on selected period using ONLY the contracted units
           const groupedData = groupSalesDataByPeriod(contractedUnits, period);
@@ -4850,9 +4941,9 @@
       function groupSalesDataByPeriod(units, period) {
         const grouped = {};
         units.forEach(unit => {
-            if (!unit.reservation_date) return; // Assuming reservation_date is the date field for sales
+            if (!unit.reservation_date) return;
             const date = new Date(unit.reservation_date);
-            if (isNaN(date.getTime())) return; // Invalid date check
+            if (isNaN(date.getTime())) return;
 
             let periodKey = '';
             let label = '';
@@ -4870,67 +4961,64 @@
                     periodKey = `${date.getFullYear()}`;
                     label = `${date.getFullYear()}`;
                     break;
-                default:
-                    console.warn("Unknown period:", period);
-                    return; // Exit if period is unknown
             }
 
             if (!grouped[periodKey]) {
-                grouped[periodKey] = { sales: 0, count: 0, label: label };
+                // Initialize psmTotal here
+                grouped[periodKey] = { sales: 0, count: 0, psmTotal: 0, label: label };
             }
             grouped[periodKey].sales += parseFloat(unit.sales_value) || 0;
+            // Sum up the PSM
+            grouped[periodKey].psmTotal += parseFloat(unit.psm) || 0;
             grouped[periodKey].count += 1;
         });
 
-        // Convert to sorted array and return
         return Object.keys(grouped).sort().map(key => ({
             period: key,
             label: grouped[key].label,
             sales: grouped[key].sales,
-            count: grouped[key].count
+            count: grouped[key].count,
+            // Return the sum so we can average it later
+            psmTotal: grouped[key].psmTotal 
         }));
       }
       
       function updateSalesTrendWithPeriod(data, period) {
         const salesTrendCanvas = document.getElementById("salesTrendChart");
-    
+     
         if (salesTrendCanvas && window.dashboard.charts.salesTrend) {
             const labels = data.map(item => item.label);
             const salesData = data.map(item => item.sales);
-    
-            // Update chart title based on period
+            const countData = data.map(item => item.count);
+
+            // --- NEW: Calculate Average PSM Array ---
+            const avgPsmData = data.map(item => item.count > 0 ? item.psmTotal / item.count : 0);
+     
             let chartTitle = 'Sales Trend';
             switch(period) {
-                case 'monthly':
-                    chartTitle = 'Monthly Sales Trend';
-                    break;
-                case 'quarterly':
-                    chartTitle = 'Quarterly Sales Trend';
-                    break;
-                case 'annually':
-                    chartTitle = 'Annual Sales Trend';
-                    break;
+                case 'monthly': chartTitle = 'Monthly Sales Trend'; break;
+                case 'quarterly': chartTitle = 'Quarterly Sales Trend'; break;
+                case 'annually': chartTitle = 'Annual Sales Trend'; break;
             }
-    
-            // Find the specific chart header associated with the salesTrendChart canvas
-            // Navigate up from the canvas to find its parent chart-card, then find the h3 inside its chart-header
-            const chartContainer = salesTrendCanvas.closest('.chart-card'); // Find the parent container for this specific chart
+     
+            const chartContainer = salesTrendCanvas.closest('.chart-card');
             if (chartContainer) {
-                const chartHeader = chartContainer.querySelector('.chart-header h3'); // Find the h3 within *this* chart's header
+                const chartHeader = chartContainer.querySelector('.chart-header h3');
                 if (chartHeader) {
-                    chartHeader.textContent = chartTitle; // Update *only* this chart's header
+                    chartHeader.textContent = chartTitle;
                 }
             }
-            // If chartContainer or chartHeader is not found, the title won't be updated, which is safer than updating the wrong one
-    
-            // Create a clean dataset with light dark orange color
+     
             const newData = {
                 labels: labels,
                 datasets: [{
                     label: 'Sales Value',
                     data: salesData,
-                    borderColor: '#D2691E', // Light dark orange
-                    backgroundColor: 'rgba(210, 105, 30, 0.1)', // Light orange with transparency
+                    unitCounts: countData,
+                    // --- NEW: Pass Average PSM data to dataset ---
+                    avgPsmData: avgPsmData, 
+                    borderColor: '#D2691E',
+                    backgroundColor: 'rgba(210, 105, 30, 0.1)',
                     tension: 0.3,
                     fill: true,
                     pointBackgroundColor: '#D2691E',
@@ -4940,35 +5028,22 @@
                     pointHoverRadius: 6
                 }]
             };
-    
-            // Update only the data, not the entire chart configuration
+     
             window.dashboard.charts.salesTrend.data = newData;
-    
-            // Update scales without causing recursion
+     
             const scales = {
-                x: {
-                    title: {
-                        display: true,
-                        text: getXAxisLabel(period)
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Sales Value'
-                    },
-                    beginAtZero: true
-                }
+                x: { title: { display: true, text: getXAxisLabel(period) } },
+                y: { title: { display: true, text: 'Sales Value' }, beginAtZero: true }
             };
-    
-            // Safely update scales without recursion
+     
             if (window.dashboard.charts.salesTrend.options && window.dashboard.charts.salesTrend.options.scales) {
                 window.dashboard.charts.salesTrend.options.scales = scales;
             }
-    
+     
             window.dashboard.charts.salesTrend.update();
         }
-      } 
+      }
+
       
       function getXAxisLabel(period) {
           switch(period) {

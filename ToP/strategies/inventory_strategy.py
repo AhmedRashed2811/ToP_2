@@ -1,6 +1,9 @@
 import requests
 from ..models import Unit
 
+from ..services.erp_leads_mapping_service import ERPLeadsMappingService
+from ..utils.erp_mapping_utils import apply_header_mapping
+
 # ==========================================
 # STRATEGY PATTERN IMPLEMENTATION
 # ==========================================
@@ -37,7 +40,11 @@ class InventoryStrategy:
             response = requests.get(url, headers=headers, timeout=10)
             
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                custom_map = ERPLeadsMappingService.get_mapping_dict(company=self.company)
+                if custom_map:
+                    data = apply_header_mapping(data, custom_map)
+                return data
             
         except Exception as e:
             # Log error silently or print to console

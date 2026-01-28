@@ -21,6 +21,10 @@ from ..utils.notifications_utils import (
 )
 
 
+from ..services.erp_unit_mapping_service import ERPUnitMappingService
+from ..services.erp_hold_post_mapping_service import ERPHoldPostMappingService
+from ..utils.erp_mapping_utils import apply_header_mapping
+
 class HoldRequestsManagementService:
     """
     Service layer for Hold Requests workflows.
@@ -325,7 +329,25 @@ class HoldRequestsManagementService:
             erp_data = response.json()
             
             # Check Status
-            status = str(erp_data.get("status") or "").strip().lower()
+            # ✅ Apply same mapping logic (provided_name -> needed_name) BEFORE reading keys
+            try:
+                custom_map = ERPUnitMappingService.get_mapping_dict(company=company)
+                if custom_map:
+                    erp_data = apply_header_mapping(erp_data, custom_map)
+            except Exception:
+                traceback.print_exc()
+                # fallback: keep erp_data as-is
+
+            # Check Status (now "status" can be produced by mapping, e.g. availability -> status)
+            status = str(
+                erp_data.get("status")
+                or erp_data.get("availability")     # fallback if ERP still sends this and no mapping exists
+                or erp_data.get("Status")           # fallback for title case
+                or ""
+            ).strip().lower()
+            
+            
+            print(f'status = {status}') 
             if status != "available":
                  return {
                     "success": False,
@@ -349,9 +371,26 @@ class HoldRequestsManagementService:
         try:
             # Assuming POST /unit/status/update or similar based on existing config
             # Using 'erp_hold_url' from model which usually points to the update endpoint
+            
+            # Your internal payload (what your code uses)
+            payload = {"unit_code": unit_code, "type": "block"}
+
+            # Load mapping: ERP key -> internal key (ced_name -> unit_code)
+            external_to_internal = ERPHoldPostMappingService.get_mapping_dict(company=company)
+
+            # Invert it to internal -> ERP key
+            internal_to_external = {v: k for k, v in (external_to_internal or {}).items()}
+
+            # Build ERP payload keys
+            erp_payload = {}
+            for k, v in payload.items():
+                erp_key = internal_to_external.get(k, k)   # default keep same key if no mapping
+                erp_payload[erp_key] = v
+    
+    
             block_response = requests.post(
                 company.erp_hold_url,
-                json={"ced_name": unit_code, "status_reason": "block"},
+                json=erp_payload,
                 headers=post_headers,
                 timeout=30
             )

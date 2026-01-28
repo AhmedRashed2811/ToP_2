@@ -819,10 +819,10 @@ class UserManagementService:
         company_id = post_data.get("company_id")
         if not company_id:
             return {"status": 400, "payload": {"message": "Company ID is required."}}
-            
+
         # Permission check
         if not UserManagementService._verify_company_access(actor, company_id):
-             return {"status": 403, "payload": {"message": "You cannot import users for another company."}}
+            return {"status": 403, "payload": {"message": "You cannot import users for another company."}}
 
         company = Company.objects.filter(id=company_id).first()
         if not company:
@@ -836,35 +836,43 @@ class UserManagementService:
         skipped_count = 0
 
         for row in reader:
-            email = row.get("Email")
-            full_name = row.get("Name")
-            raw_password = row.get("Password")
+            email = (row.get("Email") or "").strip()
+            full_name = (row.get("Name") or "").strip()
+            raw_password = (row.get("Password") or "").strip()
 
-            can_edit_bool = str(row.get("Can Edit", "False")).lower() == "true"
-            can_change_years_bool = str(row.get("Can Change Years", "False")).lower() == "true"
+            # Optional booleans (default False)
+            can_edit_bool = str(row.get("Can Edit", "")).lower() == "true"
+            can_change_years_bool = str(row.get("Can Change Years", "")).lower() == "true"
 
-            team_name = row.get("Team") or row.get("Team Name") or ""
+            # Optional team
+            team_name = (row.get("Team") or row.get("Team Name") or "").strip()
             team = None
             if team_name:
-                team = SalesTeam.objects.filter(company=company, name__iexact=team_name.strip()).first()
+                team = SalesTeam.objects.filter(
+                    company=company,
+                    name__iexact=team_name
+                ).first()
 
-            if not email or not full_name or not raw_password:
+            # Required minimal fields
+            if not email or not full_name:
                 skipped_count += 1
                 continue
 
             existing = User.objects.filter(email=email).first()
 
             if existing:
-                # Security: if existing user belongs to another company, prevent overwrite?
-                # For now, assuming email uniqueness implies ownership, but let's be safe:
+                # Prevent cross-company overwrite
                 existing_cid = UserManagementService._get_user_company_id(existing)
                 if existing_cid and existing_cid != str(company.id):
-                    # Skip if user exists in another company
                     skipped_count += 1
                     continue
-                
+
                 existing.full_name = full_name
-                existing.password = make_password(raw_password)
+
+                # Update password ONLY if provided
+                if raw_password:
+                    existing.password = make_password(raw_password)
+
                 existing.save()
 
                 UserManagementService._clear_role_groups(existing)
@@ -873,27 +881,60 @@ class UserManagementService:
                 Sales.objects.update_or_create(
                     user=existing,
                     defaults={
-                        "company": company, "team": team,
-                        "can_edit": can_edit_bool, "can_change_years": can_change_years_bool,
+                        "company": company,
+                        "team": team,
+                        "can_edit": can_edit_bool,
+                        "can_change_years": can_change_years_bool,
                     },
                 )
-                UserManagementService._add_groups(existing, UserManagementService.ROLE_GROUPS["Sales"])
+
+                UserManagementService._add_groups(
+                    existing,
+                    UserManagementService.ROLE_GROUPS["Sales"]
+                )
+
                 updated_count += 1
                 continue
 
-            new_user = User.objects.create(email=email, full_name=full_name, password=make_password(raw_password))
-            Sales.objects.create(
-                user=new_user, company=company, team=team,
-                can_edit=can_edit_bool, can_change_years=can_change_years_bool,
+            # ---- Create new user ----
+            new_user = User(
+                email=email,
+                full_name=full_name,
             )
-            UserManagementService._add_groups(new_user, UserManagementService.ROLE_GROUPS["Sales"])
+
+            # Password optional
+            if raw_password:
+                new_user.password = make_password(raw_password)
+            else:
+                new_user.set_unusable_password()
+
+            new_user.save()
+
+            Sales.objects.create(
+                user=new_user,
+                company=company,
+                team=team,
+                can_edit=can_edit_bool,
+                can_change_years=can_change_years_bool,
+            )
+
+            UserManagementService._add_groups(
+                new_user,
+                UserManagementService.ROLE_GROUPS["Sales"]
+            )
             UserManagementService._cleanup_other_profiles(new_user, "Sales")
             UserManagementService._increment_company_users(company)
+
             created_count += 1
 
         return {
             "status": 200,
             "payload": {
-                "message": (f"Import completed. Created: {created_count}, Updated: {updated_count}, Skipped: {skipped_count}")
+                "message": (
+                    f"Import completed. "
+                    f"Created: {created_count}, "
+                    f"Updated: {updated_count}, "
+                    f"Skipped: {skipped_count}"
+                )
             },
         }
